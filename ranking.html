@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>排名 — WHONEXT UNIVERSE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --n-accent:#9FB3C8; --n-glow:rgba(159,179,200,0.5);
+    --e-accent:#C9B79B; --e-glow:rgba(201,183,155,0.5);
+    --x-accent:#B9B9BD; --x-glow:rgba(185,185,189,0.5);
+    --t-accent:#E9E9E4; --t-glow:rgba(233,233,228,0.5);
+    --good:#7FD79A;
+    --warn:#E7A15A;
+    --gold:#E4C97A;   --gold-bg:rgba(228,201,122,0.14);
+    --silver:#C9CDD3; --silver-bg:rgba(201,205,211,0.12);
+    --bronze:#C98A55; --bronze-bg:rgba(201,138,85,0.14);
+
+    --bg:#000000;
+    --card:rgba(255,255,255,0.07);
+    --card-strong:rgba(255,255,255,0.13);
+    --line:rgba(255,255,255,0.14);
+    --label:#F5F5F7;
+    --secondary:rgba(235,235,245,0.62);
+    --tertiary:rgba(235,235,245,0.32);
+
+    --sf: -apple-system, BlinkMacSystemFont, "PingFang TC", "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+    --sf-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(ellipse at 15% -10%, rgba(228,201,122,0.08), transparent 45%),
+      radial-gradient(ellipse at 90% 105%, rgba(159,179,200,0.07), transparent 50%),
+      var(--bg);
+    color: var(--label);
+    font-family: var(--sf);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom: max(30px, env(safe-area-inset-bottom));
+  }
+  a{ text-decoration:none; color:inherit; }
+  button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+
+  .glass{
+    background: var(--card);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+  }
+
+  .navbar{
+    position:sticky; top:0; z-index:30;
+    padding-top: max(10px, env(safe-area-inset-top));
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner{
+    max-width: 640px; margin:0 auto;
+    display:flex; align-items:center; gap:12px;
+    padding: 10px 16px 12px;
+  }
+  .back-btn{
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    background: var(--card); border: 1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:16px;
+  }
+  .nav-title .eyebrow{ font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary); text-transform:uppercase; }
+  .nav-title h1{ margin:1px 0 0; font-size:20px; font-weight:800; letter-spacing:-.01em; }
+
+  .wrap{ max-width: 640px; margin:0 auto; padding: 20px 16px 8px; }
+
+  .hero{ padding: 4px 4px 22px; }
+  .hero .wordmark{
+    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.06em;
+    font-size: clamp(24px,6.4vw,30px); margin-bottom:8px; color: var(--gold);
+  }
+  .hero p{ font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
+
+  .tabs{
+    display:flex; gap:8px; margin: 0 0 20px;
+    overflow-x:auto;
+  }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab-btn{
+    flex-shrink:0;
+    padding:10px 16px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background: rgba(255,255,255,0.03);
+    font-size:13px; font-weight:700; color:var(--tertiary);
+  }
+  .tab-btn.active{ background: var(--card-strong); color: var(--label); border-color: rgba(255,255,255,0.28); }
+
+  .board-title{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin: 4px 4px 2px;
+  }
+  .board-title .t{ font-size:14px; font-weight:800; }
+  .board-title .n{ font-size:11px; color:var(--tertiary); }
+  .board-subtitle{ font-size:12px; color:var(--secondary); margin: 0 4px 12px; }
+
+  .podium{
+    display:flex; align-items:stretch; gap:10px;
+    margin-bottom:16px; padding: 0 2px;
+  }
+  .podium-slot{
+    flex:1; display:flex; flex-direction:column; justify-content:flex-end;
+    text-align:center; padding: 16px 8px 14px;
+    border:1px solid var(--line); border-radius:18px;
+    background: rgba(255,255,255,0.04);
+    position:relative;
+  }
+  .podium-slot.p1{ padding-top:26px; border-color: rgba(228,201,122,0.4); background: var(--gold-bg); order:2; }
+  .podium-slot.p2{ order:1; }
+  .podium-slot.p3{ order:3; }
+  .podium-rank{
+    font-family: var(--sf-mono); font-weight:700; font-size:11px; line-height:1; color:var(--tertiary);
+    margin-bottom:8px;
+  }
+  .podium-slot.p1 .podium-rank{ color: var(--gold); font-size:12px; }
+  .podium-slot.p2 .podium-rank{ color: var(--silver); }
+  .podium-slot.p3 .podium-rank{ color: var(--bronze); }
+  .podium-avatar{
+    width:44px; height:44px; border-radius:50%; margin:0 auto 8px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:15px; line-height:1;
+    background: var(--card-strong); border:1.5px solid var(--line);
+  }
+  .podium-slot.p1 .podium-avatar{ width:56px; height:56px; font-size:18px; border-color: var(--gold); color: var(--gold); }
+  .podium-slot.p2 .podium-avatar{ width:46px; height:46px; font-size:15.5px; border-color: var(--silver); color: var(--silver); }
+  .podium-slot.p3 .podium-avatar{ width:38px; height:38px; font-size:13px; border-color: var(--bronze); color: var(--bronze); }
+  .podium-name{ font-size:12.5px; font-weight:700; line-height:1.3; margin-bottom:2px; }
+  .podium-value{ font-size:11px; line-height:1.3; color:var(--secondary); font-family: var(--sf-mono); }
+
+  .board-list{ padding: 6px 6px; margin-bottom: 22px; }
+  .row{
+    display:flex; align-items:center; gap:12px;
+    padding: 11px 6px;
+    border-top: 1px solid var(--line);
+  }
+  .row:first-child{ border-top:none; }
+  .row-rank{
+    width:22px; flex-shrink:0; text-align:center;
+    font-family: var(--sf-mono); font-weight:700; font-size:12.5px; line-height:1; color:var(--tertiary);
+  }
+  .row-avatar{
+    width:30px; height:30px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; line-height:1;
+    background: rgba(255,255,255,0.05); border:1px solid var(--line);
+  }
+  .row-name{ flex:1; font-size:13.5px; font-weight:600; line-height:1.3; min-width:0; }
+  .row-value{ font-size:12.5px; line-height:1.3; color:var(--secondary); font-family: var(--sf-mono); flex-shrink:0; }
+
+  .wordmark-footer{
+    text-align:center; margin: 24px 0 6px;
+    font-family:'Archivo Black', var(--sf); font-size:12px; letter-spacing:.16em; color: var(--tertiary);
+  }
+</style>
+</head>
+<body>
+
+  <div class="navbar">
+    <div class="nav-inner">
+      <a class="back-btn" href="index.html" aria-label="返回首頁">‹</a>
+      <div class="nav-title">
+        <div class="eyebrow">WHONEXT</div>
+        <h1>UNIVERSE</h1>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <div class="hero">
+      <div class="wordmark">排行</div>
+    </div>
+
+    <div class="tabs" id="rankTabs">
+      <button class="tab-btn active" data-k="friend" onclick="setBoard('friend')">WHO朋引伴</button>
+      <button class="tab-btn" data-k="attend" onclick="setBoard('attend')">WHO常出席</button>
+      <button class="tab-btn" data-k="dropin" onclick="setBoard('dropin')">WHO常報名</button>
+    </div>
+
+    <div id="board-friend">
+      <div class="board-title"><span class="t">WHO朋引伴 Top 5</span><span class="n">單位：位朋友</span></div>
+      <div class="board-subtitle">球隊推廣大使</div>
+      <div class="podium">
+        <div class="podium-slot p2"><div class="podium-rank">NO.2</div><div class="podium-avatar">安</div><div class="podium-name">安</div><div class="podium-value">6 位</div></div>
+        <div class="podium-slot p1"><div class="podium-rank">NO.1</div><div class="podium-avatar">忠</div><div class="podium-name">忠</div><div class="podium-value">8 位</div></div>
+        <div class="podium-slot p3"><div class="podium-rank">NO.3</div><div class="podium-avatar">J</div><div class="podium-name">Jessica</div><div class="podium-value">3 位</div></div>
+      </div>
+      <div class="board-list glass">
+        <div class="row"><div class="row-rank">4</div><div class="row-avatar">韶</div><div class="row-name">韶恩</div><div class="row-value">2 位朋友</div></div>
+        <div class="row"><div class="row-rank">5</div><div class="row-avatar">孟</div><div class="row-name">孟翰</div><div class="row-value">2 位朋友</div></div>
+      </div>
+    </div>
+
+    <div id="board-attend" style="display:none">
+      <div class="board-title"><span class="t">WHO常出席 Top 5</span><span class="n">單位：場次</span></div>
+      <div class="board-subtitle">場上核心班底</div>
+      <div class="podium">
+        <div class="podium-slot p2"><div class="podium-rank">NO.2</div><div class="podium-avatar">孟</div><div class="podium-name">孟翰</div><div class="podium-value">22 場</div></div>
+        <div class="podium-slot p1"><div class="podium-rank">NO.1</div><div class="podium-avatar">儒</div><div class="podium-name">儒</div><div class="podium-value">23 場</div></div>
+        <div class="podium-slot p3"><div class="podium-rank">NO.3</div><div class="podium-avatar">扯</div><div class="podium-name">扯翔</div><div class="podium-value">22 場</div></div>
+      </div>
+      <div class="board-list glass">
+        <div class="row"><div class="row-rank">4</div><div class="row-avatar">E</div><div class="row-name">Eden</div><div class="row-value">22 場次</div></div>
+        <div class="row"><div class="row-rank">5</div><div class="row-avatar">煒</div><div class="row-name">煒</div><div class="row-value">22 場次</div></div>
+      </div>
+    </div>
+
+    <div id="board-dropin" style="display:none">
+      <div class="board-title"><span class="t">WHO常報名 Top 5</span><span class="n">單位：場次</span></div>
+      <div class="board-subtitle">臨場助陣先鋒</div>
+      <div class="podium">
+        <div class="podium-slot p2"><div class="podium-rank">NO.2</div><div class="podium-avatar">V</div><div class="podium-name">Vic</div><div class="podium-value">10 場</div></div>
+        <div class="podium-slot p1"><div class="podium-rank">NO.1</div><div class="podium-avatar">韶</div><div class="podium-name">韶恩</div><div class="podium-value">17 場</div></div>
+        <div class="podium-slot p3"><div class="podium-rank">NO.3</div><div class="podium-avatar">T</div><div class="podium-name">TonyH</div><div class="podium-value">8 場</div></div>
+      </div>
+      <div class="board-list glass">
+        <div class="row"><div class="row-rank">4</div><div class="row-avatar">T</div><div class="row-name">Tony</div><div class="row-value">8 場次</div></div>
+        <div class="row"><div class="row-rank">5</div><div class="row-avatar">學</div><div class="row-name">學承</div><div class="row-value">7 場次</div></div>
+      </div>
+    </div>
+
+    <div class="wordmark-footer">WHONEXT</div>
+
+  </div>
+
+<script>
+function setBoard(key){
+  ['attend','friend','dropin'].forEach(function(k){
+    document.getElementById('board-'+k).style.display = (k===key) ? 'block' : 'none';
+  });
+  document.querySelectorAll('#rankTabs .tab-btn').forEach(function(btn){
+    btn.classList.toggle('active', btn.dataset.k === key);
+  });
+}
+</script>
+
+</body>
+</html>

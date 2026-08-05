@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WHONEXT x 卡牌系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --n-accent:#9FB3C8; --n-glow:rgba(159,179,200,0.5);
+    --e-accent:#C9B79B; --e-glow:rgba(201,183,155,0.5);
+    --x-accent:#B9B9BD; --x-glow:rgba(185,185,189,0.5);
+    --t-accent:#E9E9E4; --t-glow:rgba(233,233,228,0.5);
+    --gold:#E4C97A;
+
+    --bg:#000000;
+    --card:rgba(255,255,255,0.07);
+    --card-strong:rgba(255,255,255,0.13);
+    --line:rgba(255,255,255,0.14);
+    --label:#F5F5F7;
+    --secondary:rgba(235,235,245,0.62);
+    --tertiary:rgba(235,235,245,0.32);
+
+    --sf: -apple-system, BlinkMacSystemFont, "PingFang TC", "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+    --sf-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(ellipse at 15% -10%, rgba(159,179,200,0.09), transparent 45%),
+      radial-gradient(ellipse at 90% 105%, rgba(201,183,155,0.07), transparent 50%),
+      var(--bg);
+    color: var(--label);
+    font-family: var(--sf);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+  a{ text-decoration:none; color:inherit; }
+  button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+
+  .glass{
+    background: var(--card);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+  }
+
+  [data-team="N"]{ --ac: var(--n-accent); --gl: var(--n-glow); }
+  [data-team="E"]{ --ac: var(--e-accent); --gl: var(--e-glow); }
+  [data-team="X"]{ --ac: var(--x-accent); --gl: var(--x-glow); }
+  [data-team="T"]{ --ac: var(--t-accent); --gl: var(--t-glow); }
+
+  /* ---------- NAV BAR ---------- */
+  .navbar{
+    position:sticky; top:0; z-index:30;
+    padding-top: max(10px, env(safe-area-inset-top));
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner{
+    max-width: 640px; margin:0 auto;
+    display:flex; align-items:center; gap:12px;
+    padding: 10px 16px 12px;
+  }
+  .back-btn{
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    background: var(--card); border: 1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:16px;
+  }
+  .nav-title{ flex:1; min-width:0; }
+  .nav-title .eyebrow{
+    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary); text-transform:uppercase;
+  }
+  .nav-title h1{ margin:1px 0 0; font-size:20px; font-weight:800; letter-spacing:-.01em; }
+  .nav-actions{ display:flex; gap:6px; flex-shrink:0; }
+  .nav-actions button, .nav-actions a{
+    width:36px; height:36px; border-radius:50%;
+    background: var(--card);
+    border: 1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; color: var(--label);
+    text-decoration:none;
+    transition: background .15s ease;
+  }
+  .nav-actions button:active, .nav-actions a:active{ background: var(--card-strong); }
+
+  /* ---------- WRAP ---------- */
+  .wrap{ max-width: 640px; margin:0 auto; padding: 20px 16px 8px; }
+
+  .hero{ padding: 4px 4px 22px; }
+  .hero .wordmark{
+    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.06em;
+    font-size: clamp(24px,6.4vw,30px); margin-bottom:8px; color: var(--gold);
+  }
+  .hero p{ font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
+  .hero .nav-actions{ margin-top:14px; }
+
+  .wordmark-footer{
+    text-align:center; margin: 24px 0 6px;
+    font-family:'Archivo Black', var(--sf); font-size:12px; letter-spacing:.16em; color: var(--tertiary);
+  }
+
+  /* ---------- SCORE ROW ---------- */
+  .score-row{ display:flex; gap:10px; margin-bottom:18px; }
+  .score-card{
+    flex:1; padding: 18px 12px 16px; text-align:center; position:relative; overflow:hidden;
+    transition: box-shadow .25s ease;
+  }
+  .score-card.ready{ box-shadow: 0 0 0 1.5px var(--ac), 0 0 26px var(--gl); }
+  .pill{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:11.5px; font-weight:700; letter-spacing:.06em; color:var(--ac);
+    background: rgba(255,255,255,0.06);
+    padding:4px 11px 4px 8px; border-radius:999px; margin-bottom:12px;
+  }
+  .pill .dot{ width:7px; height:7px; border-radius:50%; background:var(--ac); box-shadow:0 0 6px var(--gl); flex-shrink:0; }
+  .pill span.label-txt{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:90px; }
+  .score-num{
+    font-family: var(--sf-mono); font-size: clamp(38px,11vw,52px); font-weight:700; color:var(--label);
+    letter-spacing:-.02em; line-height:1; font-variant-numeric: tabular-nums;
+  }
+  .score-controls{ display:flex; align-items:center; justify-content:center; gap:14px; margin-top:12px; }
+  .stepper{
+    width:34px; height:34px; border-radius:50%;
+    background: rgba(255,255,255,0.10);
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; color:var(--label); font-weight:500;
+  }
+  .stepper:active{ background: rgba(255,255,255,0.18); }
+  .history-link{
+    margin-top:12px; font-size:11.5px; font-weight:600; color: var(--secondary);
+    display:inline-flex; align-items:center; gap:2px;
+  }
+
+  /* ---------- POOL ---------- */
+  .pool-title{ display:flex; align-items:baseline; justify-content:space-between; padding: 2px 4px 10px; gap:10px; }
+  .pool-title-left{ display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
+  .pool-title h2{ font-size: clamp(19px,4.5vw,22px); font-weight:800; margin:0; letter-spacing:-.01em; }
+  .ready-inline{ font-size: clamp(11.5px,2.8vw,13px); font-weight:600; color: var(--ac,var(--n-accent)); white-space:nowrap; }
+  .pool-title .hint{ font-size:11px; color:var(--tertiary); text-align:right; }
+
+  .shared-pool{
+    min-height: clamp(230px, 46vw, 300px);
+    padding: clamp(20px,5vw,30px);
+    display:flex; flex-direction:column;
+    position:relative; overflow:hidden;
+    cursor:pointer;
+  }
+  .shared-pool.ace{ box-shadow: 0 0 0 1.5px rgba(255,255,255,0.5), 0 0 30px rgba(255,255,255,0.15); }
+  .shared-pool.ready{ animation: poolPulse 2.2s ease-in-out infinite; }
+  @keyframes poolPulse{
+    0%,100%{ box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    50%{ box-shadow: 0 0 0 1.5px rgba(255,255,255,0.35), 0 0 28px rgba(255,255,255,0.16); }
+  }
+  .shared-pool.flip-in{ animation: flipIn .4s cubic-bezier(.2,.9,.3,1); }
+  @keyframes flipIn{
+    0%{ transform: scale(.94) rotateX(8deg); opacity:.5; }
+    100%{ transform: scale(1) rotateX(0); opacity:1; }
+  }
+
+  .pool-logo{
+    font-family: 'Archivo Black', var(--sf); font-weight:400; letter-spacing:.14em; color:var(--label);
+    font-size: clamp(14px,3.6vw,17px);
+    text-transform:uppercase;
+    white-space:nowrap;
+  }
+
+  .sp-idle{ position:absolute; inset:0; z-index:1; }
+  .sp-idle .pool-logo{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+  .sp-idle .cta{
+    position:absolute; left:50%; bottom: clamp(18px,5vw,26px); transform:translateX(-50%);
+    font-size: clamp(12px,3vw,13.5px); color:var(--tertiary); text-align:center; line-height:1.55; max-width:260px;
+  }
+
+  .sp-covered{ position:absolute; inset:0; z-index:1; }
+  .sp-covered .pool-logo{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); opacity:.4; }
+  .sp-covered .sp-cover-text{
+    position:absolute; left:50%; bottom: clamp(18px,5vw,26px); transform:translateX(-50%);
+    font-size: clamp(12px,3vw,13.5px); color:var(--tertiary); text-align:center;
+  }
+
+  .sp-revealed{ flex:1; display:flex; flex-direction:column; gap: clamp(14px,3.5vw,18px); z-index:1; }
+  .sp-top-row{ display:flex; align-items:center; justify-content:space-between; }
+  .sp-ring{
+    width: clamp(38px,9vw,46px); height: clamp(38px,9vw,46px); border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    border: 1.5px solid var(--ac); color:var(--ac);
+    box-shadow: 0 0 14px var(--gl);
+    font-family: var(--sf-mono); font-weight:700; font-size: clamp(17px,4vw,20px);
+  }
+  .sp-badges{ display:flex; gap:8px; }
+  .sp-badge{
+    font-size: clamp(10.5px,2.6vw,12px); font-weight:700; color:#000; background:#fff;
+    padding:5px 12px; border-radius:999px; letter-spacing:.03em; white-space:nowrap;
+  }
+  .sp-name{ font-size: clamp(21px,5.2vw,28px); font-weight:800; letter-spacing:-.01em; }
+  .sp-desc{ font-size: clamp(14.5px,3.6vw,17px); color:var(--secondary); line-height:1.65; }
+  .sp-flip-hint{
+    margin-top:auto; align-self:flex-end;
+    font-size: clamp(10.5px,2.6vw,12px); color:var(--tertiary);
+  }
+
+  /* ---------- BOTTOM SHEET ---------- */
+  .sheet-scrim{
+    position:fixed; inset:0; background: rgba(0,0,0,0.5); z-index:90;
+    opacity:0; pointer-events:none; transition: opacity .25s ease;
+  }
+  .sheet-scrim.open{ opacity:1; pointer-events:auto; }
+
+  .sheet{
+    position:fixed; left:0; right:0; bottom:0; z-index:91;
+    max-width: 560px; margin: 0 auto;
+    background: rgba(20,20,22,0.92);
+    backdrop-filter: blur(26px) saturate(180%);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    border-radius: 24px 24px 0 0;
+    border: 1px solid var(--line); border-bottom:none;
+    padding: 10px 20px max(22px, env(safe-area-inset-bottom));
+    max-height: 78vh; overflow-y:auto;
+    transform: translateY(100%);
+    transition: transform .32s cubic-bezier(.2,.9,.25,1);
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.4);
+  }
+  .sheet.open{ transform: translateY(0); }
+  .sheet .grabber-area{ display:flex; justify-content:center; padding: 6px 0 10px; touch-action:none; cursor:grab; }
+  .sheet .grabber{ width:36px; height:5px; border-radius:3px; background: rgba(255,255,255,0.28); }
+  .sheet h3{ font-size:19px; font-weight:800; margin:0 0 14px; }
+
+  .setup-hint{ font-size:12.5px; color:var(--secondary); margin-bottom:16px; line-height:1.6; }
+  .setup-section-title{ font-size:13px; font-weight:700; color:var(--tertiary); letter-spacing:.05em; margin-bottom:6px; }
+
+  .deck-list{ display:flex; flex-direction:column; gap:8px; }
+  .deck-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding: 13px 15px;
+    background: var(--card); border:1px solid var(--line); border-radius:14px;
+    transition: all .15s ease;
+  }
+  .deck-row.active{ border-color: rgba(255,255,255,0.45); background: rgba(255,255,255,0.11); }
+  .deck-row .deck-info{ display:flex; flex-direction:column; gap:2px; }
+  .deck-row .deck-name{ font-size:14.5px; font-weight:700; color:var(--label); }
+  .deck-row .deck-desc{ font-size:11.5px; color:var(--secondary); line-height:1.4; }
+  .deck-row .deck-check{ font-size:17px; color:var(--label); opacity:0; flex-shrink:0; }
+  .deck-row.active .deck-check{ opacity:1; }
+  .deck-list.locked .deck-row{ opacity:.4; pointer-events:none; }
+  .deck-lock-note{ font-size:11.5px; color:#E7A15A; margin-top:8px; display:none; align-items:center; gap:5px; }
+  .deck-list.locked + .deck-lock-note{ display:flex; }
+
+  .chip-row{ display:flex; gap:14px; flex-wrap:wrap; }
+  .chip{
+    width:52px; height:52px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--card); border:1px solid var(--line);
+    font-family: var(--sf-mono); font-weight:700; font-size:19px; color:var(--tertiary);
+    transition: all .15s ease;
+  }
+  .chip.active{
+    color: var(--ac); border-color: var(--ac);
+    box-shadow: 0 0 14px var(--gl);
+    background: rgba(255,255,255,0.1);
+  }
+
+  .rules-text{ font-size:14.5px; line-height:1.9; color:var(--label); white-space:pre-line; }
+
+  .hist-item{ display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--line); }
+  .hist-item:last-child{ border-bottom:none; }
+  .hist-ring{
+    width:30px; height:30px; border-radius:50%; flex-shrink:0; margin-top:1px;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--sf-mono); font-weight:700; font-size:13.5px;
+    border: 1.5px solid var(--ac); color:var(--ac);
+  }
+  .hist-title{ font-size:15px; font-weight:700; }
+  .hist-title .mini-badge{ font-size:10px; font-weight:700; color:var(--secondary); border:1px solid var(--line); border-radius:999px; padding:2px 7px; margin-left:6px; }
+  .hist-desc{ font-size:13px; color:var(--secondary); margin-top:3px; line-height:1.55; }
+  .hist-meta{ font-size:11.5px; color:var(--tertiary); margin-top:4px; }
+  .empty-hist{ font-size:14px; color:var(--secondary); text-align:center; padding:34px 0; }
+
+  .toast{
+    position:fixed; bottom: max(24px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(20px);
+    max-width: calc(100vw - 32px);
+    background: rgba(30,30,32,0.92);
+    backdrop-filter: blur(16px);
+    color: var(--label); font-size:13.5px; padding:11px 20px;
+    border: 1px solid var(--line);
+    border-radius: 999px; opacity:0; transition: all .3s ease; pointer-events:none; z-index:200;
+    text-align:center;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (max-width: 380px){
+    .score-num{ font-size: clamp(32px,10vw,44px); }
+    .score-card{ padding: 14px 8px 14px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="navbar">
+    <div class="nav-inner">
+      <a class="back-btn" href="index.html" aria-label="返回首頁">‹</a>
+      <div class="nav-title">
+        <div class="eyebrow">WHONEXT</div>
+        <h1>UNIVERSE</h1>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <div class="hero">
+      <div class="wordmark">卡牌系統</div>
+      <p>WHONEXT 2026 卡牌賽制，翻牌還是翻盤。</p>
+      <div class="nav-actions">
+        <a href="whonext_ig_intro_site.html" target="_blank" rel="noopener" id="btnPromo" aria-label="卡牌系統介紹">▤</a>
+        <button id="btnReset" aria-label="全部重置">↺</button>
+        <button id="btnSwap" aria-label="交換場地">⇄</button>
+        <button id="btnRules" aria-label="規則說明">ⓘ</button>
+        <button id="btnSetup" aria-label="賽事設定">⚙︎</button>
+      </div>
+    </div>
+
+    <div class="score-row">
+      <div class="score-card glass" id="scoreCard0" data-team="N">
+        <div class="pill"><span class="dot"></span><span class="label-txt" id="teamLabel0">N 隊</span></div>
+        <div class="score-num" id="scoreNum0">00</div>
+        <div class="score-controls">
+          <button class="stepper" data-side="0" data-delta="-1">−</button>
+          <button class="stepper" data-side="0" data-delta="1">+</button>
+        </div>
+        <button class="history-link" data-side="0" id="historyBtn0">抽牌歷史 ›</button>
+      </div>
+      <div class="score-card glass" id="scoreCard1" data-team="E">
+        <div class="pill"><span class="dot"></span><span class="label-txt" id="teamLabel1">E 隊</span></div>
+        <div class="score-num" id="scoreNum1">00</div>
+        <div class="score-controls">
+          <button class="stepper" data-side="1" data-delta="-1">−</button>
+          <button class="stepper" data-side="1" data-delta="1">+</button>
+        </div>
+        <button class="history-link" data-side="1" id="historyBtn1">抽牌歷史 ›</button>
+      </div>
+    </div>
+
+    <div class="pool-title">
+      <div class="pool-title-left">
+        <h2>請抽卡</h2>
+        <span class="ready-inline" id="poolReadyBadge"></span>
+      </div>
+      <div class="hint">牌池共用一副牌<br>再次點擊可翻面</div>
+    </div>
+
+    <div class="shared-pool glass" id="sharedPool"></div>
+
+    <div class="wordmark-footer">WHONEXT</div>
+
+  </div>
+
+  <!-- Setup Sheet -->
+  <div class="sheet-scrim" id="setupScrim" data-sheet="setup"></div>
+  <div class="sheet" id="setupSheet">
+    <div class="grabber-area" data-sheet="setup"><div class="grabber"></div></div>
+    <h3>賽事設定</h3>
+
+    <div class="setup-section-title">牌組選擇</div>
+    <div class="setup-hint" id="deckHint">比賽開始前選定，分數異動後無法再切換。</div>
+    <div class="deck-list" id="deckList"></div>
+    <div class="deck-lock-note">🔒 比賽已開始，牌組已鎖定，需先全部重置才能切換</div>
+
+    <div class="setup-section-title" style="margin-top:22px;">隊伍設定</div>
+    <div class="setup-hint">選擇兩隊（需先取消一隊才能更換）。未選滿兩隊時，對應比分區塊將顯示為未選擇狀態。</div>
+    <div class="chip-row" id="chipRow">
+      <button class="chip" data-team="N">N</button>
+      <button class="chip" data-team="E">E</button>
+      <button class="chip" data-team="X">X</button>
+      <button class="chip" data-team="T">T</button>
+    </div>
+  </div>
+
+  <!-- Rules Sheet -->
+  <div class="sheet-scrim" id="rulesScrim" data-sheet="rules"></div>
+  <div class="sheet" id="rulesSheet">
+    <div class="grabber-area" data-sheet="rules"><div class="grabber"></div></div>
+    <h3>規則說明</h3>
+    <div class="rules-text">
+      ・分數每達到 5 的倍數（5、10、15、20）時，達到該隊可抽取一張卡牌。
+      ・混雙組合對上男雙組合以5:0開始。
+      ・落後對手 10 分以上時，觸發「逆境反擊抽卡」，全場限用一次。
+      ・比賽分數25不延長。
+      ・卡牌功能包含「即刻生效達到分數後失效」、「持續生效至達到條件後失效」、「隱藏陷阱」
+      ・王牌卡需雙方分數皆超過5分才會出現，一般卡機率固定為王牌卡的3倍，落後方抽中王牌卡的機率提升50%。
+    </div>
+  </div>
+
+  <!-- History Sheet -->
+  <div class="sheet-scrim" id="historyScrim" data-sheet="history"></div>
+  <div class="sheet" id="historySheet">
+    <div class="grabber-area" data-sheet="history"><div class="grabber"></div></div>
+    <h3 id="historySheetTitle">抽牌歷史</h3>
+    <div id="historyList"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  const TEAMS = { N:{name:'N'}, E:{name:'E'}, X:{name:'X'}, T:{name:'T'} };
+
+  const DECK_A_CARDS = [
+    { name: "免死金牌", desc: "持有期間可觸發一次，我方主動失誤(出界、掛網)該球不算分，並由我方重新發球。" },
+    { name: "區域限制", desc: "持有期間可觸發一次，對手回球落於發球限制區外的話我方得分。" },
+    { name: "雙手奉上", desc: "指定對方一名球員，接下來3球必須雙手握拍回球(發球可用單手)。" },
+    { name: "霧裡看花", desc: "指定對方一名球員，接下來3球必須遮住一隻眼睛。" },
+    { name: "底線牢籠", desc: "指定對方一名球員，接下來3球只能活動於底線區域。" },
+    { name: "左右互搏", desc: "指定對方一名球員，接下來3球必須使用非慣用手持拍。" },
+    { name: "球桶突襲", desc: "指定對方一名球員，接下來3球必須用羽球桶擊球。"},
+    { name: "匹克突襲", desc: "指定對方一名球員，接下來3球必須用匹克球拍擊球。"},
+    { name: "廚房禁區", desc: "接下來3球對方球員不可踩入網前廚房區域擊球，違反視同掉分。"},
+    { name: "強制平手", desc: "即刻生效，若是我方分數落後於對手，立刻提高分數強制平手(分數高則此卡無效)。", isAce: true },
+    { name: "加倍奉還", desc: "即刻生效，我方分數先扣3分，接下來3球我方每得1分算3分。", isAce: true },
+    { name: "乘勝追擊", desc: "持有期間可觸發一次，我方連續得2分後，立刻加2分。", isAce: true },
+    { name: "劫富濟貧", desc: "持有期間可觸發一次，一旦對手領先，我方分數加2分，且對手扣2分。", isAce: true },
+    { name: "歷史重演", desc: "即刻生效，可以指定使用我方歷史牌池的任一卡牌。", isAce: true }
+  ];
+
+  function placeholderDeck(prefix, count){
+    const normalCount = Math.round(count * 10 / 15); // 同樣維持約 3:1 的一般:王牌比例
+    const aceCount = count - normalCount;
+    const cards = [];
+    for(let i = 1; i <= normalCount; i++){
+      cards.push({ name: prefix + '卡 ' + String(i).padStart(2,'0'), desc: '開發中，內容尚未定案。' });
+    }
+    for(let i = 1; i <= aceCount; i++){
+      cards.push({ name: prefix + '王牌 ' + String(i).padStart(2,'0'), desc: '開發中，內容尚未定案。', isAce: true });
+    }
+    return cards;
+  }
+
+  const DECK_B_CARDS = placeholderDeck('陷阱', 15);
+  const DECK_C_CARDS = placeholderDeck('道具', 15);
+
+  // 每副牌組的抽卡機率規則各自獨立設定，目前三副數值先設成一樣，
+  // 之後要讓某副牌組機率不同，只需要改這裡對應的 rules，不用動抽卡邏輯本身。
+  const DECKS = {
+    A: {
+      id: 'A', name: '標準牌組', desc: '一般規則限制卡＋分數操作王牌卡', cards: DECK_A_CARDS,
+      rules: { aceUnlockScore: 5, baseAceProb: 1/4, trailingAceMultiplier: 1.5 }
+    },
+    B: {
+      id: 'B', name: '陷阱卡牌組', desc: '15 張卡，內容開發中', cards: DECK_B_CARDS,
+      rules: { aceUnlockScore: 5, baseAceProb: 1/4, trailingAceMultiplier: 1.5 }
+    },
+    C: {
+      id: 'C', name: '道具牌組', desc: '15 張卡，內容開發中', cards: DECK_C_CARDS,
+      rules: { aceUnlockScore: 5, baseAceProb: 1/4, trailingAceMultiplier: 1.5 }
+    }
+  };
+  const DECK_ORDER = ['A', 'B', 'C'];
+  let currentDeckId = 'A';
+  let cardPool = DECKS[currentDeckId].cards;
+
+  let state = {
+    teamSlots: ['N', 'E'],
+    scores: [0, 0],
+    drawnAtScore: [null, null],
+    comebackUsed: false,
+    history: []
+  };
+
+  const $ = id => document.getElementById(id);
+
+  function showToast(msg){
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._tm);
+    showToast._tm = setTimeout(()=> t.classList.remove('show'), 2200);
+  }
+
+  /* ---------- SHEETS ---------- */
+  function openSheet(name){
+    $(name+'Scrim').classList.add('open');
+    $(name+'Sheet').classList.add('open');
+  }
+  function closeSheet(name){
+    $(name+'Scrim').classList.remove('open');
+    $(name+'Sheet').classList.remove('open');
+  }
+  document.querySelectorAll('.sheet-scrim').forEach(el=>{
+    el.addEventListener('click', ()=> closeSheet(el.dataset.sheet));
+  });
+  // simple drag-to-dismiss on the grabber area
+  document.querySelectorAll('.grabber-area').forEach(el=>{
+    const name = el.dataset.sheet;
+    const sheet = $(name+'Sheet');
+    let startY = null, dragging = false;
+    function begin(y){ startY = y; dragging = true; sheet.style.transition = 'none'; }
+    function move(y){
+      if(!dragging) return;
+      const dy = Math.max(0, y - startY);
+      sheet.style.transform = 'translateY(' + dy + 'px)';
+    }
+    function end(y){
+      if(!dragging) return;
+      dragging = false;
+      sheet.style.transition = '';
+      const dy = Math.max(0, y - startY);
+      sheet.style.transform = '';
+      if(dy > 90) closeSheet(name);
+    }
+    el.addEventListener('touchstart', e=> begin(e.touches[0].clientY), {passive:true});
+    el.addEventListener('touchmove', e=>{ move(e.touches[0].clientY); }, {passive:true});
+    el.addEventListener('touchend', e=> end(e.changedTouches[0].clientY));
+    el.addEventListener('mousedown', e=>{ begin(e.clientY); e.preventDefault(); });
+    window.addEventListener('mousemove', e=> move(e.clientY));
+    window.addEventListener('mouseup', e=> end(e.clientY));
+  });
+
+  $('btnSetup').addEventListener('click', ()=> openSheet('setup'));
+  $('btnRules').addEventListener('click', ()=> openSheet('rules'));
+
+  /* ---------- TEAM SETUP ---------- */
+  function toggleTeam(team){
+    const idx = state.teamSlots.indexOf(team);
+    if(idx !== -1){
+      state.teamSlots[idx] = null;
+    } else {
+      const emptyIdx = state.teamSlots.indexOf(null);
+      if(emptyIdx !== -1){
+        state.teamSlots[emptyIdx] = team;
+      } else {
+        showToast('請先取消一隊，才能選擇新隊伍');
+        return;
+      }
+    }
+    render();
+  }
+  document.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=> toggleTeam(chip.dataset.team));
+  });
+
+  /* ---------- SCORE ---------- */
+  document.querySelectorAll('.stepper').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const side = Number(btn.dataset.side);
+      const delta = Number(btn.dataset.delta);
+      let v = state.scores[side] + delta;
+      v = Math.max(0, Math.min(99, v));
+      state.scores[side] = v;
+      render();
+    });
+  });
+  [0,1].forEach(side=>{
+    $('scoreCard'+side).addEventListener('click', ()=> attemptDrawForSide(side));
+  });
+
+  /* ---------- CARD DRAW ---------- */
+  let ACE_CARDS = cardPool.filter(c => c.isAce);
+  let NORMAL_CARDS = cardPool.filter(c => !c.isAce);
+
+  function shuffled(arr){
+    const a = arr.slice();
+    for(let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function freshDeckState(){ return { normal: shuffled(NORMAL_CARDS), ace: shuffled(ACE_CARDS) }; }
+  let deckState = freshDeckState();
+
+  function isMatchLocked(){
+    return state.scores[0] > 0 || state.scores[1] > 0;
+  }
+
+  function setActiveDeck(deckId){
+    if(deckId === currentDeckId) return;
+    if(isMatchLocked()){
+      showToast('比賽已開始，牌組已鎖定，請先全部重置');
+      return;
+    }
+    currentDeckId = deckId;
+    cardPool = DECKS[currentDeckId].cards;
+    ACE_CARDS = cardPool.filter(c => c.isAce);
+    NORMAL_CARDS = cardPool.filter(c => !c.isAce);
+    deckState = freshDeckState();
+    renderDeckList();
+    showToast('已切換為「' + DECKS[currentDeckId].name + '」');
+  }
+
+  function renderDeckList(){
+    const list = $('deckList');
+    const locked = isMatchLocked();
+    list.classList.toggle('locked', locked);
+    list.innerHTML = DECK_ORDER.map(id=>{
+      const d = DECKS[id];
+      const active = id === currentDeckId;
+      return '<div class="deck-row' + (active ? ' active' : '') + '" data-deck="' + id + '">' +
+        '<div class="deck-info"><div class="deck-name">' + d.name + '</div><div class="deck-desc">' + d.desc + '</div></div>' +
+        '<div class="deck-check">✓</div>' +
+      '</div>';
+    }).join('');
+    list.querySelectorAll('.deck-row').forEach(row=>{
+      row.addEventListener('click', ()=> setActiveDeck(row.dataset.deck));
+    });
+  }
+  renderDeckList();
+  function drawFromCategory(pileKey, fullList){
+    if(deckState[pileKey].length === 0){ deckState[pileKey] = shuffled(fullList); }
+    return deckState[pileKey].pop();
+  }
+
+  function pickCardForSide(side){
+    const other = side === 0 ? 1 : 0;
+    const rules = DECKS[currentDeckId].rules;
+    const aceUnlocked = state.scores[0] > rules.aceUnlockScore && state.scores[1] > rules.aceUnlockScore;
+    if(!aceUnlocked){ return drawFromCategory('normal', NORMAL_CARDS); }
+    const isTrailing = state.scores[side] < state.scores[other];
+    const aceProb = isTrailing ? Math.min(1, rules.baseAceProb * rules.trailingAceMultiplier) : rules.baseAceProb;
+    if(Math.random() < aceProb){ return drawFromCategory('ace', ACE_CARDS); }
+    return drawFromCategory('normal', NORMAL_CARDS);
+  }
+
+  function drawForSide(side){
+    const score = state.scores[side];
+    const eligible = score > 0 && score % 5 === 0 && state.drawnAtScore[side] !== score;
+    if(!eligible) return;
+    const card = pickCardForSide(side);
+    state.drawnAtScore[side] = score;
+    revealCard(card, side, false);
+  }
+
+  function drawComeback(){
+    const diff = state.scores[0] - state.scores[1];
+    const losingSide = diff <= -10 ? 0 : (diff >= 10 ? 1 : -1);
+    if(losingSide === -1 || state.comebackUsed) return;
+    const card = pickCardForSide(losingSide);
+    state.comebackUsed = true;
+    revealCard(card, losingSide, true);
+  }
+
+  let lastCard = null; // { html, ace, team }
+  let isCovered = false;
+
+  function revealCard(card, side, isComeback){
+    const team = state.teamSlots[side] || null;
+    state.history.unshift({ ...card, side, isComeback, team, score0: state.scores[0], score1: state.scores[1] });
+
+    const html =
+      '<div class="sp-top-row">' +
+        '<div class="sp-ring">' + (team || '–') + '</div>' +
+        '<div class="sp-badges">' +
+          (card.isAce ? '<div class="sp-badge">王牌</div>' : '') +
+          (isComeback ? '<div class="sp-badge">逆境反擊</div>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="sp-name">' + card.name + '</div>' +
+      '<div class="sp-desc">' + card.desc + '</div>' +
+      '<div class="sp-flip-hint">點擊牌池可翻面 ›</div>';
+
+    lastCard = { html, ace: !!card.isAce, team };
+    isCovered = false;
+    renderSharedPool();
+    render();
+  }
+
+  function renderSharedPool(){
+    const el = $('sharedPool');
+    el.classList.remove('flip-in');
+
+    if(!lastCard){
+      el.classList.remove('ace');
+      el.removeAttribute('data-team');
+      el.innerHTML =
+        '<div class="sp-idle">' +
+          '<div class="pool-logo">WHONEXT</div>' +
+          '<div class="cta">點擊符合條件的隊伍分數卡<br>即可抽卡</div>' +
+        '</div>';
+    } else if(isCovered){
+      el.classList.remove('ace');
+      el.dataset.team = lastCard.team || '';
+      el.innerHTML =
+        '<div class="sp-covered">' +
+          '<div class="pool-logo">WHONEXT</div>' +
+          '<div class="sp-cover-text">卡牌已蓋牌・再次點擊查看</div>' +
+        '</div>';
+    } else {
+      el.classList.toggle('ace', lastCard.ace);
+      el.dataset.team = lastCard.team || '';
+      el.innerHTML = '<div class="sp-revealed">' + lastCard.html + '</div>';
+    }
+
+    void el.offsetWidth;
+    el.classList.add('flip-in');
+  }
+
+  $('sharedPool').addEventListener('click', ()=>{
+    if(lastCard){ isCovered = !isCovered; renderSharedPool(); return; }
+    const eligible = [0,1].filter(s => isSideEligible(s) || isComebackEligibleForSide(s));
+    if(eligible.length === 1){ attemptDrawForSide(eligible[0]); }
+    else if(eligible.length > 1){ showToast('兩隊都符合條件，請點擊該隊的分數卡抽卡'); }
+    else { showToast('目前尚未達成抽卡條件'); }
+  });
+
+  function isSideEligible(side){
+    const score = state.scores[side];
+    return !!state.teamSlots[side] && score > 0 && score % 5 === 0 && state.drawnAtScore[side] !== score;
+  }
+  function getComebackSide(){
+    const diff = state.scores[0] - state.scores[1];
+    return diff <= -10 ? 0 : (diff >= 10 ? 1 : -1);
+  }
+  function isComebackEligibleForSide(side){
+    return getComebackSide() === side && !!state.teamSlots[side] && !state.comebackUsed;
+  }
+  function attemptDrawForSide(side){
+    if(isSideEligible(side)){ drawForSide(side); return; }
+    if(isComebackEligibleForSide(side)){ drawComeback(); return; }
+    showToast('目前尚未達成抽卡條件');
+  }
+
+  /* ---------- TOP CONTROLS ---------- */
+  $('btnReset').addEventListener('click', ()=>{
+    state = { teamSlots:['N','E'], scores:[0,0], drawnAtScore:[null,null], comebackUsed:false, history:[] };
+    deckState = freshDeckState();
+    lastCard = null; isCovered = false;
+    renderSharedPool();
+    render();
+    showToast('已全部重置');
+  });
+
+  $('btnSwap').addEventListener('click', ()=>{
+    state.teamSlots.reverse();
+    state.scores.reverse();
+    state.drawnAtScore.reverse();
+    state.history.forEach(h=>{ h.side = h.side === 0 ? 1 : 0; });
+    render();
+    showToast('已交換場地');
+  });
+
+  [0,1].forEach(side=>{
+    $('historyBtn'+side).addEventListener('click', (e)=>{
+      e.stopPropagation();
+      renderHistory(side);
+      openSheet('history');
+    });
+  });
+
+  /* ---------- RENDER ---------- */
+  function render(){
+    document.querySelectorAll('.chip').forEach(chip=>{
+      const t = chip.dataset.team;
+      chip.classList.toggle('active', state.teamSlots.includes(t));
+    });
+
+    $('deckList').classList.toggle('locked', isMatchLocked());
+
+    let anyReady = false;
+    const readyTeams = [];
+
+    for(let side=0; side<2; side++){
+      const team = state.teamSlots[side] || null;
+      const card = $('scoreCard'+side);
+      const label = team ? (team + ' 隊') : ('TEAM ' + (side===0?'A':'B') + ' · 未選擇');
+
+      card.dataset.team = team || '–';
+      $('teamLabel'+side).textContent = label;
+      $('scoreNum'+side).textContent = String(state.scores[side]).padStart(2,'0');
+
+      const milestoneEligible = isSideEligible(side);
+      const comebackEligible = isComebackEligibleForSide(side);
+      const canDraw = milestoneEligible || comebackEligible;
+      if(canDraw){ anyReady = true; if(team) readyTeams.push(team); }
+      card.classList.toggle('ready', canDraw);
+    }
+
+    const badge = $('poolReadyBadge');
+    if(readyTeams.length){
+      badge.dataset.team = readyTeams[0];
+      badge.textContent = '✦ ' + readyTeams.join('・') + ' 隊符合條件，可抽卡';
+    } else {
+      badge.removeAttribute('data-team');
+      badge.textContent = '';
+    }
+
+    $('sharedPool').classList.toggle('ready', !lastCard && anyReady);
+  }
+
+  function renderHistory(side){
+    const list = $('historyList');
+    const team = state.teamSlots[side];
+    $('historySheetTitle').textContent = team ? (team + ' 隊抽牌歷史') : ('TEAM ' + (side===0?'A':'B') + ' 抽牌歷史');
+
+    const items = state.history.filter(h => h.side === side);
+    if(items.length === 0){
+      list.innerHTML = '<div class="empty-hist">尚無抽牌紀錄</div>';
+      return;
+    }
+    list.innerHTML = items.map(h=>{
+      return '<div class="history-item hist-item" data-team="' + (h.team||'') + '">' +
+        '<span class="hist-ring">' + (h.team || '–') + '</span>' +
+        '<div>' +
+          '<div class="hist-title">' + h.name + (h.isAce ? '<span class="mini-badge">王牌</span>' : '') + (h.isComeback ? '<span class="mini-badge">逆境反擊</span>' : '') + '</div>' +
+          '<div class="hist-desc">' + h.desc + '</div>' +
+          '<div class="hist-meta">當時比分　' + h.score0 + ' : ' + h.score1 + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  renderSharedPool();
+  render();
+</script>
+</body>
+</html>

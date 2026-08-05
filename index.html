@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WHONEXT UNIVERSE — 首頁</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --n-accent:#9FB3C8; --n-glow:rgba(159,179,200,0.5);
+    --e-accent:#C9B79B; --e-glow:rgba(201,183,155,0.5);
+    --x-accent:#B9B9BD; --x-glow:rgba(185,185,189,0.5);
+    --t-accent:#E9E9E4; --t-glow:rgba(233,233,228,0.5);
+    --good:#7FD79A; --good-glow:rgba(127,215,154,0.35);
+    --warn:#E7A15A; --warn-glow:rgba(231,161,90,0.35);
+    --gold:#E4C97A; --gold-glow:rgba(228,201,122,0.35);
+
+    --bg:#000000;
+    --card:rgba(255,255,255,0.07);
+    --card-strong:rgba(255,255,255,0.13);
+    --line:rgba(255,255,255,0.14);
+    --label:#F5F5F7;
+    --secondary:rgba(235,235,245,0.62);
+    --tertiary:rgba(235,235,245,0.32);
+
+    --sf: -apple-system, BlinkMacSystemFont, "PingFang TC", "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+    --sf-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(ellipse at 15% -10%, rgba(159,179,200,0.09), transparent 45%),
+      radial-gradient(ellipse at 90% 105%, rgba(228,201,122,0.06), transparent 50%),
+      var(--bg);
+    color: var(--label);
+    font-family: var(--sf);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom: max(30px, env(safe-area-inset-bottom));
+  }
+  a{ text-decoration:none; color:inherit; }
+  button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+
+  .glass{
+    background: var(--card);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+  }
+
+  [data-team="N"]{ --ac: var(--n-accent); --gl: var(--n-glow); }
+  [data-team="E"]{ --ac: var(--e-accent); --gl: var(--e-glow); }
+  [data-team="X"]{ --ac: var(--x-accent); --gl: var(--x-glow); }
+  [data-team="T"]{ --ac: var(--t-accent); --gl: var(--t-glow); }
+
+  /* ---------- NAV ---------- */
+  .navbar{
+    position:sticky; top:0; z-index:30;
+    padding-top: max(10px, env(safe-area-inset-top));
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner{
+    max-width: 640px; margin:0 auto;
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 10px 16px 12px;
+  }
+  .nav-title .eyebrow{ font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary); text-transform:uppercase; }
+  .nav-title h1{ margin:1px 0 0; font-size:20px; font-weight:800; letter-spacing:-.01em; }
+  .nav-actions{ display:flex; align-items:center; gap:8px; }
+  .role-toggle{
+    display:flex; background: var(--card); border:1px solid var(--line);
+    border-radius:999px; padding:2px;
+  }
+  .role-toggle button{
+    font-size:11px; font-weight:700; padding:6px 12px; border-radius:999px; color:var(--tertiary);
+  }
+  .role-toggle button.active{ background: var(--card-strong); color: var(--label); }
+
+  .wrap{ max-width: 640px; margin:0 auto; padding: 20px 16px 8px; }
+
+  /* ---------- HERO ---------- */
+  .hero{ padding: 4px 4px 26px; }
+  .hero .hero-eyebrow{
+    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--gold);
+    text-transform:uppercase; margin-bottom:10px;
+  }
+  .hero .wordmark{
+    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
+    font-size: clamp(26px,7vw,34px); margin-bottom:8px;
+  }
+  .hero p{ font-size: clamp(13.5px,3.4vw,15px); color:var(--secondary); line-height:1.65; max-width:440px; }
+
+  /* ---------- TEAM STRIP ---------- */
+  .team-strip{ display:flex; gap:8px; margin: 18px 0 26px; }
+  .team-pill{
+    flex:1; display:flex; align-items:center; gap:8px;
+    padding:10px 12px; border-radius:14px;
+    border:1px solid var(--line); background: rgba(255,255,255,0.03);
+  }
+  .team-pill .letter{
+    width:26px; height:26px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--sf-mono); font-weight:700; font-size:12px;
+    border:1.5px solid var(--ac); color:var(--ac);
+  }
+  .team-pill .tname{ font-size:10px; color:var(--tertiary); line-height:1.3; }
+
+  /* ---------- MODULES ---------- */
+  .section-label{
+    font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--tertiary);
+    text-transform:uppercase; margin: 6px 4px 12px;
+  }
+
+  .module-card{
+    display:flex; align-items:center; gap:16px;
+    padding: 20px 20px;
+    margin-bottom:14px;
+    position:relative; overflow:hidden;
+    transition: transform .15s ease, border-color .15s ease;
+  }
+  .module-card:active{ transform: scale(.985); }
+  .module-card .m-icon{
+    width:52px; height:52px; border-radius:16px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; font-family: var(--sf-mono); font-weight:700;
+    background: rgba(255,255,255,0.06);
+    border:1px solid var(--line);
+  }
+  .module-card .m-body{ flex:1; min-width:0; }
+  .module-card .m-title-row{ display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+  .module-card .m-title{ font-size:16.5px; font-weight:800; letter-spacing:-.005em; }
+  .module-card .m-status{
+    font-size:10px; font-weight:700; padding:3px 9px; border-radius:999px;
+    white-space:nowrap;
+  }
+  .module-card .m-status.live{ background: rgba(127,215,154,0.15); color: var(--good); }
+  .module-card .m-status.wip{ background: rgba(231,161,90,0.15); color: var(--warn); }
+  .module-card .m-desc{ font-size:12.5px; color:var(--secondary); line-height:1.55; }
+  .module-card .m-arrow{ font-size:18px; color:var(--tertiary); flex-shrink:0; }
+  .module-card .m-meta{ display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; }
+  .module-card .m-meta .stat{ font-size:11px; color:var(--tertiary); }
+  .module-card .m-meta .stat b{ font-family: var(--sf-mono); color:var(--label); font-weight:700; }
+
+  .module-card[data-accent="finance"] .m-icon{ color: var(--n-accent); border-color: var(--n-glow); }
+  .module-card[data-accent="rank"] .m-icon{ color: var(--e-accent); border-color: var(--e-glow); }
+  .module-card[data-accent="match"] .m-icon{ color: var(--t-accent); border-color: var(--t-glow); }
+  .module-card[data-accent="member"] .m-icon{ color: var(--x-accent); border-color: var(--x-glow); }
+
+  .sub-tags{ display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .sub-tags span{
+    font-size:10.5px; font-weight:600; color:var(--secondary);
+    border:1px solid var(--line); border-radius:999px; padding:3px 10px;
+  }
+  .sub-tags span.tbd{ border-style:dashed; color:var(--tertiary); }
+
+  /* ---------- FOOTER NOTE ---------- */
+  .footer-note{
+    margin-top: 20px; padding: 16px 18px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .footer-note .ftitle{ font-size:12.5px; font-weight:700; color:var(--secondary); }
+  .footer-note .flist{ font-size:11.5px; color:var(--tertiary); line-height:1.8; }
+
+  .wordmark-footer{
+    text-align:center; margin: 30px 0 6px;
+    font-family:'Archivo Black', var(--sf); font-size:12px; letter-spacing:.16em; color: var(--tertiary);
+  }
+</style>
+</head>
+<body>
+
+  <div class="navbar">
+    <div class="nav-inner">
+      <div class="nav-title">
+        <div class="eyebrow">WHONEXT</div>
+        <h1>UNIVERSE</h1>
+      </div>
+      <div class="nav-actions">
+        <div class="role-toggle">
+          <button class="active">球員</button>
+          <button>管理員</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <div class="hero">
+      <div class="hero-eyebrow">WHONEXT</div>
+      <div class="wordmark">WHONEXT B.C.</div>
+      <p>重新定義，換誰上場</p>
+    </div>
+
+    <div class="section-label">核心模組</div>
+
+    <a class="module-card glass" data-accent="finance" href="finance.html">
+      <div class="m-icon">$</div>
+      <div class="m-body">
+        <div class="m-title-row">
+          <div class="m-title">帳務</div>
+          <div class="m-status live">已上線</div>
+        </div>
+        <div class="m-desc">收支紀錄。</div>
+        <div class="m-meta">
+          <div class="stat">本月餘額 <b>$1,240</b></div>
+          <div class="stat">待繳 <b>$0</b></div>
+        </div>
+      </div>
+      <div class="m-arrow">›</div>
+    </a>
+
+    <a class="module-card glass" data-accent="rank" href="ranking.html">
+      <div class="m-icon">★</div>
+      <div class="m-body">
+        <div class="m-title-row">
+          <div class="m-title">排名</div>
+          <div class="m-status live">已上線</div>
+        </div>
+        <div class="m-desc">出席、糾團與更多榜單，讓每一份參與都被看見。</div>
+        <div class="sub-tags">
+          <span>出席排名</span>
+          <span>糾團排名</span>
+        </div>
+      </div>
+      <div class="m-arrow">›</div>
+    </a>
+
+    <a class="module-card glass" data-accent="match" href="match.html">
+      <div class="m-icon">⚑</div>
+      <div class="m-body">
+        <div class="m-title-row">
+          <div class="m-title">賽制</div>
+          <div class="m-status live">已上線</div>
+        </div>
+        <div class="m-desc">卡牌賽制與積分賽制，把每一分變成一場博弈與長期賽季經營。</div>
+        <div class="sub-tags">
+          <span>卡牌賽制 · WHONEXT 2026</span>
+          <span>積分賽制 · 第 6 名</span>
+        </div>
+      </div>
+      <div class="m-arrow">›</div>
+    </a>
+
+    <a class="module-card glass" data-accent="member" href="member.html">
+      <div class="m-icon">☺</div>
+      <div class="m-body">
+        <div class="m-title-row">
+          <div class="m-title">成員</div>
+          <div class="m-status live">已上線</div>
+        </div>
+        <div class="m-desc">球員名冊，看看球隊裡都有誰。</div>
+        <div class="sub-tags">
+          <span>月繳成員 · 8 位</span>
+          <span>臨打球員 · 4 位</span>
+        </div>
+      </div>
+      <div class="m-arrow">›</div>
+    </a>
+
+    <div class="wordmark-footer">WHONEXT</div>
+
+  </div>
+
+</body>
+</html>
