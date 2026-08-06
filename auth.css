@@ -41,7 +41,7 @@ body.is-admin .admin-only.flex{ display:flex; }
 .auth-title{ font-size:16px; font-weight:800; margin-bottom:16px; color:var(--label); }
 .auth-input{
   width:100%; box-sizing:border-box;
-  font-family: inherit; font-size:14px; color: var(--label);
+  font-family: inherit; font-size:16px; color: var(--label);
   background: rgba(255,255,255,0.05);
   border: 1px solid var(--line); border-radius: 12px;
   padding: 11px 14px; margin-bottom:10px;

@@ -1,6 +1,6 @@
 (function(){
   var ROLE_KEY = 'whonext_role';
-  var IDLE_LIMIT_MS = 30000;
+  var IDLE_LIMIT_MS = 5 * 60 * 1000;
   var idleTimer = null;
 
   function getRole(){ return localStorage.getItem(ROLE_KEY) || 'player'; }
@@ -25,7 +25,7 @@
   function handleIdleLogout(){
     if(getRole() !== 'admin') return;
     setRole('player');
-    showIdleToast('已閒置 30 秒，管理員自動登出');
+    showIdleToast('已閒置 5 分鐘，管理員自動登出');
   }
 
   function showIdleToast(msg){
