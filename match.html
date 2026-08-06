@@ -360,10 +360,8 @@
 
     <div class="pool-title">
       <div class="pool-title-left">
-        <h2>請抽卡</h2>
         <span class="ready-inline" id="poolReadyBadge"></span>
       </div>
-      <div class="hint">牌池共用一副牌<br>再次點擊可翻面</div>
     </div>
 
     <div class="shared-pool glass" id="sharedPool"></div>
@@ -665,7 +663,7 @@
       el.innerHTML =
         '<div class="sp-idle">' +
           '<div class="pool-logo">WHONEXT</div>' +
-          '<div class="cta">點擊符合條件的隊伍分數卡<br>即可抽卡</div>' +
+          '<div class="cta">點擊符合條件的隊伍分數卡<br>即可抽卡<br>再次點擊可翻面</div>' +
         '</div>';
     } else if(isCovered){
       el.classList.remove('ace');
