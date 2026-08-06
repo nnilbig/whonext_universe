@@ -248,22 +248,39 @@
   let currentKey = 'friend';
   let currentPeriod = 'year';
 
+  function computeRanks(list){
+    const ranks = [];
+    let rank = 0;
+    let prevValue = null;
+    list.forEach(function(p, i){
+      if(p.value !== prevValue){
+        rank = i + 1;
+        prevValue = p.value;
+      }
+      ranks.push(rank);
+    });
+    return ranks;
+  }
+
   function renderBoard(){
     const data = BOARDS[currentKey];
     const list = data[currentPeriod];
+    const rankNums = computeRanks(list);
     const top3 = list.slice(0, 3);
+    const top3Ranks = rankNums.slice(0, 3);
     const rest = list.slice(3, 6);
+    const restRanks = rankNums.slice(3, 6);
 
     document.getElementById('boardTitleText').textContent = PERIOD_LABEL[currentPeriod] + ' ' + data.title;
     document.getElementById('boardUnitText').textContent = data.unit;
 
     const podiumOrder = [top3[1], top3[0], top3[2]];
+    const podiumRanks = [top3Ranks[1], top3Ranks[0], top3Ranks[2]];
     const slots = ['p2', 'p1', 'p3'];
-    const ranks = ['NO.2', 'NO.1', 'NO.3'];
     document.getElementById('podium').innerHTML = podiumOrder.map(function(p, i){
       if(!p) return '';
       return '<div class="podium-slot ' + slots[i] + '">' +
-        '<div class="podium-rank">' + ranks[i] + '</div>' +
+        '<div class="podium-rank">NO.' + podiumRanks[i] + '</div>' +
         '<div class="podium-avatar">' + p.name.slice(0,1) + '</div>' +
         '<div class="podium-name">' + p.name + '</div>' +
         '<div class="podium-value">' + p.value + data.valueSuffix + '</div>' +
@@ -272,7 +289,7 @@
 
     document.getElementById('boardList').innerHTML = rest.map(function(p, i){
       return '<div class="row">' +
-        '<div class="row-rank">' + (i + 4) + '</div>' +
+        '<div class="row-rank">' + restRanks[i] + '</div>' +
         '<div class="row-avatar">' + p.name.slice(0,1) + '</div>' +
         '<div class="row-name">' + p.name + '</div>' +
         '<div class="row-value">' + p.value + data.valueSuffix + '</div>' +
