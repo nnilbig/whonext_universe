@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>成員 — WHONEXT UNIVERSE</title>
+<title>當月球員 — WHONEXT UNIVERSE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="auth.css">
@@ -84,6 +84,20 @@
   }
   .hero p{ font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
 
+  .month-nav{
+    display:flex; align-items:center; justify-content:space-between;
+    margin: 0 4px 20px;
+  }
+  .month-btn{
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    background: var(--card); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--gold);
+  }
+  .month-btn:disabled{ opacity:.25; }
+  .month-label{ text-align:center; }
+  .month-label .m{ margin:0; font-size:16px; font-weight:800; }
+  .month-label .s{ margin:2px 0 0; font-size:10.5px; color:var(--tertiary); }
+
   .section-label{
     display:flex; align-items:baseline; justify-content:space-between;
     margin: 4px 4px 12px;
@@ -111,6 +125,7 @@
     font-size:10.5px; font-weight:600; color:var(--secondary);
     border:1px solid var(--line); border-radius:999px; padding:3px 10px; flex-shrink:0;
   }
+  .row-stat{ font-size:11px; color:var(--tertiary); margin-top:3px; }
 
   .row-admin{
     flex-direction:row; align-items:center; justify-content:space-between; gap:10px;
@@ -131,7 +146,7 @@
   .row-btn-danger{ color: var(--warn, #E7A15A); border-color: rgba(231,161,90,0.4); background: rgba(231,161,90,0.1); }
 
   .add-row{
-    display:block; width:100%; text-align:center;
+    width:100%; text-align:center;
     padding:14px 6px; margin-top:2px;
     border-top:1px dashed var(--line);
     font-size:13px; font-weight:700; color:var(--secondary);
@@ -161,6 +176,11 @@
   }
   .edit-cancel{ background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--secondary); }
   .edit-save{ background: var(--label); color:#000; }
+  .edit-checkbox-row{
+    display:flex; align-items:center; gap:8px;
+    font-size:13px; color:var(--label); margin-bottom:16px; cursor:pointer;
+  }
+  .edit-checkbox-row input{ width:16px; height:16px; }
 
   .toast{
     position:fixed; bottom: max(24px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(20px);
@@ -196,20 +216,25 @@
   <div class="wrap">
 
     <div class="hero">
-      <div class="wordmark">成員</div>
-      <p>固定月繳的核心成員，加上不定期報到的臨打球員，一起組成 WHONEXT B.C.。</p>
+      <div class="hero-eyebrow">WHONEXT BADMINTON CLUB</div>
+      <div class="wordmark">球員名冊</div>
+      <p>當月的月繳球員與臨打出席球員。</p>
     </div>
 
-    <div class="section-label"><span class="t">月繳成員</span><span class="n">單位：位</span></div>
+    <div class="month-nav">
+      <button class="month-btn" id="prevBtn" onclick="stepMonth(-1)" aria-label="上一個月">‹</button>
+      <div class="month-label">
+        <p class="m" id="monthLabel">—</p>
+        <p class="s">當月球員名單</p>
+      </div>
+      <button class="month-btn" id="nextBtn" onclick="stepMonth(1)" aria-label="下一個月">›</button>
+    </div>
+
+    <div class="section-label"><span class="t">月繳成員</span><span class="n" id="monthlyCount">共 0 位</span></div>
     <div class="member-list glass" id="monthlyList"></div>
 
-    <div class="section-label"><span class="t">臨打球員</span><span class="n">單位：位</span></div>
-    <div class="member-list glass">
-      <div class="row"><div class="row-avatar">V</div><div class="row-name">Vic</div><div class="row-tag">臨打</div></div>
-      <div class="row"><div class="row-avatar">T</div><div class="row-name">TonyH</div><div class="row-tag">臨打</div></div>
-      <div class="row"><div class="row-avatar">T</div><div class="row-name">Tony</div><div class="row-tag">臨打</div></div>
-      <div class="row"><div class="row-avatar">學</div><div class="row-name">學承</div><div class="row-tag">臨打</div></div>
-    </div>
+    <div class="section-label"><span class="t">臨打球員</span><span class="n" id="dropinCount">共 0 位</span></div>
+    <div class="member-list glass" id="dropinList"></div>
 
     <div class="wordmark-footer">WHONEXT</div>
 
@@ -224,10 +249,12 @@
 
       <div class="edit-field-label">單週費用（$）</div>
       <input type="number" id="editWeekly" class="edit-input" inputmode="numeric">
-      <div class="edit-field-label">預繳金額（$）</div>
-      <input type="number" id="editPrepaid" class="edit-input" inputmode="numeric">
-      <div class="edit-field-label">剩餘次數（預繳金額 ÷ 單週費用，自動計算）</div>
-      <input type="text" id="editSessions" class="edit-input" readonly>
+      <div class="edit-field-label">本月應繳金額（$）</div>
+      <input type="number" id="editTotal" class="edit-input" inputmode="numeric">
+      <label class="edit-checkbox-row">
+        <input type="checkbox" id="editPaid">
+        <span>已繳費</span>
+      </label>
 
       <div class="edit-actions">
         <button type="button" class="edit-cancel" id="editCancel">取消</button>
@@ -238,80 +265,99 @@
 
   <div class="toast" id="toast"></div>
 
+<script src="backend.js"></script>
 <script src="auth.js"></script>
 <script>
   const DEFAULT_WEEKLY = 210;
-  let MONTHLY_MEMBERS = [
-    { id:'zhong', name:'忠', weekly:DEFAULT_WEEKLY, prepaid:1200 },
-    { id:'an', name:'安', weekly:DEFAULT_WEEKLY, prepaid:800 },
-    { id:'jessica', name:'Jessica', weekly:DEFAULT_WEEKLY, prepaid:1200 },
-    { id:'shaoen', name:'韶恩', weekly:DEFAULT_WEEKLY, prepaid:400 },
-    { id:'menghan', name:'孟翰', weekly:DEFAULT_WEEKLY, prepaid:1200 },
-    { id:'ru', name:'儒', weekly:DEFAULT_WEEKLY, prepaid:1200 },
-    { id:'chexiang', name:'扯翔', weekly:DEFAULT_WEEKLY, prepaid:800 },
-    { id:'wei', name:'煒', weekly:DEFAULT_WEEKLY, prepaid:1200 }
-  ];
-  const FEE_KEY = 'whonext_member_fees';
-  const REMOVED_KEY = 'whonext_member_removed';
-  const ADDED_KEY = 'whonext_member_added';
-  let editingId = null;
+  let currentMembers = [];
+  let editingName = null;
   let sheetMode = 'edit';
+  let currentMonth = null;
+  let ALL_WEEKS = [];
 
-  function sessionsOf(m){
-    return m.weekly > 0 ? Math.floor(m.prepaid / m.weekly) : 0;
+  function splitNames(val){
+    return String(val || '').split(',').map(s=>s.trim()).filter(Boolean);
+  }
+  function monthOfWeek(w){ return String(w.week_date || '').slice(0,7); }
+  function months(){ return [...new Set(ALL_WEEKS.map(monthOfWeek))].sort(); }
+  function weeksOfMonth(m){ return ALL_WEEKS.filter(w=> monthOfWeek(w) === m); }
+
+  async function loadAllWeeks(){
+    const params = { action:'getWeeks' };
+    const cached = getApiCache(params);
+    if(cached) ALL_WEEKS = cached.weeks || [];
+    try{
+      const result = await apiGet(params);
+      setApiCache(params, result);
+      ALL_WEEKS = result.weeks || [];
+    } catch(e){
+      // 讀取失敗就沿用快取（可能是空陣列），畫面稍後仍會顯示載入失敗的空狀態
+    }
   }
 
-  function loadAddedMembers(){
-    let added = [];
-    try{ added = JSON.parse(localStorage.getItem(ADDED_KEY)) || []; } catch(e){}
-    added.forEach(a=>{
-      if(!MONTHLY_MEMBERS.find(m=>m.id === a.id)) MONTHLY_MEMBERS.push(a);
+  function attendCountsFor(m){
+    const counts = {};
+    weeksOfMonth(m).forEach(w=>{
+      splitNames(w.present_names).forEach(n=>{ counts[n] = (counts[n] || 0) + 1; });
     });
+    return counts;
   }
-  function persistAddedMember(m){
-    let added = [];
-    try{ added = JSON.parse(localStorage.getItem(ADDED_KEY)) || []; } catch(e){}
-    added.push({ id:m.id, name:m.name, weekly:m.weekly, prepaid:m.prepaid });
-    localStorage.setItem(ADDED_KEY, JSON.stringify(added));
+  function dropinCountsFor(m){
+    const counts = {};
+    weeksOfMonth(m).forEach(w=>{
+      splitNames(w.dropin_names).forEach(n=>{ counts[n] = (counts[n] || 0) + 1; });
+    });
+    return counts;
   }
 
-  function loadFees(){
-    loadAddedMembers();
-    let saved = {};
-    try{ saved = JSON.parse(localStorage.getItem(FEE_KEY)) || {}; } catch(e){}
-    MONTHLY_MEMBERS.forEach(m=>{
-      const rec = saved[m.id];
-      if(!rec) return;
-      if(typeof rec.weekly === 'number') m.weekly = rec.weekly;
-      if(typeof rec.prepaid === 'number') m.prepaid = rec.prepaid;
-    });
-    let removed = [];
-    try{ removed = JSON.parse(localStorage.getItem(REMOVED_KEY)) || []; } catch(e){}
-    MONTHLY_MEMBERS = MONTHLY_MEMBERS.filter(m=> !removed.includes(m.id));
+  async function loadMonthlyMembers(m){
+    const params = { action:'getMembers', month:m };
+    const list = document.getElementById('monthlyList');
+    const cached = getApiCache(params);
+
+    if(cached){
+      currentMembers = cached.members || [];
+      renderMonthlyMembers();
+    } else {
+      list.innerHTML = '<div class="row"><div class="row-stat">載入中…</div></div>';
+    }
+
+    try{
+      const result = await apiGet(params);
+      setApiCache(params, result);
+      if(currentMonth !== m) return; // 使用者已經切到別的月份，結果過期就丟棄
+      currentMembers = result.members || [];
+      renderMonthlyMembers();
+    } catch(e){
+      if(!cached){
+        currentMembers = [];
+        list.innerHTML = '<div class="row"><div class="row-stat">載入失敗，請檢查網路連線</div></div>';
+        document.getElementById('monthlyCount').textContent = '共 0 位';
+      }
+    }
   }
-  function saveFees(){
-    const out = {};
-    MONTHLY_MEMBERS.forEach(m=>{ out[m.id] = { weekly:m.weekly, prepaid:m.prepaid }; });
-    localStorage.setItem(FEE_KEY, JSON.stringify(out));
-  }
-  function markRemoved(id){
-    let removed = [];
-    try{ removed = JSON.parse(localStorage.getItem(REMOVED_KEY)) || []; } catch(e){}
-    if(!removed.includes(id)) removed.push(id);
-    localStorage.setItem(REMOVED_KEY, JSON.stringify(removed));
-  }
-  function removeMember(id){
-    const m = MONTHLY_MEMBERS.find(x=>x.id === id);
-    if(!m) return;
-    markRemoved(id);
-    MONTHLY_MEMBERS = MONTHLY_MEMBERS.filter(x=>x.id !== id);
-    renderMonthlyMembers();
-    showToast('已將 ' + m.name + ' 移出月繳名單');
+
+  async function removeMember(name){
+    const updated = currentMembers.filter(x=>x.name !== name);
+    try{
+      await apiPost('saveMembers', updated);
+      currentMembers = updated;
+      setApiCache({ action:'getMembers', month:currentMonth }, { members:updated });
+      renderMonthlyMembers();
+      showToast('已將 ' + name + ' 移出月繳名單');
+    } catch(e){
+      showToast('移除失敗，請稍後再試');
+    }
   }
 
   function renderMonthlyMembers(){
+    document.getElementById('monthlyCount').textContent = '共 ' + currentMembers.length + ' 位';
+    const attend = attendCountsFor(currentMonth);
     const list = document.getElementById('monthlyList');
-    list.innerHTML = MONTHLY_MEMBERS.map(m=>`
+    list.innerHTML = currentMembers.map(m=>{
+      const total = Number(m.monthly_total_fee) || 0;
+      const paid = !!m.paid;
+      return `
       <div class="row">
         <div class="row-avatar">${m.name.slice(0,1)}</div>
         <div class="row-main">
@@ -319,86 +365,87 @@
             <div class="row-name">${m.name}</div>
             <div class="row-tag">月繳</div>
           </div>
+          <div class="row-stat">本月出席 ${attend[m.name] || 0} 次</div>
           <div class="row-admin admin-only flex">
-            <div class="row-fee">單週 $${m.weekly}<span class="fee-sep">・</span>預繳 $${m.prepaid.toLocaleString()}<span class="fee-sep">・</span>剩 ${sessionsOf(m)} 次</div>
+            <div class="row-fee">應繳 $${total.toLocaleString()}<span class="fee-sep">・</span><span style="color:${paid ? 'var(--secondary)' : 'var(--warn,#E7A15A)'}">${paid ? '已繳費' : '未繳費'}</span></div>
             <div class="row-admin-actions">
-              <button type="button" class="row-btn row-btn-ghost" data-action="edit" data-id="${m.id}">修改</button>
-              <button type="button" class="row-btn row-btn-danger" data-action="remove" data-id="${m.id}">移除</button>
+              <button type="button" class="row-btn row-btn-ghost" data-action="edit" data-name="${m.name}">修改</button>
+              <button type="button" class="row-btn row-btn-danger" data-action="remove" data-name="${m.name}">移除</button>
             </div>
           </div>
         </div>
-      </div>
-    `).join('') + `<button type="button" class="add-row admin-only" id="addMemberBtn">＋ 新增月繳成員</button>`;
+      </div>`;
+    }).join('') + `<button type="button" class="add-row admin-only" id="addMemberBtn">＋ 新增月繳成員</button>`;
 
     list.querySelectorAll('[data-action="edit"]').forEach(btn=>{
-      btn.addEventListener('click', ()=> openEdit(btn.dataset.id));
+      btn.addEventListener('click', ()=> openEdit(btn.dataset.name));
     });
     list.querySelectorAll('[data-action="remove"]').forEach(btn=>{
-      btn.addEventListener('click', ()=> removeMember(btn.dataset.id));
+      btn.addEventListener('click', ()=> removeMember(btn.dataset.name));
     });
     document.getElementById('addMemberBtn').addEventListener('click', openNew);
   }
 
-  function recalcSessionsField(){
-    const weekly = Number(document.getElementById('editWeekly').value) || 0;
-    const prepaid = Number(document.getElementById('editPrepaid').value) || 0;
-    document.getElementById('editSessions').value = weekly > 0 ? Math.floor(prepaid / weekly) : 0;
-  }
-
-  function openEdit(id){
-    const m = MONTHLY_MEMBERS.find(x=>x.id === id);
+  function openEdit(name){
+    const m = currentMembers.find(x=>x.name === name);
+    if(!m) return;
     sheetMode = 'edit';
-    editingId = id;
+    editingName = name;
     document.getElementById('editTitle').textContent = '月繳管理';
     document.getElementById('editName').value = m.name;
-    document.getElementById('editWeekly').value = m.weekly;
-    document.getElementById('editPrepaid').value = m.prepaid;
+    document.getElementById('editWeekly').value = m.weekly_fee != null ? m.weekly_fee : DEFAULT_WEEKLY;
+    document.getElementById('editTotal').value = m.monthly_total_fee != null ? m.monthly_total_fee : 0;
+    document.getElementById('editPaid').checked = !!m.paid;
     document.getElementById('editSave').textContent = '儲存';
-    recalcSessionsField();
     document.getElementById('editOverlay').classList.add('open');
   }
   function openNew(){
     sheetMode = 'new';
-    editingId = null;
+    editingName = null;
     document.getElementById('editTitle').textContent = '新增月繳成員';
     document.getElementById('editName').value = '';
     document.getElementById('editWeekly').value = DEFAULT_WEEKLY;
-    document.getElementById('editPrepaid').value = 0;
+    document.getElementById('editTotal').value = 0;
+    document.getElementById('editPaid').checked = false;
     document.getElementById('editSave').textContent = '新增';
-    recalcSessionsField();
     document.getElementById('editOverlay').classList.add('open');
     setTimeout(()=> document.getElementById('editName').focus(), 50);
   }
   function closeEdit(){
     document.getElementById('editOverlay').classList.remove('open');
-    editingId = null;
+    editingName = null;
   }
-  function saveEdit(){
+  async function saveEdit(){
     const name = document.getElementById('editName').value.trim();
     if(!name){ showToast('請輸入姓名'); return; }
+    if(sheetMode === 'new' && currentMembers.some(x=>x.name === name)){
+      showToast('已有同名成員'); return;
+    }
     const weekly = Math.max(0, Number(document.getElementById('editWeekly').value) || 0);
-    const prepaid = Math.max(0, Number(document.getElementById('editPrepaid').value) || 0);
+    const total = Math.max(0, Number(document.getElementById('editTotal').value) || 0);
+    const paid = document.getElementById('editPaid').checked;
+    const record = { month: currentMonth, name, weekly_fee: weekly, monthly_total_fee: total, paid };
 
-    if(sheetMode === 'new'){
-      const m = { id:'m_' + Date.now().toString(36), name, weekly, prepaid };
-      MONTHLY_MEMBERS.push(m);
-      persistAddedMember(m);
-      saveFees();
+    const updated = sheetMode === 'new'
+      ? currentMembers.concat([record])
+      : currentMembers.map(m=> m.name === editingName ? record : m);
+
+    const saveBtn = document.getElementById('editSave');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '儲存中…';
+    try{
+      await apiPost('saveMembers', updated);
+      currentMembers = updated;
+      setApiCache({ action:'getMembers', month:currentMonth }, { members:updated });
       renderMonthlyMembers();
       closeEdit();
-      showToast('已新增 ' + name + ' 為月繳成員');
-      return;
+      showToast(sheetMode === 'new' ? ('已新增 ' + name + ' 為月繳成員') : ('已更新 ' + name + ' 的月繳資料'));
+    } catch(e){
+      showToast('儲存失敗，請稍後再試');
+    } finally{
+      saveBtn.disabled = false;
+      saveBtn.textContent = sheetMode === 'new' ? '新增' : '儲存';
     }
-
-    const m = MONTHLY_MEMBERS.find(x=>x.id === editingId);
-    if(!m) return;
-    m.name = name;
-    m.weekly = weekly;
-    m.prepaid = prepaid;
-    saveFees();
-    renderMonthlyMembers();
-    closeEdit();
-    showToast('已更新 ' + m.name + ' 的月繳資料');
   }
 
   document.getElementById('editCancel').addEventListener('click', closeEdit);
@@ -406,8 +453,6 @@
   document.getElementById('editOverlay').addEventListener('click', e=>{
     if(e.target.id === 'editOverlay') closeEdit();
   });
-  document.getElementById('editWeekly').addEventListener('input', recalcSessionsField);
-  document.getElementById('editPrepaid').addEventListener('input', recalcSessionsField);
 
   function showToast(msg){
     const t = document.getElementById('toast');
@@ -417,8 +462,54 @@
     showToast._t = setTimeout(()=> t.classList.remove('show'), 2200);
   }
 
-  loadFees();
-  renderMonthlyMembers();
+  function renderDropinMembers(){
+    const counts = dropinCountsFor(currentMonth);
+    const names = Object.keys(counts).sort((a,b)=> counts[b] - counts[a] || a.localeCompare(b));
+    document.getElementById('dropinCount').textContent = '共 ' + names.length + ' 位';
+    const list = document.getElementById('dropinList');
+    list.innerHTML = names.length ? names.map(n=>`
+      <div class="row">
+        <div class="row-avatar">${n.slice(0,1)}</div>
+        <div class="row-main">
+          <div class="row-top">
+            <div class="row-name">${n}</div>
+            <div class="row-tag">臨打</div>
+          </div>
+          <div class="row-stat">本月出席 ${counts[n]} 次</div>
+        </div>
+      </div>
+    `).join('') : '<div class="row"><div class="row-stat">本月尚無臨打紀錄</div></div>';
+  }
+
+  function renderMonth(m){
+    currentMonth = m;
+    const ms = months();
+    const idx = ms.indexOf(m);
+    document.getElementById('prevBtn').disabled = idx <= 0;
+    document.getElementById('nextBtn').disabled = idx >= ms.length - 1;
+    document.getElementById('monthLabel').textContent = m.slice(0,4) + ' 年 ' + m.slice(5,7) + ' 月';
+    renderDropinMembers();
+    loadMonthlyMembers(m);
+  }
+
+  function stepMonth(dir){
+    const ms = months();
+    const idx = ms.indexOf(currentMonth) + dir;
+    if (idx < 0 || idx >= ms.length) return;
+    renderMonth(ms[idx]);
+  }
+
+  (async function init(){
+    await loadAllWeeks();
+    const ms = months();
+    if(!ms.length){
+      document.getElementById('monthLabel').textContent = '無資料';
+      document.getElementById('dropinList').innerHTML = '<div class="row"><div class="row-stat">尚無出席紀錄</div></div>';
+      document.getElementById('monthlyList').innerHTML = '<div class="row"><div class="row-stat">尚無出席紀錄，無法載入球員名單</div></div>';
+      return;
+    }
+    renderMonth(ms[ms.length - 1]);
+  })();
 </script>
 </body>
 </html>

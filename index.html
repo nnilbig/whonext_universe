@@ -197,11 +197,7 @@
           <div class="m-title">排行榜</div>
           <div class="m-status live">已上線</div>
         </div>
-        <div class="m-desc">出席、糾團與更多榜單，讓每一份參與都被看見。</div>
-        <div class="sub-tags">
-          <span>出席排名</span>
-          <span>糾團排名</span>
-        </div>
+        <div class="m-desc">球場英雄榜，看看誰上榜。</div>
       </div>
       <div class="m-arrow">›</div>
     </a>
@@ -213,11 +209,7 @@
           <div class="m-title">卡牌賽</div>
           <div class="m-status live">已上線</div>
         </div>
-        <div class="m-desc">卡牌賽制與積分賽制，把每一分變成一場博弈與長期賽季經營。</div>
-        <div class="sub-tags">
-          <span>卡牌賽制 · WHONEXT 2026</span>
-          <span>積分賽制 · 第 6 名</span>
-        </div>
+        <div class="m-desc">翻牌即翻盤，球圈新玩法。</div>
       </div>
       <div class="m-arrow">›</div>
     </a>
@@ -229,11 +221,7 @@
           <div class="m-title">帳務</div>
           <div class="m-status live">已上線</div>
         </div>
-        <div class="m-desc">收支紀錄。</div>
-        <div class="m-meta">
-          <div class="stat">本月餘額 <b>$1,240</b></div>
-          <div class="stat">待繳 <b>$0</b></div>
-        </div>
+        <div class="m-desc">每月收入支出。</div>
       </div>
       <div class="m-arrow">›</div>
     </a>
@@ -242,14 +230,10 @@
       <div class="m-icon">☺</div>
       <div class="m-body">
         <div class="m-title-row">
-          <div class="m-title">成員</div>
+          <div class="m-title">球員名冊</div>
           <div class="m-status live">已上線</div>
         </div>
-        <div class="m-desc">球員名冊，看看球隊裡都有誰。</div>
-        <div class="sub-tags">
-          <span>月繳成員 · 8 位</span>
-          <span>臨打球員 · 4 位</span>
-        </div>
+        <div class="m-desc">都看看誰來了。</div>
       </div>
       <div class="m-arrow">›</div>
     </a>
@@ -258,6 +242,16 @@
 
   </div>
 
+<script src="backend.js"></script>
+<script src="attendance.js"></script>
 <script src="auth.js"></script>
+<script>
+  // 進首頁時背景暖機常用資料，讓子頁面（如球員名冊）
+  // 切換月份時能先讀到 sessionStorage 快取、感覺是「秒開」。
+  months().forEach(function(m){
+    apiPrefetch({ action:'getMembers', month:m });
+  });
+  apiPrefetch({ action:'getWeeks' });
+</script>
 </body>
 </html>

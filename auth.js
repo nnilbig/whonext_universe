@@ -1,6 +1,4 @@
 (function(){
-  var ADMIN_USER = 'www';
-  var ADMIN_PASS = '888';
   var ROLE_KEY = 'whonext_role';
 
   function getRole(){ return localStorage.getItem(ROLE_KEY) || 'player'; }
@@ -65,12 +63,30 @@
   function trySubmit(){
     var user = document.getElementById('auth-user').value.trim();
     var pass = document.getElementById('auth-pass').value;
-    if(user === ADMIN_USER && pass === ADMIN_PASS){
-      setRole('admin');
-      closeModal();
-    } else {
-      document.getElementById('auth-error').style.display = 'block';
-    }
+    var errorEl = document.getElementById('auth-error');
+    var submitBtn = document.querySelector('#admin-login-modal .auth-submit');
+    errorEl.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.textContent = '登入中…';
+
+    apiPost('login', { username: user, password: pass })
+      .then(function(result){
+        if(result && result.success){
+          setRole('admin');
+          closeModal();
+        } else {
+          errorEl.textContent = '帳號或密碼錯誤';
+          errorEl.style.display = 'block';
+        }
+      })
+      .catch(function(){
+        errorEl.textContent = '無法連線後台，請稍後再試';
+        errorEl.style.display = 'block';
+      })
+      .finally(function(){
+        submitBtn.disabled = false;
+        submitBtn.textContent = '登入';
+      });
   }
 
   function wireToggles(){
