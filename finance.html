@@ -363,10 +363,14 @@ function monthOf(w){ return w.date.slice(0,7); }
 function months(){ return [...new Set(ALL_WEEKS.map(monthOf))].sort(); }
 function weeksOfMonth(m){ return ALL_WEEKS.filter(w => monthOf(w) === m).sort((a,b) => a.date.localeCompare(b.date)); }
 
-async function loadAllWeeks(){
-  const params = { action:'getWeeks' };
-  const cached = getApiCache(params);
+function loadCachedWeeks(){
+  const cached = getApiCache({ action:'getWeeks' });
   if(cached) ALL_WEEKS = (cached.weeks || []).map(toWeekRecord);
+  return !!cached;
+}
+
+async function refreshWeeks(){
+  const params = { action:'getWeeks' };
   try{
     const result = await apiGet(params);
     setApiCache(params, result);
@@ -793,14 +797,24 @@ async function saveFinanceEdit(){
 }
 
 (async function init(){
-  await loadAllWeeks();
+  if(loadCachedWeeks()){
+    const cachedMs = months();
+    if(cachedMs.length) renderMonth(cachedMs[cachedMs.length - 1]);
+  }
+
+  await refreshWeeks();
   const ms = months();
   if(!ms.length){
     document.getElementById('monthLabel').textContent = '無資料';
     document.getElementById('weekList').innerHTML = '<div class="row"><div class="row-body"><p class="rmeta">尚無收支紀錄</p></div></div>';
     return;
   }
-  renderMonth(ms[ms.length - 1]);
+  if(currentPeriod === 'year'){
+    const ys = years();
+    renderYear(ys.includes(currentYear) ? currentYear : ys[ys.length - 1]);
+  } else {
+    renderMonth(ms.includes(currentMonth) ? currentMonth : ms[ms.length - 1]);
+  }
 })();
 </script>
 

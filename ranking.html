@@ -252,7 +252,7 @@
     const data = BOARDS[currentKey];
     const list = data[currentPeriod];
     const top3 = list.slice(0, 3);
-    const rest = list.slice(3);
+    const rest = list.slice(3, 6);
 
     document.getElementById('boardTitleText').textContent = PERIOD_LABEL[currentPeriod] + ' ' + data.title;
     document.getElementById('boardUnitText').textContent = data.unit;

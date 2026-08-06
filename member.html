@@ -103,13 +103,9 @@
     margin: 4px 4px 12px;
   }
   .section-label .t{ font-size:14px; font-weight:800; }
-  .section-label .n{ font-size:11px; color:var(--tertiary); display:flex; align-items:center; gap:6px; }
-  .section-label.collapsible{ cursor:pointer; user-select:none; }
-  .section-label .chev{ display:inline-block; font-size:13px; transition: transform .2s ease; }
-  .section-label.open .chev{ transform: rotate(90deg); }
+  .section-label .n{ font-size:11px; color:var(--tertiary); }
 
   .member-list{ padding: 6px 6px; margin-bottom: 22px; }
-  .member-list.collapsed{ display:none; }
   .row{
     display:flex; align-items:center; gap:12px;
     padding: 12px 6px;
@@ -166,6 +162,14 @@
     font-size:13px; font-weight:700; color:var(--secondary);
   }
   .add-row:active{ color:var(--label); }
+
+  .more-row{
+    width:100%; text-align:center;
+    padding:12px 6px;
+    border-top:1px solid var(--line);
+    font-size:12.5px; font-weight:700; color:var(--tertiary);
+  }
+  .more-row:active{ color:var(--label); }
 
   .wordmark-footer{
     text-align:center; margin: 24px 0 6px;
@@ -239,17 +243,17 @@
     <div class="month-nav">
       <button class="month-btn" id="prevBtn" onclick="stepMonth(-1)" aria-label="上一個月">‹</button>
       <div class="month-label">
-        <p class="m" id="monthLabel">—</p>
+        <p class="m" id="monthLabel"><span id="monthLabelYear">—</span> 年 <span id="monthLabelMonth">—</span> 月</p>
         <p class="s">當月球員名單</p>
       </div>
       <button class="month-btn" id="nextBtn" onclick="stepMonth(1)" aria-label="下一個月">›</button>
     </div>
 
-    <div class="section-label collapsible" onclick="toggleSection(this)"><span class="t">月繳成員</span><span class="n"><span id="monthlyCount">共 0 位</span><span class="chev">›</span></span></div>
-    <div class="member-list glass collapsed" id="monthlyList"></div>
+    <div class="section-label"><span class="t">月繳成員</span><span class="n" id="monthlyCount">共 0 位</span></div>
+    <div class="member-list glass" id="monthlyList"></div>
 
-    <div class="section-label collapsible" onclick="toggleSection(this)"><span class="t">臨打球員</span><span class="n"><span id="dropinCount">共 0 位</span><span class="chev">›</span></span></div>
-    <div class="member-list glass collapsed" id="dropinList"></div>
+    <div class="section-label"><span class="t">臨打球員</span><span class="n" id="dropinCount">共 0 位</span></div>
+    <div class="member-list glass" id="dropinList"></div>
 
     <div class="wordmark-footer">WHONEXT</div>
 
@@ -310,12 +314,9 @@
   let sheetMode = 'edit';
   let currentMonth = null;
   let ALL_WEEKS = [];
-
-  function toggleSection(headerEl){
-    headerEl.classList.toggle('open');
-    const list = headerEl.nextElementSibling;
-    if(list) list.classList.toggle('collapsed');
-  }
+  const PREVIEW_COUNT = 4;
+  let monthlyExpanded = false;
+  let dropinExpanded = false;
 
   function splitNames(val){
     return String(val || '').split(',').map(s=>s.trim()).filter(Boolean);
@@ -342,10 +343,14 @@
   function months(){ return [...new Set(ALL_WEEKS.map(monthOfWeek))].sort(); }
   function weeksOfMonth(m){ return ALL_WEEKS.filter(w=> monthOfWeek(w) === m); }
 
-  async function loadAllWeeks(){
-    const params = { action:'getWeeks' };
-    const cached = getApiCache(params);
+  function loadCachedWeeks(){
+    const cached = getApiCache({ action:'getWeeks' });
     if(cached) ALL_WEEKS = cached.weeks || [];
+    return !!cached;
+  }
+
+  async function refreshWeeks(){
+    const params = { action:'getWeeks' };
     try{
       const result = await apiGet(params);
       setApiCache(params, result);
@@ -427,7 +432,12 @@
     document.getElementById('monthlyCount').textContent = '共 ' + currentMembers.length + ' 位';
     const attend = attendCountsFor(currentMonth);
     const list = document.getElementById('monthlyList');
-    list.innerHTML = currentMembers.map(m=>{
+    const visible = monthlyExpanded ? currentMembers : currentMembers.slice(0, PREVIEW_COUNT);
+    const moreBtnHtml = currentMembers.length > PREVIEW_COUNT
+      ? `<button type="button" class="more-row" id="monthlyMoreBtn">${monthlyExpanded ? '收合' : '顯示更多（還有 ' + (currentMembers.length - PREVIEW_COUNT) + ' 位）'}</button>`
+      : '';
+
+    const rowsHtml = visible.map(m=>{
       const total = Number(m.monthly_total_fee) || 0;
       const paid = !!m.paid;
       return `
@@ -447,7 +457,9 @@
           </div>
         </div>
       </div>`;
-    }).join('') + `<button type="button" class="add-row admin-only" id="addMemberBtn">＋ 新增月繳成員</button>`;
+    }).join('');
+
+    list.innerHTML = rowsHtml + moreBtnHtml + `<button type="button" class="add-row admin-only" id="addMemberBtn">＋ 新增月繳成員</button>`;
 
     list.querySelectorAll('[data-action="edit"]').forEach(btn=>{
       btn.addEventListener('click', ()=> openEdit(btn.dataset.name));
@@ -456,6 +468,8 @@
       btn.addEventListener('click', ()=> removeMember(btn.dataset.name));
     });
     document.getElementById('addMemberBtn').addEventListener('click', openNew);
+    const moreBtn = document.getElementById('monthlyMoreBtn');
+    if(moreBtn) moreBtn.addEventListener('click', ()=>{ monthlyExpanded = !monthlyExpanded; renderMonthlyMembers(); });
   }
 
   function openEdit(name){
@@ -540,7 +554,11 @@
     const names = Object.keys(counts).sort((a,b)=> counts[b] - counts[a] || a.localeCompare(b));
     document.getElementById('dropinCount').textContent = '共 ' + names.length + ' 位';
     const list = document.getElementById('dropinList');
-    const rowsHtml = names.length ? names.map(n=>`
+    const visible = dropinExpanded ? names : names.slice(0, PREVIEW_COUNT);
+    const moreBtnHtml = names.length > PREVIEW_COUNT
+      ? `<button type="button" class="more-row" id="dropinMoreBtn">${dropinExpanded ? '收合' : '顯示更多（還有 ' + (names.length - PREVIEW_COUNT) + ' 位）'}</button>`
+      : '';
+    const rowsHtml = names.length ? visible.map(n=>`
       <div class="row">
         <div class="row-avatar">${n.slice(0,1)}</div>
         <div class="row-main">
@@ -551,10 +569,12 @@
         </div>
       </div>
     `).join('') : '<div class="row"><div class="row-stat">本月尚無臨打紀錄</div></div>';
-    list.innerHTML = rowsHtml + `<button type="button" class="add-row admin-only" id="addDropinBtn">＋ 新增臨打人員</button>`;
+    list.innerHTML = rowsHtml + moreBtnHtml + `<button type="button" class="add-row admin-only" id="addDropinBtn">＋ 新增臨打人員</button>`;
 
     const addBtn = document.getElementById('addDropinBtn');
     if(addBtn) addBtn.addEventListener('click', openAddDropin);
+    const moreBtn = document.getElementById('dropinMoreBtn');
+    if(moreBtn) moreBtn.addEventListener('click', ()=>{ dropinExpanded = !dropinExpanded; renderDropinMembers(); });
   }
 
   function latestWeekOfMonth(m){
@@ -624,12 +644,17 @@
   });
 
   function renderMonth(m){
+    if(currentMonth !== m){
+      monthlyExpanded = false;
+      dropinExpanded = false;
+    }
     currentMonth = m;
     const ms = months();
     const idx = ms.indexOf(m);
     document.getElementById('prevBtn').disabled = idx <= 0;
     document.getElementById('nextBtn').disabled = idx >= ms.length - 1;
-    document.getElementById('monthLabel').textContent = m.slice(0,4) + ' 年 ' + m.slice(5,7) + ' 月';
+    document.getElementById('monthLabelYear').textContent = m.slice(0,4);
+    document.getElementById('monthLabelMonth').textContent = m.slice(5,7);
     renderDropinMembers();
     loadMonthlyMembers(m);
   }
@@ -644,7 +669,13 @@
   (async function init(){
     document.getElementById('monthlyList').innerHTML = skeletonRowsHTML(5);
     document.getElementById('dropinList').innerHTML = skeletonRowsHTML(5);
-    await loadAllWeeks();
+
+    if(loadCachedWeeks()){
+      const cachedMs = months();
+      if(cachedMs.length) renderMonth(cachedMs[cachedMs.length - 1]);
+    }
+
+    await refreshWeeks();
     const ms = months();
     if(!ms.length){
       document.getElementById('monthLabel').textContent = '無資料';
@@ -652,7 +683,7 @@
       document.getElementById('monthlyList').innerHTML = '<div class="row"><div class="row-stat">尚無出席紀錄，無法載入球員名單</div></div>';
       return;
     }
-    renderMonth(ms[ms.length - 1]);
+    renderMonth(ms.includes(currentMonth) ? currentMonth : ms[ms.length - 1]);
   })();
 </script>
 </body>
