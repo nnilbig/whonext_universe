@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="bottom-nav.css">
 <style>
   :root{
     --n-accent:#9FB3C8; --n-glow:rgba(159,179,200,0.5);
@@ -131,35 +132,6 @@
     font-family:'Archivo Black', var(--sf); font-size:12px; letter-spacing:.16em; color: var(--tertiary);
   }
 
-  /* ---------- BOTTOM NAV ---------- */
-  .bottom-nav{
-    position:fixed; left:0; right:0; bottom:0; z-index:40;
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border-top: 1px solid var(--line);
-  }
-  .bottom-nav-inner{
-    max-width: 640px; margin:0 auto;
-    display:flex;
-    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
-  }
-  .bottom-nav a{
-    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
-    padding:6px 2px; border-radius:14px;
-    font-size:10px; font-weight:700; color:var(--tertiary);
-  }
-  .bottom-nav a .bn-icon{
-    width:22px; height:22px; display:flex; align-items:center; justify-content:center;
-    font-size:14px; font-family: var(--sf-mono); font-weight:700;
-  }
-  .bottom-nav a.active{ color: var(--label); }
-  .bottom-nav a[data-accent="home"].active .bn-icon{ color: var(--gold); }
-  .bottom-nav a[data-accent="rank"].active .bn-icon{ color: var(--e-accent); }
-  .bottom-nav a[data-accent="finance"].active .bn-icon{ color: var(--n-accent); }
-  .bottom-nav a[data-accent="member"].active .bn-icon{ color: var(--x-accent); }
-  .bottom-nav a[data-accent="match"].active .bn-icon{ color: var(--t-accent); }
-
   /* ---------- EDIT SHEET ---------- */
   .edit-title{ font-size:16px; font-weight:800; margin-bottom:16px; color:var(--label); }
   .edit-field-label{ font-size:11px; color:var(--tertiary); margin: 0 2px 6px; }
@@ -222,31 +194,6 @@
 
   </div>
 
-  <nav class="bottom-nav">
-    <div class="bottom-nav-inner">
-      <a class="active" data-accent="home" href="index.html">
-        <span class="bn-icon">⌂</span>
-        <span>首頁</span>
-      </a>
-      <a data-accent="rank" href="ranking.html">
-        <span class="bn-icon">★</span>
-        <span>排行榜</span>
-      </a>
-      <a data-accent="finance" href="finance.html">
-        <span class="bn-icon">$</span>
-        <span>球隊錢包</span>
-      </a>
-      <a data-accent="member" href="member.html">
-        <span class="bn-icon">☺</span>
-        <span>球員名冊</span>
-      </a>
-      <a data-accent="match" href="match.html">
-        <span class="bn-icon">⚑</span>
-        <span>卡牌賽</span>
-      </a>
-    </div>
-  </nav>
-
   <div class="auth-overlay" id="eventEditOverlay">
     <div class="auth-box">
       <div class="edit-title">編輯賽事</div>
@@ -274,6 +221,7 @@
 
 <script src="backend.js"></script>
 <script src="auth.js"></script>
+<script src="bottom-nav.js"></script>
 <script>
   // 進首頁時背景暖機常用資料，讓子頁面（如球員名冊、球隊錢包、排行榜）
   // 切換月份時能先讀到 sessionStorage 快取、感覺是「秒開」。
