@@ -79,8 +79,8 @@
     text-transform:uppercase; margin-bottom:8px;
   }
   .hero .wordmark{
-    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.06em;
-    font-size: clamp(24px,6.4vw,30px); margin-bottom:8px; color: var(--gold);
+    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
+    font-size: clamp(26px,7vw,34px); margin-bottom:8px;
   }
   .hero p{ font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
 
@@ -125,7 +125,7 @@
     font-size:10.5px; font-weight:600; color:var(--secondary);
     border:1px solid var(--line); border-radius:999px; padding:3px 10px; flex-shrink:0;
   }
-  .row-stat{ font-size:11px; color:var(--tertiary); margin-top:3px; }
+  .row-stat{ font-size:11px; color:var(--tertiary); flex-shrink:0; }
 
   .row-admin{
     flex-direction:row; align-items:center; justify-content:space-between; gap:10px;
@@ -263,6 +263,27 @@
     </div>
   </div>
 
+  <div class="auth-overlay" id="dropinOverlay">
+    <div class="auth-box">
+      <div class="edit-title">新增臨打人員</div>
+
+      <div class="edit-field-label">姓名</div>
+      <input type="text" id="dropinName" class="edit-input" placeholder="輸入姓名">
+
+      <div class="edit-field-label">邀請人（選填）</div>
+      <select id="dropinReferrer" class="edit-input">
+        <option value="">— 無 —</option>
+      </select>
+
+      <div class="edit-field-label" id="dropinWeekHint"></div>
+
+      <div class="edit-actions">
+        <button type="button" class="edit-cancel" id="dropinCancel">取消</button>
+        <button type="button" class="edit-save" id="dropinSave">新增</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script src="backend.js"></script>
@@ -277,6 +298,13 @@
 
   function splitNames(val){
     return String(val || '').split(',').map(s=>s.trim()).filter(Boolean);
+  }
+  function parseDropinEntry(entry){
+    const m = String(entry || '').match(/^(.*?)\(([^()]+)\)$/);
+    return m ? { name: m[1].trim(), referrer: m[2].trim() } : { name: String(entry || '').trim(), referrer: '' };
+  }
+  function formatDropinEntry(name, referrer){
+    return referrer ? name + '(' + referrer + ')' : name;
   }
   function monthOfWeek(w){ return String(w.week_date || '').slice(0,7); }
   function months(){ return [...new Set(ALL_WEEKS.map(monthOfWeek))].sort(); }
@@ -305,9 +333,22 @@
   function dropinCountsFor(m){
     const counts = {};
     weeksOfMonth(m).forEach(w=>{
-      splitNames(w.dropin_names).forEach(n=>{ counts[n] = (counts[n] || 0) + 1; });
+      splitNames(w.dropin_names).forEach(entry=>{
+        const name = parseDropinEntry(entry).name;
+        counts[name] = (counts[name] || 0) + 1;
+      });
     });
     return counts;
+  }
+  function dropinReferrersFor(m){
+    const referrers = {};
+    weeksOfMonth(m).forEach(w=>{
+      splitNames(w.dropin_names).forEach(entry=>{
+        const { name, referrer } = parseDropinEntry(entry);
+        if(referrer && !referrers[name]) referrers[name] = referrer;
+      });
+    });
+    return referrers;
   }
 
   async function loadMonthlyMembers(m){
@@ -363,9 +404,8 @@
         <div class="row-main">
           <div class="row-top">
             <div class="row-name">${m.name}</div>
-            <div class="row-tag">月繳</div>
+            <div class="row-stat">本月出席 ${attend[m.name] || 0} 次</div>
           </div>
-          <div class="row-stat">本月出席 ${attend[m.name] || 0} 次</div>
           <div class="row-admin admin-only flex">
             <div class="row-fee">應繳 $${total.toLocaleString()}<span class="fee-sep">・</span><span style="color:${paid ? 'var(--secondary)' : 'var(--warn,#E7A15A)'}">${paid ? '已繳費' : '未繳費'}</span></div>
             <div class="row-admin-actions">
@@ -464,22 +504,92 @@
 
   function renderDropinMembers(){
     const counts = dropinCountsFor(currentMonth);
+    const referrers = dropinReferrersFor(currentMonth);
     const names = Object.keys(counts).sort((a,b)=> counts[b] - counts[a] || a.localeCompare(b));
     document.getElementById('dropinCount').textContent = '共 ' + names.length + ' 位';
     const list = document.getElementById('dropinList');
-    list.innerHTML = names.length ? names.map(n=>`
+    const rowsHtml = names.length ? names.map(n=>`
       <div class="row">
         <div class="row-avatar">${n.slice(0,1)}</div>
         <div class="row-main">
           <div class="row-top">
             <div class="row-name">${n}</div>
-            <div class="row-tag">臨打</div>
+            <div class="row-stat">本月出席 ${counts[n]} 次${referrers[n] ? '・由 ' + referrers[n] + ' 邀請' : ''}</div>
           </div>
-          <div class="row-stat">本月出席 ${counts[n]} 次</div>
         </div>
       </div>
     `).join('') : '<div class="row"><div class="row-stat">本月尚無臨打紀錄</div></div>';
+    list.innerHTML = rowsHtml + `<button type="button" class="add-row admin-only" id="addDropinBtn">＋ 新增臨打人員</button>`;
+
+    const addBtn = document.getElementById('addDropinBtn');
+    if(addBtn) addBtn.addEventListener('click', openAddDropin);
   }
+
+  function latestWeekOfMonth(m){
+    const weeks = weeksOfMonth(m).slice().sort((a,b)=> String(a.week_date).localeCompare(String(b.week_date)));
+    return weeks.length ? weeks[weeks.length - 1] : null;
+  }
+
+  function openAddDropin(){
+    const target = latestWeekOfMonth(currentMonth);
+    if(!target){
+      showToast('本月尚無出席紀錄，無法新增臨打');
+      return;
+    }
+    document.getElementById('dropinName').value = '';
+    const referrerSelect = document.getElementById('dropinReferrer');
+    const referrerNames = [...new Set(
+      currentMembers.map(m=>m.name).concat(Object.keys(dropinCountsFor(currentMonth)))
+    )].sort((a,b)=>a.localeCompare(b));
+    referrerSelect.innerHTML = '<option value="">— 無 —</option>' + referrerNames.map(n=>`<option value="${n}">${n}</option>`).join('');
+    document.getElementById('dropinWeekHint').textContent = '將加入 ' + target.week_date + ' 這週的紀錄';
+    document.getElementById('dropinOverlay').classList.add('open');
+    setTimeout(()=> document.getElementById('dropinName').focus(), 50);
+  }
+  function closeAddDropin(){
+    document.getElementById('dropinOverlay').classList.remove('open');
+  }
+  async function saveAddDropin(){
+    const name = document.getElementById('dropinName').value.trim();
+    if(!name){ showToast('請輸入姓名'); return; }
+    const referrer = document.getElementById('dropinReferrer').value;
+    const target = latestWeekOfMonth(currentMonth);
+    if(!target){ showToast('本月尚無出席紀錄，無法新增臨打'); return; }
+
+    const existingEntries = splitNames(target.dropin_names);
+    if(existingEntries.some(entry=> parseDropinEntry(entry).name === name)){
+      showToast(name + ' 已經在這週的臨打名單裡');
+      return;
+    }
+    const updatedWeek = Object.assign({}, target, {
+      dropin_names: existingEntries.concat([formatDropinEntry(name, referrer)]).join(','),
+      original_week_date: target.week_date
+    });
+
+    const saveBtn = document.getElementById('dropinSave');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '新增中…';
+    try{
+      await apiPost('saveWeek', updatedWeek);
+      const idx = ALL_WEEKS.findIndex(w=> w.week_date === target.week_date);
+      if(idx >= 0) ALL_WEEKS[idx] = updatedWeek;
+      setApiCache({ action:'getWeeks' }, { weeks: ALL_WEEKS });
+      renderDropinMembers();
+      closeAddDropin();
+      showToast('已新增 ' + name + ' 為臨打');
+    } catch(e){
+      showToast('新增失敗，請稍後再試');
+    } finally{
+      saveBtn.disabled = false;
+      saveBtn.textContent = '新增';
+    }
+  }
+
+  document.getElementById('dropinCancel').addEventListener('click', closeAddDropin);
+  document.getElementById('dropinSave').addEventListener('click', saveAddDropin);
+  document.getElementById('dropinOverlay').addEventListener('click', e=>{
+    if(e.target.id === 'dropinOverlay') closeAddDropin();
+  });
 
   function renderMonth(m){
     currentMonth = m;

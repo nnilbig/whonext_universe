@@ -83,10 +83,19 @@
     text-transform:uppercase; margin-bottom:8px;
   }
   .hero .wordmark{
-    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.06em;
-    font-size: clamp(24px,6.4vw,30px); margin-bottom:8px; color: var(--gold);
+    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
+    font-size: clamp(26px,7vw,34px); margin-bottom:8px;
   }
   .hero p{ font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
+
+  .period-toggle{
+    display:flex; background: var(--card); border:1px solid var(--line);
+    border-radius:999px; padding:2px; width:fit-content; margin: 0 0 16px;
+  }
+  .period-btn{
+    font-size:12px; font-weight:700; padding:7px 16px; border-radius:999px; color:var(--tertiary);
+  }
+  .period-btn.active{ background: var(--card-strong); color: var(--label); }
 
   .tabs{
     display:flex; gap:8px; margin: 0 0 20px;
@@ -192,6 +201,12 @@
 
     <div class="hero">
       <div class="wordmark">排行榜</div>
+      <p>當月及年度統計，看看誰上榜。</p>
+    </div>
+
+    <div class="period-toggle" id="periodToggle">
+      <button class="period-btn active" data-p="year" onclick="setPeriod('year')">年度</button>
+      <button class="period-btn" data-p="month" onclick="setPeriod('month')">當月</button>
     </div>
 
     <div class="tabs" id="rankTabs">
@@ -200,64 +215,160 @@
       <button class="tab-btn" data-k="dropin" onclick="setBoard('dropin')">WHO常報名</button>
     </div>
 
-    <div id="board-friend">
-      <div class="board-title"><span class="t">WHO朋引伴 Top 5</span><span class="n">單位：位朋友</span></div>
-      <div class="board-subtitle">糾團來打球，WHO朋引伴NO.1</div>
-      <div class="podium">
-        <div class="podium-slot p2"><div class="podium-rank">NO.2</div><div class="podium-avatar">安</div><div class="podium-name">安</div><div class="podium-value">6 位</div></div>
-        <div class="podium-slot p1"><div class="podium-rank">NO.1</div><div class="podium-avatar">忠</div><div class="podium-name">忠</div><div class="podium-value">8 位</div></div>
-        <div class="podium-slot p3"><div class="podium-rank">NO.3</div><div class="podium-avatar">J</div><div class="podium-name">Jessica</div><div class="podium-value">3 位</div></div>
-      </div>
-      <div class="board-list glass">
-        <div class="row"><div class="row-rank">4</div><div class="row-avatar">韶</div><div class="row-name">韶恩</div><div class="row-value">2 位</div></div>
-        <div class="row"><div class="row-rank">5</div><div class="row-avatar">孟</div><div class="row-name">孟翰</div><div class="row-value">2 位</div></div>
-      </div>
-    </div>
-
-    <div id="board-attend" style="display:none">
-      <div class="board-title"><span class="t">WHO常出席 Top 5</span><span class="n">單位：場次</span></div>
-      <div class="board-subtitle">場場常出席，出席NO.1</div>
-      <div class="podium">
-        <div class="podium-slot p2"><div class="podium-rank">NO.2</div><div class="podium-avatar">孟</div><div class="podium-name">孟翰</div><div class="podium-value">22</div></div>
-        <div class="podium-slot p1"><div class="podium-rank">NO.1</div><div class="podium-avatar">儒</div><div class="podium-name">儒</div><div class="podium-value">23</div></div>
-        <div class="podium-slot p3"><div class="podium-rank">NO.3</div><div class="podium-avatar">扯</div><div class="podium-name">扯翔</div><div class="podium-value">22</div></div>
-      </div>
-      <div class="board-list glass">
-        <div class="row"><div class="row-rank">4</div><div class="row-avatar">E</div><div class="row-name">Eden</div><div class="row-value">22</div></div>
-        <div class="row"><div class="row-rank">5</div><div class="row-avatar">煒</div><div class="row-name">煒</div><div class="row-value">22</div></div>
-      </div>
-    </div>
-
-    <div id="board-dropin" style="display:none">
-      <div class="board-title"><span class="t">WHO常報名 Top 5</span><span class="n">單位：場次</span></div>
-      <div class="board-subtitle">場場常報名，助陣NO.1</div>
-      <div class="podium">
-        <div class="podium-slot p2"><div class="podium-rank">NO.2</div><div class="podium-avatar">V</div><div class="podium-name">Vic</div><div class="podium-value">10</div></div>
-        <div class="podium-slot p1"><div class="podium-rank">NO.1</div><div class="podium-avatar">韶</div><div class="podium-name">韶恩</div><div class="podium-value">17</div></div>
-        <div class="podium-slot p3"><div class="podium-rank">NO.3</div><div class="podium-avatar">T</div><div class="podium-name">TonyH</div><div class="podium-value">8</div></div>
-      </div>
-      <div class="board-list glass">
-        <div class="row"><div class="row-rank">4</div><div class="row-avatar">T</div><div class="row-name">Tony</div><div class="row-value">8</div></div>
-        <div class="row"><div class="row-rank">5</div><div class="row-avatar">學</div><div class="row-name">學承</div><div class="row-value">7</div></div>
-      </div>
-    </div>
+    <div class="board-title"><span class="t" id="boardTitleText"></span><span class="n" id="boardUnitText"></span></div>
+    <div class="board-subtitle" id="boardSubtitleText"></div>
+    <div class="podium" id="podium"></div>
+    <div class="board-list glass" id="boardList"></div>
 
     <div class="wordmark-footer">WHONEXT</div>
 
   </div>
 
-<script>
-function setBoard(key){
-  ['attend','friend','dropin'].forEach(function(k){
-    document.getElementById('board-'+k).style.display = (k===key) ? 'block' : 'none';
-  });
-  document.querySelectorAll('#rankTabs .tab-btn').forEach(function(btn){
-    btn.classList.toggle('active', btn.dataset.k === key);
-  });
-}
-</script>
 <script src="backend.js"></script>
 <script src="auth.js"></script>
+<script>
+  const BOARDS = {
+    friend: {
+      title: 'WHO朋引伴', unit: '單位：人次', valueSuffix: ' 人次',
+      subtitle: { month:'糾團來打球，WHO朋引伴NO.1', year:'年度糾團王，WHO朋引伴NO.1' },
+      month: [],
+      year: []
+    },
+    attend: {
+      title: 'WHO常出席', unit: '單位：場次', valueSuffix: '',
+      subtitle: { month:'場場常出席，出席NO.1', year:'全年最常出席，出席NO.1' },
+      month: [],
+      year: []
+    },
+    dropin: {
+      title: 'WHO常報名', unit: '單位：場次', valueSuffix: '',
+      subtitle: { month:'場場常報名，助陣NO.1', year:'全年最常助陣，報名NO.1' },
+      month: [],
+      year: []
+    }
+  };
+
+  let currentKey = 'friend';
+  let currentPeriod = 'year';
+
+  function renderBoard(){
+    const data = BOARDS[currentKey];
+    const list = data[currentPeriod];
+    const top3 = list.slice(0, 3);
+    const rest = list.slice(3);
+
+    document.getElementById('boardTitleText').textContent = data.title + ' Top 5';
+    document.getElementById('boardUnitText').textContent = data.unit;
+    document.getElementById('boardSubtitleText').textContent = data.subtitle[currentPeriod];
+
+    const podiumOrder = [top3[1], top3[0], top3[2]];
+    const slots = ['p2', 'p1', 'p3'];
+    const ranks = ['NO.2', 'NO.1', 'NO.3'];
+    document.getElementById('podium').innerHTML = podiumOrder.map(function(p, i){
+      if(!p) return '';
+      return '<div class="podium-slot ' + slots[i] + '">' +
+        '<div class="podium-rank">' + ranks[i] + '</div>' +
+        '<div class="podium-avatar">' + p.name.slice(0,1) + '</div>' +
+        '<div class="podium-name">' + p.name + '</div>' +
+        '<div class="podium-value">' + p.value + data.valueSuffix + '</div>' +
+      '</div>';
+    }).join('');
+
+    document.getElementById('boardList').innerHTML = rest.map(function(p, i){
+      return '<div class="row">' +
+        '<div class="row-rank">' + (i + 4) + '</div>' +
+        '<div class="row-avatar">' + p.name.slice(0,1) + '</div>' +
+        '<div class="row-name">' + p.name + '</div>' +
+        '<div class="row-value">' + p.value + data.valueSuffix + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function setBoard(key){
+    currentKey = key;
+    document.querySelectorAll('#rankTabs .tab-btn').forEach(function(btn){
+      btn.classList.toggle('active', btn.dataset.k === key);
+    });
+    renderBoard();
+  }
+
+  function setPeriod(p){
+    currentPeriod = p;
+    document.querySelectorAll('#periodToggle .period-btn').forEach(function(btn){
+      btn.classList.toggle('active', btn.dataset.p === p);
+    });
+    renderBoard();
+  }
+
+  function splitNames(val){
+    return String(val || '').split(',').map(s=>s.trim()).filter(Boolean);
+  }
+  function monthOfWeek(w){ return String(w.week_date || '').slice(0,7); }
+  function parseDropinEntry(entry){
+    const m = String(entry || '').match(/^(.*?)\(([^()]+)\)$/);
+    return m ? { name: m[1].trim(), referrer: m[2].trim() } : { name: String(entry || '').trim(), referrer: '' };
+  }
+  function tally(names){
+    const counts = {};
+    names.forEach(n=>{ counts[n] = (counts[n] || 0) + 1; });
+    return Object.keys(counts)
+      .map(name=>({ name, value: counts[name] }))
+      .sort((a,b)=> b.value - a.value || a.name.localeCompare(b.name));
+  }
+  function computeFriendBoard(weeks){
+    const referrers = [];
+    weeks.forEach(w=>{
+      splitNames(w.dropin_names).forEach(entry=>{
+        const referrer = parseDropinEntry(entry).referrer;
+        if(referrer) referrers.push(referrer);
+      });
+    });
+    return tally(referrers);
+  }
+  function computeAttendBoard(weeks){
+    const names = [];
+    weeks.forEach(w=> splitNames(w.present_names).forEach(n=> names.push(n)));
+    return tally(names);
+  }
+  function computeDropinBoard(weeks){
+    const names = [];
+    weeks.forEach(w=> splitNames(w.dropin_names).forEach(entry=> names.push(parseDropinEntry(entry).name)));
+    return tally(names);
+  }
+
+  function applyBoardData(weeks){
+    const monthsSet = [...new Set(weeks.map(monthOfWeek))].sort();
+    if(!monthsSet.length) return;
+    const latestMonth = monthsSet[monthsSet.length - 1];
+    const year = latestMonth.slice(0,4);
+    const monthWeeks = weeks.filter(w=> monthOfWeek(w) === latestMonth);
+    const yearWeeks = weeks.filter(w=> monthOfWeek(w).slice(0,4) === year);
+
+    BOARDS.friend.month = computeFriendBoard(monthWeeks);
+    BOARDS.friend.year = computeFriendBoard(yearWeeks).filter(p=> p.value >= 3);
+    BOARDS.attend.month = computeAttendBoard(monthWeeks);
+    BOARDS.attend.year = computeAttendBoard(yearWeeks);
+    BOARDS.dropin.month = computeDropinBoard(monthWeeks);
+    BOARDS.dropin.year = computeDropinBoard(yearWeeks);
+    renderBoard();
+  }
+
+  async function loadBoards(){
+    const params = { action:'getWeeks' };
+    const cached = getApiCache(params);
+    if(cached) applyBoardData(cached.weeks || []);
+    try{
+      const result = await apiGet(params);
+      setApiCache(params, result);
+      applyBoardData(result.weeks || []);
+    } catch(e){
+      // 讀取失敗就維持現有資料（快取或空清單）
+    }
+  }
+
+  renderBoard();
+  loadBoards();
+</script>
 
 </body>
 </html>

@@ -84,10 +84,20 @@
     text-transform:uppercase; margin-bottom:8px;
   }
   .hero .wordmark{
-    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.06em;
-    font-size: clamp(24px,6.4vw,30px); margin-bottom:8px; color: var(--gold);
+    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
+    font-size: clamp(26px,7vw,34px); margin-bottom:8px;
   }
   .hero p{ font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
+
+  /* ---- period toggle ---- */
+  .period-toggle{
+    display:flex; background: var(--card); border:1px solid var(--line);
+    border-radius:999px; padding:2px; width:fit-content; margin: 0 0 16px;
+  }
+  .period-btn{
+    font-size:12px; font-weight:700; padding:7px 16px; border-radius:999px; color:var(--tertiary);
+  }
+  .period-btn.active{ background: var(--card-strong); color: var(--label); }
 
   /* ---- month nav ---- */
   .month-nav{
@@ -189,6 +199,33 @@
   .detail-row:first-child{ border-top:none; }
   .detail-row .dlabel{ color:var(--secondary); }
   .detail-row .dvalue{ font-weight:700; font-family: var(--sf-mono); }
+
+  /* ---------- ADMIN FINANCE EDIT ---------- */
+  .edit-field-label{ font-size:11px; color:var(--tertiary); margin: 0 2px 6px; }
+  .edit-input{
+    width:100%; box-sizing:border-box;
+    font-family: var(--sf-mono); font-size:14px; color: var(--label);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 11px 14px; margin-bottom:12px;
+  }
+  .edit-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
+  .edit-save-btn{
+    width:100%; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px;
+    background: var(--label); color:#000;
+  }
+
+  .toast{
+    position:fixed; bottom: max(24px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(20px);
+    max-width: calc(100vw - 32px);
+    background: rgba(30,30,32,0.92);
+    backdrop-filter: blur(16px);
+    color: var(--label); font-size:13.5px; padding:11px 20px;
+    border: 1px solid var(--line);
+    border-radius: 999px; opacity:0; transition: all .3s ease; pointer-events:none; z-index:200;
+    text-align:center;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -213,24 +250,29 @@
 
     <div class="hero">
       <div class="wordmark">帳務</div>
-      <p></p>
+      <p>收支總覽。</p>
+    </div>
+
+    <div class="period-toggle" id="periodToggle">
+      <button class="period-btn" data-p="month" onclick="setPeriod('month')">月份</button>
+      <button class="period-btn active" data-p="year" onclick="setPeriod('year')">年度至今</button>
     </div>
 
     <div class="month-nav">
-      <button class="month-btn" id="prevBtn" onclick="stepMonth(-1)" aria-label="上一個月">‹</button>
+      <button class="month-btn" id="prevBtn" onclick="stepPeriod(-1)" aria-label="上一個">‹</button>
       <div class="month-label">
         <p class="m" id="monthLabel">—</p>
-        <p class="s">每月每週收支總覽</p>
+        <p class="s" id="monthSub">每月每週收支總覽</p>
       </div>
-      <button class="month-btn" id="nextBtn" onclick="stepMonth(1)" aria-label="下一個月">›</button>
+      <button class="month-btn" id="nextBtn" onclick="stepPeriod(1)" aria-label="下一個">›</button>
     </div>
 
     <div class="balance-card glass">
-      <p class="label">本月合計</p>
+      <p class="label" id="balanceLabel">年度合計</p>
       <p class="amount" id="netAmount">$0</p>
       <div class="balance-sub">
-        <div><p>收入</p><p id="incomeAmount" style="color:var(--good);">$0</p></div>
-        <div><p>支出</p><p id="expenseAmount" style="color:var(--warn);">$0</p></div>
+        <div><p>收入</p><p id="incomeAmount" style="color:var(--warn);">$0</p></div>
+        <div><p>支出</p><p id="expenseAmount" style="color:var(--good);">$0</p></div>
         <div><p>平均出席</p><p id="avgAtt">0 人</p></div>
       </div>
     </div>
@@ -254,18 +296,67 @@
     </div>
   </div>
 
-<script src="attendance.js"></script>
+  <div class="toast" id="toast"></div>
+
+<script src="backend.js"></script>
+<script src="auth.js"></script>
 <script>
+const BALLS_PER_TUBE = 12;
+let ALL_WEEKS = [];
+let currentPeriod = 'year';
 let currentMonth = null;
+let currentYear = null;
 let sheetWeek = null;
 
 function fmt(n){ return (n<0?'-':'') + '$' + Math.abs(Math.round(n)).toLocaleString(); }
 
+function splitNames(val){
+  return String(val || '').split(',').map(s=>s.trim()).filter(Boolean);
+}
+function parseDropinEntry(entry){
+  const m = String(entry || '').match(/^(.*?)\(([^()]+)\)$/);
+  return m ? { name: m[1].trim(), referrer: m[2].trim() } : { name: String(entry || '').trim(), referrer: '' };
+}
+function toWeekRecord(w){
+  return {
+    _raw: w,
+    date: w.week_date,
+    present: splitNames(w.present_names),
+    leave: splitNames(w.leave_names),
+    dropins: splitNames(w.dropin_names).map(entry=> parseDropinEntry(entry).name),
+    weeklyFee: Number(w.monthly_fee) || 0,
+    dropinFee: Number(w.dropin_fee) || 0,
+    balls: Number(w.balls_used) || 0,
+    tube: Number(w.price_per_tube) || 0,
+    court: Number(w.court_expense) || 0,
+    actInc: Number(w.activity_income) || 0,
+    actExp: Number(w.activity_expense) || 0,
+    note: w.activity_note || ''
+  };
+}
+
+function monthOf(w){ return w.date.slice(0,7); }
+function months(){ return [...new Set(ALL_WEEKS.map(monthOf))].sort(); }
+function weeksOfMonth(m){ return ALL_WEEKS.filter(w => monthOf(w) === m).sort((a,b) => a.date.localeCompare(b.date)); }
+
+async function loadAllWeeks(){
+  const params = { action:'getWeeks' };
+  const cached = getApiCache(params);
+  if(cached) ALL_WEEKS = (cached.weeks || []).map(toWeekRecord);
+  try{
+    const result = await apiGet(params);
+    setApiCache(params, result);
+    ALL_WEEKS = (result.weeks || []).map(toWeekRecord);
+  } catch(e){
+    // 讀取失敗就沿用快取（可能是空陣列）
+  }
+}
+
 function ballExpense(w){ return Math.round((w.balls / BALLS_PER_TUBE) * w.tube); }
 function weekFinancials(w){
-  const monthlyInc = (w.present.length + w.leave.length) * WEEKLY_FEE;
-  const leaveDed = w.leave.length * WEEKLY_FEE;
-  const dropinInc = w.dropins.length * DROPIN_FEE;
+  const monthlyInc = (w.present.length + w.leave.length) * w.weeklyFee;
+  const leaveDed = w.leave.length * w.weeklyFee;
+  const dropinInc = w.dropins.length * w.dropinFee;
   const income = monthlyInc - leaveDed + dropinInc + w.actInc;
   const expense = ballExpense(w) + w.court + w.actExp;
   return { monthlyInc, leaveDed, dropinInc, income, expense, net: income - expense };
@@ -273,15 +364,10 @@ function weekFinancials(w){
 
 function initialOf(name){ return name.slice(0,1); }
 
-function renderMonth(m){
-  currentMonth = m;
-  const weeks = weeksOfMonth(m);
-  const ms = months();
-  const idx = ms.indexOf(m);
-  document.getElementById('prevBtn').disabled = idx <= 0;
-  document.getElementById('nextBtn').disabled = idx >= ms.length - 1;
-  document.getElementById('monthLabel').textContent = m.slice(0,4) + ' 年 ' + m.slice(5,7) + ' 月';
+function years(){ return [...new Set(ALL_WEEKS.map(w=> monthOf(w).slice(0,4)))].sort(); }
+function weeksOfYear(y){ return ALL_WEEKS.filter(w=> monthOf(w).slice(0,4) === y).sort((a,b) => a.date.localeCompare(b.date)); }
 
+function renderSummary(weeks){
   let income = 0, expense = 0, att = 0;
   weeks.forEach(w => {
     const f = weekFinancials(w);
@@ -290,33 +376,89 @@ function renderMonth(m){
   });
   const net = income - expense;
   document.getElementById('netAmount').textContent = (net>=0?'+':'') + fmt(net);
-  document.getElementById('netAmount').style.color = net>=0 ? 'var(--gold)' : 'var(--warn)';
+  document.getElementById('netAmount').style.color = net>=0 ? 'var(--warn)' : 'var(--good)';
   document.getElementById('incomeAmount').textContent = fmt(income);
   document.getElementById('expenseAmount').textContent = fmt(expense);
   document.getElementById('avgAtt').textContent = (weeks.length ? Math.round(att/weeks.length) : 0) + ' 人';
   document.getElementById('weekCount').textContent = '共 ' + weeks.length + ' 週';
+}
 
-  document.getElementById('weekList').innerHTML = weeks.map((w) => {
+function renderWeekList(weeks, dateFmt){
+  document.getElementById('weekList').innerHTML = weeks.length ? weeks.map((w) => {
     const f = weekFinancials(w);
     const attCount = w.present.length + w.dropins.length;
     return `
     <div class="row" onclick="openWeek('${w.date}')">
-      <div class="row-date">${w.date.slice(8,10)}</div>
+      <div class="row-date">${dateFmt(w.date)}</div>
       <div class="row-body">
         <p class="rmeta">出席 ${attCount} · 月繳 ${w.present.length} · 臨打 ${w.dropins.length}${w.leave.length ? ' · 請假 '+w.leave.length : ''}</p>
         ${w.note ? `<p class="rnote">${w.note}</p>` : ''}
       </div>
-      <span class="row-value" style="color:${f.net>0?'var(--good)':f.net<0?'var(--warn)':'var(--secondary)'};">${f.net>=0?'+':''}${fmt(f.net)}</span>
+      <span class="row-value" style="color:${f.net>0?'var(--warn)':f.net<0?'var(--good)':'var(--secondary)'};">${f.net>=0?'+':''}${fmt(f.net)}</span>
       <span class="chev">›</span>
     </div>`;
-  }).join('');
+  }).join('') : '<div class="row"><div class="row-body"><p class="rmeta">尚無收支紀錄</p></div></div>';
 }
 
-function stepMonth(dir){
+function renderMonth(m){
+  currentPeriod = 'month';
+  currentMonth = m;
+  const weeks = weeksOfMonth(m);
   const ms = months();
-  const idx = ms.indexOf(currentMonth) + dir;
-  if (idx < 0 || idx >= ms.length) return;
-  renderMonth(ms[idx]);
+  const idx = ms.indexOf(m);
+  document.getElementById('prevBtn').disabled = idx <= 0;
+  document.getElementById('nextBtn').disabled = idx >= ms.length - 1;
+  document.getElementById('monthLabel').textContent = m.slice(0,4) + ' 年 ' + m.slice(5,7) + ' 月';
+  document.getElementById('monthSub').textContent = '每月每週收支總覽';
+  document.getElementById('balanceLabel').textContent = '本月合計';
+
+  renderSummary(weeks);
+  renderWeekList(weeks, d=> d.slice(8,10));
+}
+
+function renderYear(y){
+  currentPeriod = 'year';
+  currentYear = y;
+  const weeks = weeksOfYear(y);
+  const ys = years();
+  const idx = ys.indexOf(y);
+  document.getElementById('prevBtn').disabled = idx <= 0;
+  document.getElementById('nextBtn').disabled = idx >= ys.length - 1;
+  document.getElementById('monthLabel').textContent = y + ' 年度至今';
+  document.getElementById('monthSub').textContent = '年度累計收支總覽';
+  document.getElementById('balanceLabel').textContent = '年度合計';
+
+  renderSummary(weeks);
+  renderWeekList(weeks, d=> d.slice(5,7) + '/' + d.slice(8,10));
+}
+
+function setPeriod(p){
+  document.querySelectorAll('#periodToggle .period-btn').forEach(function(btn){
+    btn.classList.toggle('active', btn.dataset.p === p);
+  });
+  if(p === 'year'){
+    const ys = years();
+    if(!ys.length) return;
+    renderYear(ys.includes(currentYear) ? currentYear : ys[ys.length - 1]);
+  } else {
+    const ms = months();
+    if(!ms.length) return;
+    renderMonth(ms.includes(currentMonth) ? currentMonth : ms[ms.length - 1]);
+  }
+}
+
+function stepPeriod(dir){
+  if(currentPeriod === 'year'){
+    const ys = years();
+    const idx = ys.indexOf(currentYear) + dir;
+    if (idx < 0 || idx >= ys.length) return;
+    renderYear(ys[idx]);
+  } else {
+    const ms = months();
+    const idx = ms.indexOf(currentMonth) + dir;
+    if (idx < 0 || idx >= ms.length) return;
+    renderMonth(ms[idx]);
+  }
 }
 
 function attGroupHTML(names, colorVar, bgVar){
@@ -329,14 +471,14 @@ function attGroupHTML(names, colorVar, bgVar){
 }
 
 function openWeek(date){
-  sheetWeek = WEEKS.find(w => w.date === date);
+  sheetWeek = ALL_WEEKS.find(w => w.date === date);
   const f = weekFinancials(sheetWeek);
   document.getElementById('sheetTitle').textContent = sheetWeek.date.slice(5);
 
   document.getElementById('sheetBody').innerHTML = `
     <div class="sheet-hero">
       <p class="label">本週合計</p>
-      <p class="amount" style="color:${f.net>=0?'var(--gold)':'var(--warn)'};">${f.net>=0?'+':''}${fmt(f.net)}</p>
+      <p class="amount" style="color:${f.net>=0?'var(--warn)':'var(--good)'};">${f.net>=0?'+':''}${fmt(f.net)}</p>
     </div>
 
     <div class="group-card glass">
@@ -358,7 +500,7 @@ function openWeek(date){
     <div class="group-card glass">
       <p class="group-title" style="color:var(--secondary);">財務明細</p>
       <div class="detail-row"><span class="dlabel">月繳收入</span><span class="dvalue">${fmt(f.monthlyInc)}</span></div>
-      ${f.leaveDed > 0 ? `<div class="detail-row"><span class="dlabel">請假扣除</span><span class="dvalue" style="color:var(--warn);">-${fmt(f.leaveDed)}</span></div>` : ''}
+      ${f.leaveDed > 0 ? `<div class="detail-row"><span class="dlabel">請假扣除</span><span class="dvalue" style="color:var(--good);">-${fmt(f.leaveDed)}</span></div>` : ''}
       <div class="detail-row"><span class="dlabel">臨打收入</span><span class="dvalue">${fmt(f.dropinInc)}</span></div>
       ${sheetWeek.actInc > 0 ? `<div class="detail-row"><span class="dlabel">活動收入</span><span class="dvalue">${fmt(sheetWeek.actInc)}</span></div>` : ''}
       <div class="detail-row"><span class="dlabel">球費（${sheetWeek.balls} 顆）</span><span class="dvalue">${fmt(ballExpense(sheetWeek))}</span></div>
@@ -366,15 +508,73 @@ function openWeek(date){
       ${sheetWeek.actExp > 0 ? `<div class="detail-row"><span class="dlabel">活動支出</span><span class="dvalue">${fmt(sheetWeek.actExp)}</span></div>` : ''}
       ${sheetWeek.note ? `<div class="detail-row"><span class="dlabel">活動備註</span><span class="dvalue">${sheetWeek.note}</span></div>` : ''}
     </div>
+
+    <div class="group-card glass admin-only">
+      <p class="group-title" style="color:var(--secondary);">編輯用球數／場地費</p>
+      <div class="edit-field-label">用球數（顆）</div>
+      <input type="number" id="editBalls" class="edit-input" inputmode="numeric" value="${sheetWeek.balls}">
+      <div class="edit-field-label">場地費（$）</div>
+      <input type="number" id="editCourt" class="edit-input" inputmode="numeric" value="${sheetWeek.court}">
+      <button type="button" class="edit-save-btn" id="saveFinanceBtn" onclick="saveFinanceEdit()">儲存</button>
+    </div>
   `;
   document.getElementById('detailOverlay').classList.add('show');
 }
 function closeSheet(){ document.getElementById('detailOverlay').classList.remove('show'); }
 
-renderMonth(months()[months().length - 1]);
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+async function saveFinanceEdit(){
+  if(!sheetWeek) return;
+  const balls = Math.max(0, Number(document.getElementById('editBalls').value) || 0);
+  const court = Math.max(0, Number(document.getElementById('editCourt').value) || 0);
+
+  const updatedRaw = Object.assign({}, sheetWeek._raw, {
+    balls_used: balls,
+    court_expense: court,
+    original_week_date: sheetWeek._raw.week_date
+  });
+
+  const saveBtn = document.getElementById('saveFinanceBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = '儲存中…';
+  try{
+    await apiPost('saveWeek', updatedRaw);
+    sheetWeek.balls = balls;
+    sheetWeek.court = court;
+    sheetWeek._raw = updatedRaw;
+    const idx = ALL_WEEKS.findIndex(w=> w.date === sheetWeek.date);
+    if(idx >= 0) ALL_WEEKS[idx] = sheetWeek;
+    setApiCache({ action:'getWeeks' }, { weeks: ALL_WEEKS.map(w=> w._raw) });
+
+    openWeek(sheetWeek.date);
+    if(currentPeriod === 'year') renderYear(currentYear); else renderMonth(currentMonth);
+    showToast('已更新用球數與場地費');
+  } catch(e){
+    showToast('儲存失敗，請稍後再試');
+  } finally{
+    const btn = document.getElementById('saveFinanceBtn');
+    if(btn){ btn.disabled = false; btn.textContent = '儲存'; }
+  }
+}
+
+(async function init(){
+  await loadAllWeeks();
+  const ys = years();
+  if(!ys.length){
+    document.getElementById('monthLabel').textContent = '無資料';
+    document.getElementById('weekList').innerHTML = '<div class="row"><div class="row-body"><p class="rmeta">尚無收支紀錄</p></div></div>';
+    return;
+  }
+  renderYear(ys[ys.length - 1]);
+})();
 </script>
-<script src="backend.js"></script>
-<script src="auth.js"></script>
 
 </body>
 </html>

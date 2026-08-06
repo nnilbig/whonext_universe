@@ -1,12 +1,50 @@
 (function(){
   var ROLE_KEY = 'whonext_role';
+  var IDLE_LIMIT_MS = 30000;
+  var idleTimer = null;
 
   function getRole(){ return localStorage.getItem(ROLE_KEY) || 'player'; }
 
   function setRole(role){
     localStorage.setItem(ROLE_KEY, role);
     updateToggleUI();
+    if(role === 'admin') resetIdleTimer();
+    else clearIdleTimer();
   }
+
+  function resetIdleTimer(){
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(handleIdleLogout, IDLE_LIMIT_MS);
+  }
+
+  function clearIdleTimer(){
+    clearTimeout(idleTimer);
+    idleTimer = null;
+  }
+
+  function handleIdleLogout(){
+    if(getRole() !== 'admin') return;
+    setRole('player');
+    showIdleToast('已閒置 30 秒，管理員自動登出');
+  }
+
+  function showIdleToast(msg){
+    var el = document.createElement('div');
+    el.textContent = msg;
+    el.style.cssText = 'position:fixed;bottom:max(24px, env(safe-area-inset-bottom));left:50%;' +
+      'transform:translateX(-50%);background:rgba(30,30,32,0.92);backdrop-filter:blur(16px);' +
+      '-webkit-backdrop-filter:blur(16px);color:#F5F5F7;font-size:13.5px;padding:11px 20px;' +
+      'border:1px solid rgba(255,255,255,0.14);border-radius:999px;z-index:999;text-align:center;' +
+      'max-width:calc(100vw - 32px);';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 2200);
+  }
+
+  ['mousemove','mousedown','keydown','touchstart','scroll'].forEach(function(evt){
+    document.addEventListener(evt, function(){
+      if(getRole() === 'admin') resetIdleTimer();
+    }, { passive:true });
+  });
 
   function updateToggleUI(){
     var role = getRole();
@@ -104,5 +142,6 @@
   document.addEventListener('DOMContentLoaded', function(){
     wireToggles();
     updateToggleUI();
+    if(getRole() === 'admin') resetIdleTimer();
   });
 })();
