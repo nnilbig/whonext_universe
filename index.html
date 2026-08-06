@@ -38,9 +38,7 @@
     color: var(--label);
     font-family: var(--sf);
     min-height:100dvh;
-    display:flex; flex-direction:column;
     -webkit-font-smoothing:antialiased;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
   a{ text-decoration:none; color:inherit; }
   button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
@@ -52,11 +50,6 @@
     border: 1px solid var(--line);
     border-radius: 22px;
   }
-
-  [data-team="N"]{ --ac: var(--n-accent); --gl: var(--n-glow); }
-  [data-team="E"]{ --ac: var(--e-accent); --gl: var(--e-glow); }
-  [data-team="X"]{ --ac: var(--x-accent); --gl: var(--x-glow); }
-  [data-team="T"]{ --ac: var(--t-accent); --gl: var(--t-glow); }
 
   /* ---------- NAV ---------- */
   .navbar{
@@ -77,12 +70,11 @@
 
   .wrap{
     max-width: 640px; margin:0 auto; width:100%;
-    padding: 14px 16px 4px;
-    flex:1; display:flex; flex-direction:column;
+    padding: 20px 16px calc(96px + env(safe-area-inset-bottom));
   }
 
   /* ---------- HERO ---------- */
-  .hero{ padding: 2px 4px 16px; }
+  .hero{ padding: 2px 4px 22px; }
   .hero .hero-eyebrow{
     font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--gold);
     text-transform:uppercase; margin-bottom:10px;
@@ -91,83 +83,112 @@
     font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
     font-size: clamp(26px,7vw,34px); margin-bottom:8px;
   }
-  .hero p{ margin:0; font-size: clamp(13.5px,3.4vw,15px); color:var(--secondary); line-height:1.65; max-width:440px; }
 
-  /* ---------- TEAM STRIP ---------- */
-  .team-strip{ display:flex; gap:8px; margin: 18px 0 26px; }
-  .team-pill{
-    flex:1; display:flex; align-items:center; gap:8px;
-    padding:10px 12px; border-radius:14px;
-    border:1px solid var(--line); background: rgba(255,255,255,0.03);
-  }
-  .team-pill .letter{
-    width:26px; height:26px; border-radius:50%; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-    font-family: var(--sf-mono); font-weight:700; font-size:12px;
-    border:1.5px solid var(--ac); color:var(--ac);
-  }
-  .team-pill .tname{ font-size:10px; color:var(--tertiary); line-height:1.3; }
-
-  /* ---------- MODULES ---------- */
+  /* ---------- EVENTS ---------- */
   .section-label{
     font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--tertiary);
     text-transform:uppercase; margin: 6px 4px 12px;
   }
 
-  .module-card{
-    display:flex; align-items:center; gap:14px;
-    padding: 16px 18px;
-    margin-bottom:10px;
-    position:relative; overflow:hidden;
-    transition: transform .15s ease, border-color .15s ease;
+  .event-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:26px; }
+  .event-card{
+    display:flex; gap:14px; padding:16px;
   }
-  .module-card:active{ transform: scale(.985); }
-  .module-card .m-icon{
-    width:46px; height:46px; border-radius:14px; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-    font-size:20px; font-family: var(--sf-mono); font-weight:700;
-    background: rgba(255,255,255,0.06);
-    border:1px solid var(--line);
+  .event-date{
+    width:52px; flex-shrink:0; text-align:center;
+    padding: 8px 0; border-radius:14px;
+    background: rgba(255,255,255,0.05); border:1px solid var(--line);
+    font-family: var(--sf-mono);
   }
-  .module-card .m-body{ flex:1; min-width:0; }
-  .module-card .m-title-row{ display:flex; align-items:center; gap:8px; margin-bottom:4px; }
-  .module-card .m-title{ font-size:16.5px; font-weight:800; letter-spacing:-.005em; }
-  .module-card .m-status{
-    font-size:10px; font-weight:700; padding:3px 9px; border-radius:999px;
-    white-space:nowrap;
-  }
-  .module-card .m-status.live{ background: rgba(127,215,154,0.15); color: var(--good); }
-  .module-card .m-status.wip{ background: rgba(231,161,90,0.15); color: var(--warn); }
-  .module-card .m-desc{ font-size:12.5px; color:var(--secondary); line-height:1.55; }
-  .module-card .m-arrow{ font-size:18px; color:var(--tertiary); flex-shrink:0; }
-  .module-card .m-meta{ display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; }
-  .module-card .m-meta .stat{ font-size:11px; color:var(--tertiary); }
-  .module-card .m-meta .stat b{ font-family: var(--sf-mono); color:var(--label); font-weight:700; }
+  .event-date .ed-month{ font-size:10px; font-weight:700; color:var(--tertiary); letter-spacing:.05em; }
+  .event-date .ed-day{ font-size:22px; font-weight:800; line-height:1.2; }
+  .event-date .ed-weekday{ font-size:10px; color:var(--secondary); }
 
-  .module-card[data-accent="finance"] .m-icon{ color: var(--n-accent); border-color: var(--n-glow); }
-  .module-card[data-accent="rank"] .m-icon{ color: var(--e-accent); border-color: var(--e-glow); }
-  .module-card[data-accent="match"] .m-icon{ color: var(--t-accent); border-color: var(--t-glow); }
-  .module-card[data-accent="member"] .m-icon{ color: var(--x-accent); border-color: var(--x-glow); }
-
-  .sub-tags{ display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
-  .sub-tags span{
-    font-size:10.5px; font-weight:600; color:var(--secondary);
-    border:1px solid var(--line); border-radius:999px; padding:3px 10px;
+  .event-body{ flex:1; min-width:0; }
+  .event-title-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  .event-title{ font-size:15px; font-weight:800; letter-spacing:-.005em; }
+  .event-status{
+    font-size:10px; font-weight:700; padding:3px 9px; border-radius:999px; flex-shrink:0; white-space:nowrap;
+    cursor:default;
   }
-  .sub-tags span.tbd{ border-style:dashed; color:var(--tertiary); }
+  .event-status.open{ background: rgba(127,215,154,0.15); color: var(--good); }
+  .event-status.full{ background: rgba(231,161,90,0.15); color: var(--warn); }
+  body.is-admin .event-status{ cursor:pointer; box-shadow: inset 0 0 0 1px currentColor; }
+  body.is-admin .event-status:active{ opacity:.7; }
+  .event-meta{ font-size:12.5px; color:var(--secondary); line-height:1.5; font-family: var(--sf-mono); }
+  .event-meta .sep{ color:var(--tertiary); margin:0 6px; }
 
-  /* ---------- FOOTER NOTE ---------- */
-  .footer-note{
-    margin-top: 20px; padding: 16px 18px;
-    display:flex; flex-direction:column; gap:6px;
+  .event-edit-btn{
+    margin-top:10px;
+    font-size:11px; font-weight:700; padding:6px 12px; border-radius:999px;
+    border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
   }
-  .footer-note .ftitle{ font-size:12.5px; font-weight:700; color:var(--secondary); }
-  .footer-note .flist{ font-size:11.5px; color:var(--tertiary); line-height:1.8; }
+
+  .event-empty{ padding:28px 18px; text-align:center; font-size:13px; color:var(--tertiary); }
 
   .wordmark-footer{
-    text-align:center; margin:auto 0 2px; padding-top:14px;
+    text-align:center; margin: 24px 0 6px;
     font-family:'Archivo Black', var(--sf); font-size:12px; letter-spacing:.16em; color: var(--tertiary);
   }
+
+  /* ---------- BOTTOM NAV ---------- */
+  .bottom-nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:40;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border-top: 1px solid var(--line);
+  }
+  .bottom-nav-inner{
+    max-width: 640px; margin:0 auto;
+    display:flex;
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+  }
+  .bottom-nav a{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+    padding:6px 2px; border-radius:14px;
+    font-size:10px; font-weight:700; color:var(--tertiary);
+  }
+  .bottom-nav a .bn-icon{
+    width:22px; height:22px; display:flex; align-items:center; justify-content:center;
+    font-size:14px; font-family: var(--sf-mono); font-weight:700;
+  }
+  .bottom-nav a.active{ color: var(--label); }
+  .bottom-nav a[data-accent="home"].active .bn-icon{ color: var(--gold); }
+  .bottom-nav a[data-accent="rank"].active .bn-icon{ color: var(--e-accent); }
+  .bottom-nav a[data-accent="finance"].active .bn-icon{ color: var(--n-accent); }
+  .bottom-nav a[data-accent="member"].active .bn-icon{ color: var(--x-accent); }
+  .bottom-nav a[data-accent="match"].active .bn-icon{ color: var(--t-accent); }
+
+  /* ---------- EDIT SHEET ---------- */
+  .edit-title{ font-size:16px; font-weight:800; margin-bottom:16px; color:var(--label); }
+  .edit-field-label{ font-size:11px; color:var(--tertiary); margin: 0 2px 6px; }
+  .edit-input{
+    width:100%; box-sizing:border-box;
+    font-family: var(--sf-mono); font-size:16px; color: var(--label);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 11px 14px; margin-bottom:14px;
+  }
+  .edit-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
+  .edit-actions{ display:flex; gap:8px; margin-top:2px; }
+  .edit-actions button{
+    flex:1; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px;
+  }
+  .edit-cancel{ background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--secondary); }
+  .edit-save{ background: var(--label); color:#000; }
+
+  .toast{
+    position:fixed; bottom: max(24px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(20px);
+    max-width: calc(100vw - 32px);
+    background: rgba(30,30,32,0.92);
+    backdrop-filter: blur(16px);
+    color: var(--label); font-size:13.5px; padding:11px 20px;
+    border: 1px solid var(--line);
+    border-radius: 999px; opacity:0; transition: all .3s ease; pointer-events:none; z-index:200;
+    text-align:center;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -194,68 +215,234 @@
       <div class="wordmark">WHONEXT B.C.</div>
     </div>
 
-    <a class="module-card glass" data-accent="rank" href="ranking.html">
-      <div class="m-icon">★</div>
-      <div class="m-body">
-        <div class="m-title-row">
-          <div class="m-title">排行榜</div>
-          <div class="m-status live">已上線</div>
-        </div>
-        <div class="m-desc">WHONEXT榜上有名。</div>
-      </div>
-      <div class="m-arrow">›</div>
-    </a>
-
-    <a class="module-card glass" data-accent="match" href="match.html">
-      <div class="m-icon">⚑</div>
-      <div class="m-body">
-        <div class="m-title-row">
-          <div class="m-title">卡牌賽</div>
-          <div class="m-status live">已上線</div>
-        </div>
-        <div class="m-desc">翻牌即翻盤，球圈新玩法。</div>
-      </div>
-      <div class="m-arrow">›</div>
-    </a>
-
-    <a class="module-card glass" data-accent="finance" href="finance.html">
-      <div class="m-icon">$</div>
-      <div class="m-body">
-        <div class="m-title-row">
-          <div class="m-title">球隊錢包</div>
-          <div class="m-status live">已上線</div>
-        </div>
-        <div class="m-desc">不合作金庫沒有贊助。</div>
-      </div>
-      <div class="m-arrow">›</div>
-    </a>
-
-    <a class="module-card glass" data-accent="member" href="member.html">
-      <div class="m-icon">☺</div>
-      <div class="m-body">
-        <div class="m-title-row">
-          <div class="m-title">球員名冊</div>
-          <div class="m-status live">已上線</div>
-        </div>
-        <div class="m-desc">看看是誰來了。</div>
-      </div>
-      <div class="m-arrow">›</div>
-    </a>
+    <div class="section-label">近期賽事</div>
+    <div class="event-list" id="eventList"></div>
 
     <div class="wordmark-footer">WHONEXT</div>
 
   </div>
 
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <a class="active" data-accent="home" href="index.html">
+        <span class="bn-icon">⌂</span>
+        <span>首頁</span>
+      </a>
+      <a data-accent="rank" href="ranking.html">
+        <span class="bn-icon">★</span>
+        <span>排行榜</span>
+      </a>
+      <a data-accent="finance" href="finance.html">
+        <span class="bn-icon">$</span>
+        <span>球隊錢包</span>
+      </a>
+      <a data-accent="member" href="member.html">
+        <span class="bn-icon">☺</span>
+        <span>球員名冊</span>
+      </a>
+      <a data-accent="match" href="match.html">
+        <span class="bn-icon">⚑</span>
+        <span>卡牌賽</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="auth-overlay" id="eventEditOverlay">
+    <div class="auth-box">
+      <div class="edit-title">編輯賽事</div>
+
+      <div class="edit-field-label">標題</div>
+      <input type="text" id="eventEditTitle" class="edit-input" placeholder="例如 例行練習賽">
+
+      <div class="edit-field-label">日期</div>
+      <input type="date" id="eventEditDate" class="edit-input">
+
+      <div class="edit-field-label">時間</div>
+      <input type="text" id="eventEditTime" class="edit-input" placeholder="例如 14:00–17:00">
+
+      <div class="edit-field-label">地點</div>
+      <input type="text" id="eventEditLocation" class="edit-input" placeholder="例如 林口高中體育館">
+
+      <div class="edit-actions">
+        <button type="button" class="edit-cancel" id="eventEditCancel">取消</button>
+        <button type="button" class="edit-save" id="eventEditSave">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
 <script src="backend.js"></script>
-<script src="attendance.js"></script>
 <script src="auth.js"></script>
 <script>
-  // 進首頁時背景暖機常用資料，讓子頁面（如球員名冊）
+  // 進首頁時背景暖機常用資料，讓子頁面（如球員名冊、球隊錢包、排行榜）
   // 切換月份時能先讀到 sessionStorage 快取、感覺是「秒開」。
-  months().forEach(function(m){
-    apiPrefetch({ action:'getMembers', month:m });
-  });
   apiPrefetch({ action:'getWeeks' });
+  apiPrefetch({ action:'getMembers' });
+
+  // 賽事資料存在後端 events 分頁，status 只有兩種：
+  // open（開放報名中）／full（報名額滿），管理員可點擊狀態標籤切換。
+  let EVENTS = [];
+  let eventsLoaded = false;
+  const WEEKDAYS = ['日','一','二','三','四','五','六'];
+  const STATUS_LABEL = { open:'開放報名中', full:'報名額滿' };
+
+  function loadCachedEvents(){
+    const cached = getApiCache({ action:'getEvents' });
+    if(cached){ EVENTS = cached.events || []; eventsLoaded = true; }
+    return !!cached;
+  }
+
+  async function refreshEvents(){
+    try{
+      const result = await apiGet({ action:'getEvents' });
+      setApiCache({ action:'getEvents' }, result);
+      EVENTS = result.events || [];
+      eventsLoaded = true;
+      renderEvents();
+    } catch(e){
+      if(!eventsLoaded){
+        eventsLoaded = true; // 沒快取又讀取失敗，還是要跳出「載入中」狀態
+        renderEvents();
+      }
+    }
+  }
+
+  async function persistEvents(){
+    try{
+      await apiPost('saveEvents', EVENTS);
+      setApiCache({ action:'getEvents' }, { events: EVENTS });
+      return true;
+    } catch(e){
+      return false;
+    }
+  }
+
+  function renderEvents(){
+    const list = document.getElementById('eventList');
+    if(!eventsLoaded){
+      list.innerHTML = '<div class="event-empty glass">載入賽事中…</div>';
+      return;
+    }
+    if(!EVENTS.length){
+      list.innerHTML = '<div class="event-empty glass">目前沒有排定的賽事</div>';
+      return;
+    }
+    const order = EVENTS.map(function(ev, i){ return i; })
+      .sort(function(a, b){ return String(EVENTS[a].date).slice(0,10).localeCompare(String(EVENTS[b].date).slice(0,10)); });
+
+    list.innerHTML = order.map(function(i){
+      const ev = EVENTS[i];
+      const isoDate = String(ev.date).slice(0, 10);
+      const mm = isoDate.slice(5,7);
+      const dd = isoDate.slice(8,10);
+      const wd = WEEKDAYS[new Date(isoDate + 'T00:00:00').getDay()];
+      return '<div class="event-card glass">' +
+        '<div class="event-date">' +
+          '<div class="ed-month">' + mm + '月</div>' +
+          '<div class="ed-day">' + dd + '</div>' +
+          '<div class="ed-weekday">週' + wd + '</div>' +
+        '</div>' +
+        '<div class="event-body">' +
+          '<div class="event-title-row">' +
+            '<div class="event-title">' + ev.title + '</div>' +
+            '<button type="button" class="event-status ' + ev.status + '" data-index="' + i + '">' + STATUS_LABEL[ev.status] + '</button>' +
+          '</div>' +
+          '<div class="event-meta">' + ev.time + '<span class="sep">・</span>' + ev.location + '</div>' +
+          '<button type="button" class="event-edit-btn admin-only" data-index="' + i + '">編輯</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    list.querySelectorAll('.event-status').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        if(!document.body.classList.contains('is-admin')) return;
+        const ev = EVENTS[Number(btn.dataset.index)];
+        const prevStatus = ev.status;
+        ev.status = ev.status === 'open' ? 'full' : 'open';
+        renderEvents();
+        const ok = await persistEvents();
+        if(!ok){
+          ev.status = prevStatus;
+          renderEvents();
+          showToast('狀態更新失敗，請稍後再試');
+        }
+      });
+    });
+
+    list.querySelectorAll('.event-edit-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        openEventEdit(Number(btn.dataset.index));
+      });
+    });
+  }
+
+  let editingIndex = null;
+
+  function openEventEdit(index){
+    editingIndex = index;
+    const ev = EVENTS[index];
+    document.getElementById('eventEditTitle').value = ev.title;
+    document.getElementById('eventEditDate').value = String(ev.date).slice(0, 10);
+    document.getElementById('eventEditTime').value = ev.time;
+    document.getElementById('eventEditLocation').value = ev.location;
+    document.getElementById('eventEditOverlay').classList.add('open');
+  }
+
+  function closeEventEdit(){
+    document.getElementById('eventEditOverlay').classList.remove('open');
+    editingIndex = null;
+  }
+
+  async function saveEventEdit(){
+    if(editingIndex === null) return;
+    const title = document.getElementById('eventEditTitle').value.trim();
+    const date = document.getElementById('eventEditDate').value;
+    const time = document.getElementById('eventEditTime').value.trim();
+    const location = document.getElementById('eventEditLocation').value.trim();
+    if(!title || !date || !time || !location){ showToast('請填寫完整資訊'); return; }
+
+    const ev = EVENTS[editingIndex];
+    const backup = Object.assign({}, ev);
+    ev.title = title;
+    ev.date = date;
+    ev.time = time;
+    ev.location = location;
+
+    const saveBtn = document.getElementById('eventEditSave');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '儲存中…';
+    const ok = await persistEvents();
+    saveBtn.disabled = false;
+    saveBtn.textContent = '儲存';
+
+    if(ok){
+      renderEvents();
+      closeEventEdit();
+      showToast('已更新賽事資訊');
+    } else {
+      Object.assign(ev, backup);
+      showToast('儲存失敗，請稍後再試');
+    }
+  }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> t.classList.remove('show'), 2200);
+  }
+
+  document.getElementById('eventEditCancel').addEventListener('click', closeEventEdit);
+  document.getElementById('eventEditSave').addEventListener('click', saveEventEdit);
+  document.getElementById('eventEditOverlay').addEventListener('click', function(e){
+    if(e.target.id === 'eventEditOverlay') closeEventEdit();
+  });
+
+  loadCachedEvents();
+  renderEvents();
+  refreshEvents();
 </script>
 </body>
 </html>
