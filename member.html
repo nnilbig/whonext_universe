@@ -103,9 +103,13 @@
     margin: 4px 4px 12px;
   }
   .section-label .t{ font-size:14px; font-weight:800; }
-  .section-label .n{ font-size:11px; color:var(--tertiary); }
+  .section-label .n{ font-size:11px; color:var(--tertiary); display:flex; align-items:center; gap:6px; }
+  .section-label.collapsible{ cursor:pointer; user-select:none; }
+  .section-label .chev{ display:inline-block; font-size:13px; transition: transform .2s ease; }
+  .section-label.open .chev{ transform: rotate(90deg); }
 
   .member-list{ padding: 6px 6px; margin-bottom: 22px; }
+  .member-list.collapsed{ display:none; }
   .row{
     display:flex; align-items:center; gap:12px;
     padding: 12px 6px;
@@ -241,11 +245,11 @@
       <button class="month-btn" id="nextBtn" onclick="stepMonth(1)" aria-label="下一個月">›</button>
     </div>
 
-    <div class="section-label"><span class="t">月繳成員</span><span class="n" id="monthlyCount">共 0 位</span></div>
-    <div class="member-list glass" id="monthlyList"></div>
+    <div class="section-label collapsible" onclick="toggleSection(this)"><span class="t">月繳成員</span><span class="n"><span id="monthlyCount">共 0 位</span><span class="chev">›</span></span></div>
+    <div class="member-list glass collapsed" id="monthlyList"></div>
 
-    <div class="section-label"><span class="t">臨打球員</span><span class="n" id="dropinCount">共 0 位</span></div>
-    <div class="member-list glass" id="dropinList"></div>
+    <div class="section-label collapsible" onclick="toggleSection(this)"><span class="t">臨打球員</span><span class="n"><span id="dropinCount">共 0 位</span><span class="chev">›</span></span></div>
+    <div class="member-list glass collapsed" id="dropinList"></div>
 
     <div class="wordmark-footer">WHONEXT</div>
 
@@ -306,6 +310,12 @@
   let sheetMode = 'edit';
   let currentMonth = null;
   let ALL_WEEKS = [];
+
+  function toggleSection(headerEl){
+    headerEl.classList.toggle('open');
+    const list = headerEl.nextElementSibling;
+    if(list) list.classList.toggle('collapsed');
+  }
 
   function splitNames(val){
     return String(val || '').split(',').map(s=>s.trim()).filter(Boolean);

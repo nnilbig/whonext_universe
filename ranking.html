@@ -77,7 +77,7 @@
 
   .wrap{ max-width: 640px; margin:0 auto; padding: 20px 16px 8px; }
 
-  .hero{ padding: 4px 4px 22px; }
+  .hero{ padding: 4px 4px 10px; }
   .hero .hero-eyebrow{
     font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary);
     text-transform:uppercase; margin-bottom:8px;
@@ -88,37 +88,31 @@
   }
   .hero p{ margin:0; font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
 
+  .controls-row{ display:flex; align-items:center; gap:10px; margin: 0 0 18px; }
+
   .period-toggle{
     display:flex; background: var(--card); border:1px solid var(--line);
-    border-radius:999px; padding:2px; width:fit-content; margin: 0 0 16px;
+    border-radius:999px; padding:2px; flex-shrink:0;
   }
   .period-btn{
     font-size:12px; font-weight:700; padding:7px 16px; border-radius:999px; color:var(--tertiary);
   }
   .period-btn.active{ background: var(--card-strong); color: var(--label); }
 
-  .tabs{
-    display:flex; gap:8px; margin: 0 0 20px;
-    overflow-x:auto;
+  .board-nav{
+    display:flex; align-items:center; justify-content:space-between;
+    margin: 0 4px 16px;
   }
-  .tabs::-webkit-scrollbar{ display:none; }
-  .tab-btn{
-    flex-shrink:0;
-    padding:10px 16px;
-    border-radius:999px;
-    border:1px solid var(--line);
-    background: rgba(255,255,255,0.03);
-    font-size:13px; font-weight:700; color:var(--tertiary);
+  .board-nav-btn{
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    background: var(--card); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--gold);
   }
-  .tab-btn.active{ background: var(--card-strong); color: var(--label); border-color: rgba(255,255,255,0.28); }
+  .board-nav-btn:active{ background: var(--card-strong); }
 
-  .board-title{
-    display:flex; align-items:baseline; justify-content:space-between;
-    margin: 4px 4px 2px;
-  }
-  .board-title .t{ font-size:14px; font-weight:800; }
-  .board-title .n{ font-size:11px; color:var(--tertiary); }
-  .board-subtitle{ font-size:12px; color:var(--secondary); margin: 0 4px 12px; }
+  .board-title{ text-align:center; }
+  .board-title .t{ display:block; font-size:16px; font-weight:800; }
+  .board-title .n{ display:block; margin-top:2px; font-size:10.5px; color:var(--tertiary); }
 
   .podium{
     display:flex; align-items:stretch; gap:10px;
@@ -204,19 +198,21 @@
       <div class="wordmark">排行榜</div>
     </div>
 
-    <div class="period-toggle" id="periodToggle">
-      <button class="period-btn active" data-p="year" onclick="setPeriod('year')">年度</button>
-      <button class="period-btn" data-p="month" onclick="setPeriod('month')">當月</button>
+    <div class="controls-row">
+      <div class="period-toggle" id="periodToggle">
+        <button class="period-btn active" data-p="year" onclick="setPeriod('year')">年</button>
+        <button class="period-btn" data-p="month" onclick="setPeriod('month')">月</button>
+      </div>
     </div>
 
-    <div class="tabs" id="rankTabs">
-      <button class="tab-btn active" data-k="friend" onclick="setBoard('friend')">WHO朋引伴</button>
-      <button class="tab-btn" data-k="attend" onclick="setBoard('attend')">WHO常出席</button>
-      <button class="tab-btn" data-k="dropin" onclick="setBoard('dropin')">WHO常報名</button>
+    <div class="board-nav">
+      <button class="board-nav-btn" onclick="stepBoard(-1)" aria-label="上一個排行榜">‹</button>
+      <div class="board-title">
+        <span class="t" id="boardTitleText"></span>
+        <span class="n" id="boardUnitText"></span>
+      </div>
+      <button class="board-nav-btn" onclick="stepBoard(1)" aria-label="下一個排行榜">›</button>
     </div>
-
-    <div class="board-title"><span class="t" id="boardTitleText"></span><span class="n" id="boardUnitText"></span></div>
-    <div class="board-subtitle" id="boardSubtitleText"></div>
     <div class="podium" id="podium"></div>
     <div class="board-list glass" id="boardList"></div>
 
@@ -227,26 +223,27 @@
 <script src="backend.js"></script>
 <script src="auth.js"></script>
 <script>
+  const PERIOD_LABEL = { year: '年度', month: '當月' };
+
   const BOARDS = {
     friend: {
-      title: 'WHO朋引伴', unit: '單位：人次', valueSuffix: '',
-      subtitle: { month:'糾團來打球，WHO朋引伴NO.1', year:'年度糾團王，WHO朋引伴NO.1' },
+      title: '最常WHO朋引伴', unit: '單位：人次', valueSuffix: '',
       month: [],
       year: []
     },
     attend: {
-      title: 'WHO常出席', unit: '單位：場次', valueSuffix: '',
-      subtitle: { month:'場場常出席，出席NO.1', year:'全年最常出席，出席NO.1' },
+      title: '最常出勤', unit: '單位：場次', valueSuffix: '',
       month: [],
       year: []
     },
     dropin: {
-      title: 'WHO常報名', unit: '單位：場次', valueSuffix: '',
-      subtitle: { month:'場場常報名，助陣NO.1', year:'全年最常助陣，報名NO.1' },
+      title: '最常臨打', unit: '單位：場次', valueSuffix: '',
       month: [],
       year: []
     }
   };
+
+  const BOARD_KEYS = ['friend', 'attend', 'dropin'];
 
   let currentKey = 'friend';
   let currentPeriod = 'year';
@@ -257,9 +254,8 @@
     const top3 = list.slice(0, 3);
     const rest = list.slice(3);
 
-    document.getElementById('boardTitleText').textContent = data.title + ' Top 5';
+    document.getElementById('boardTitleText').textContent = PERIOD_LABEL[currentPeriod] + ' ' + data.title;
     document.getElementById('boardUnitText').textContent = data.unit;
-    document.getElementById('boardSubtitleText').textContent = data.subtitle[currentPeriod];
 
     const podiumOrder = [top3[1], top3[0], top3[2]];
     const slots = ['p2', 'p1', 'p3'];
@@ -286,10 +282,13 @@
 
   function setBoard(key){
     currentKey = key;
-    document.querySelectorAll('#rankTabs .tab-btn').forEach(function(btn){
-      btn.classList.toggle('active', btn.dataset.k === key);
-    });
     renderBoard();
+  }
+
+  function stepBoard(delta){
+    const idx = BOARD_KEYS.indexOf(currentKey);
+    const nextIdx = (idx + delta + BOARD_KEYS.length) % BOARD_KEYS.length;
+    setBoard(BOARD_KEYS[nextIdx]);
   }
 
   function setPeriod(p){
