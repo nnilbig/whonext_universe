@@ -86,7 +86,7 @@
     font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
     font-size: clamp(26px,7vw,34px); margin-bottom:8px;
   }
-  .hero p{ font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
+  .hero p{ margin:0; font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
 
   .period-toggle{
     display:flex; background: var(--card); border:1px solid var(--line);
@@ -315,12 +315,15 @@
       .map(name=>({ name, value: counts[name] }))
       .sort((a,b)=> b.value - a.value || a.name.localeCompare(b.name));
   }
+  function isPlaceholderName(name){
+    return /^友\d*$/.test(name);
+  }
   function computeFriendBoard(weeks){
     const referrers = [];
     weeks.forEach(w=>{
       splitNames(w.dropin_names).forEach(entry=>{
         const referrer = parseDropinEntry(entry).referrer;
-        if(referrer) referrers.push(referrer);
+        if(referrer && !isPlaceholderName(referrer)) referrers.push(referrer);
       });
     });
     return tally(referrers);
@@ -332,7 +335,10 @@
   }
   function computeDropinBoard(weeks){
     const names = [];
-    weeks.forEach(w=> splitNames(w.dropin_names).forEach(entry=> names.push(parseDropinEntry(entry).name)));
+    weeks.forEach(w=> splitNames(w.dropin_names).forEach(entry=>{
+      const name = parseDropinEntry(entry).name;
+      if(!isPlaceholderName(name)) names.push(name);
+    }));
     return tally(names);
   }
 
