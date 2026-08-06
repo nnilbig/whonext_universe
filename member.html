@@ -127,6 +127,16 @@
   }
   .row-stat{ font-size:11px; color:var(--tertiary); flex-shrink:0; }
 
+  @keyframes skeletonPulse{
+    0%,100%{ opacity:.35; }
+    50%{ opacity:.75; }
+  }
+  .skel{ background: rgba(255,255,255,0.09); border-radius:6px; animation: skeletonPulse 1.4s ease-in-out infinite; }
+  .skel-avatar{ width:36px; height:36px; border-radius:50%; flex-shrink:0; }
+  .skel-line{ height:10px; border-radius:5px; }
+  .skel-name{ width:110px; margin-bottom:8px; }
+  .skel-stat{ width:70px; }
+
   .row-admin{
     flex-direction:row; align-items:center; justify-content:space-between; gap:10px;
     margin-top:9px; padding-top:9px; border-top:1px dashed var(--line);
@@ -170,6 +180,8 @@
   }
   .edit-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
   .edit-input[readonly]{ color: var(--secondary); background: rgba(255,255,255,0.03); }
+  select.edit-input{ color: var(--label); }
+  select.edit-input option{ color:#111; background:#fff; }
   .edit-actions{ display:flex; gap:8px; margin-top:2px; }
   .edit-actions button{
     flex:1; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px;
@@ -218,7 +230,7 @@
     <div class="hero">
       <div class="hero-eyebrow">WHONEXT BADMINTON CLUB</div>
       <div class="wordmark">球員名冊</div>
-      <p>當月的月繳球員與臨打出席球員。</p>
+      <p>看看是誰來了。</p>
     </div>
 
     <div class="month-nav">
@@ -306,6 +318,17 @@
   function formatDropinEntry(name, referrer){
     return referrer ? name + '(' + referrer + ')' : name;
   }
+  function skeletonRowsHTML(count){
+    return Array.from({ length: count }).map(()=> `
+      <div class="row">
+        <div class="skel skel-avatar"></div>
+        <div class="row-main">
+          <div class="skel skel-line skel-name"></div>
+          <div class="skel skel-line skel-stat"></div>
+        </div>
+      </div>
+    `).join('');
+  }
   function monthOfWeek(w){ return String(w.week_date || '').slice(0,7); }
   function months(){ return [...new Set(ALL_WEEKS.map(monthOfWeek))].sort(); }
   function weeksOfMonth(m){ return ALL_WEEKS.filter(w=> monthOfWeek(w) === m); }
@@ -360,7 +383,7 @@
       currentMembers = cached.members || [];
       renderMonthlyMembers();
     } else {
-      list.innerHTML = '<div class="row"><div class="row-stat">載入中…</div></div>';
+      list.innerHTML = skeletonRowsHTML(4);
     }
 
     try{
@@ -610,6 +633,8 @@
   }
 
   (async function init(){
+    document.getElementById('monthlyList').innerHTML = skeletonRowsHTML(5);
+    document.getElementById('dropinList').innerHTML = skeletonRowsHTML(5);
     await loadAllWeeks();
     const ms = months();
     if(!ms.length){

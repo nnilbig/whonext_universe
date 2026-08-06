@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>帳務 — WHONEXT UNIVERSE</title>
+<title>球隊錢包 — WHONEXT UNIVERSE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="auth.css">
@@ -201,6 +201,13 @@
   .detail-row .dvalue{ font-weight:700; font-family: var(--sf-mono); }
 
   /* ---------- ADMIN FINANCE EDIT ---------- */
+  .attend-check-row{
+    display:flex; align-items:center; gap:9px;
+    padding: 9px 2px; border-top:1px solid var(--line);
+    font-size:13px;
+  }
+  .attend-check-row:first-child{ border-top:none; }
+  .attend-check-row input{ width:16px; height:16px; flex-shrink:0; }
   .edit-field-label{ font-size:11px; color:var(--tertiary); margin: 0 2px 6px; }
   .edit-input{
     width:100%; box-sizing:border-box;
@@ -210,6 +217,8 @@
     padding: 11px 14px; margin-bottom:12px;
   }
   .edit-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
+  select.edit-input{ color: var(--label); }
+  select.edit-input option{ color:#111; background:#fff; }
   .edit-save-btn{
     width:100%; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px;
     background: var(--label); color:#000;
@@ -249,13 +258,13 @@
   <div class="wrap">
 
     <div class="hero">
-      <div class="wordmark">帳務</div>
-      <p>收支總覽。</p>
+      <div class="wordmark">球隊錢包</div>
+      <p>不合作金庫沒有贊助。</p>
     </div>
 
     <div class="period-toggle" id="periodToggle">
-      <button class="period-btn" data-p="month" onclick="setPeriod('month')">月份</button>
-      <button class="period-btn active" data-p="year" onclick="setPeriod('year')">年度至今</button>
+      <button class="period-btn active" data-p="month" onclick="setPeriod('month')">月份</button>
+      <button class="period-btn" data-p="year" onclick="setPeriod('year')">年度至今</button>
     </div>
 
     <div class="month-nav">
@@ -273,7 +282,7 @@
       <div class="balance-sub">
         <div><p>收入</p><p id="incomeAmount" style="color:var(--warn);">$0</p></div>
         <div><p>支出</p><p id="expenseAmount" style="color:var(--good);">$0</p></div>
-        <div><p>平均出席</p><p id="avgAtt">0 人</p></div>
+        <div><p>平均出席</p><p id="avgAtt">0</p></div>
       </div>
     </div>
 
@@ -303,7 +312,7 @@
 <script>
 const BALLS_PER_TUBE = 12;
 let ALL_WEEKS = [];
-let currentPeriod = 'year';
+let currentPeriod = 'month';
 let currentMonth = null;
 let currentYear = null;
 let sheetWeek = null;
@@ -316,6 +325,9 @@ function splitNames(val){
 function parseDropinEntry(entry){
   const m = String(entry || '').match(/^(.*?)\(([^()]+)\)$/);
   return m ? { name: m[1].trim(), referrer: m[2].trim() } : { name: String(entry || '').trim(), referrer: '' };
+}
+function formatDropinEntry(name, referrer){
+  return referrer ? name + '(' + referrer + ')' : name;
 }
 function toWeekRecord(w){
   return {
@@ -379,7 +391,7 @@ function renderSummary(weeks){
   document.getElementById('netAmount').style.color = net>=0 ? 'var(--warn)' : 'var(--good)';
   document.getElementById('incomeAmount').textContent = fmt(income);
   document.getElementById('expenseAmount').textContent = fmt(expense);
-  document.getElementById('avgAtt').textContent = (weeks.length ? Math.round(att/weeks.length) : 0) + ' 人';
+  document.getElementById('avgAtt').textContent = (weeks.length ? Math.round(att/weeks.length) : 0) + '';
   document.getElementById('weekCount').textContent = '共 ' + weeks.length + ' 週';
 }
 
@@ -510,6 +522,20 @@ function openWeek(date){
     </div>
 
     <div class="group-card glass admin-only">
+      <p class="group-title" style="color:var(--secondary);">編輯出席／請假</p>
+      <div id="attendEditBody"><p class="att-empty">載入中…</p></div>
+    </div>
+
+    <div class="group-card glass admin-only">
+      <p class="group-title" style="color:var(--secondary);">新增臨打人員</p>
+      <div class="edit-field-label">姓名</div>
+      <input type="text" id="editDropinName" class="edit-input" placeholder="輸入姓名">
+      <div class="edit-field-label">邀請人（選填）</div>
+      <select id="editDropinReferrer" class="edit-input"><option value="">— 無 —</option></select>
+      <button type="button" class="edit-save-btn" id="addDropinBtn" onclick="addDropinToWeek()">新增</button>
+    </div>
+
+    <div class="group-card glass admin-only">
       <p class="group-title" style="color:var(--secondary);">編輯用球數／場地費</p>
       <div class="edit-field-label">用球數（顆）</div>
       <input type="number" id="editBalls" class="edit-input" inputmode="numeric" value="${sheetWeek.balls}">
@@ -519,8 +545,126 @@ function openWeek(date){
     </div>
   `;
   document.getElementById('detailOverlay').classList.add('show');
+  loadAttendEditCard(sheetWeek);
 }
 function closeSheet(){ document.getElementById('detailOverlay').classList.remove('show'); }
+
+async function loadAttendEditCard(week){
+  const params = { action:'getMembers', month: monthOf(week) };
+  const cached = getApiCache(params);
+  let members = cached ? (cached.members || []) : null;
+  if(members) renderAttendEditUI(week, members);
+  try{
+    const result = await apiGet(params);
+    setApiCache(params, result);
+    if(sheetWeek !== week) return; // 使用者已經切到別週，這個結果過期就丟棄
+    members = result.members || [];
+    renderAttendEditUI(week, members);
+  } catch(e){
+    if(!members){
+      const body = document.getElementById('attendEditBody');
+      if(body) body.innerHTML = '<p class="att-empty">載入會員名單失敗</p>';
+    }
+  }
+}
+
+function renderAttendEditUI(week, members){
+  const body = document.getElementById('attendEditBody');
+  if(body){
+    const presentSet = new Set(week.present);
+    body.innerHTML = (members.length ? members.map(m=>{
+      const checked = presentSet.has(m.name) ? 'checked' : '';
+      return `<label class="attend-check-row">
+        <input type="checkbox" class="attend-check" data-name="${m.name}" ${checked}>
+        <span>${m.name}</span>
+      </label>`;
+    }).join('') + `<button type="button" class="edit-save-btn" id="saveAttendBtn" onclick="saveAttendEdit()" style="margin-top:12px;">儲存出席</button>`
+    : '<p class="att-empty">本月尚無月繳成員</p>');
+  }
+
+  const referrerSelect = document.getElementById('editDropinReferrer');
+  if(referrerSelect){
+    const referrerNames = [...new Set(members.map(m=>m.name).concat(week.dropins))].sort((a,b)=>a.localeCompare(b));
+    referrerSelect.innerHTML = '<option value="">— 無 —</option>' + referrerNames.map(n=>`<option value="${n}">${n}</option>`).join('');
+  }
+}
+
+async function saveAttendEdit(){
+  if(!sheetWeek) return;
+  const checkboxes = document.querySelectorAll('#attendEditBody .attend-check');
+  const present = [];
+  const leave = [];
+  checkboxes.forEach(cb=>{
+    if(cb.checked) present.push(cb.dataset.name); else leave.push(cb.dataset.name);
+  });
+
+  const updatedRaw = Object.assign({}, sheetWeek._raw, {
+    present_names: present.join(','),
+    leave_names: leave.join(','),
+    original_week_date: sheetWeek._raw.week_date
+  });
+
+  const btn = document.getElementById('saveAttendBtn');
+  btn.disabled = true;
+  btn.textContent = '儲存中…';
+  try{
+    await apiPost('saveWeek', updatedRaw);
+    sheetWeek._raw = updatedRaw;
+    sheetWeek.present = present;
+    sheetWeek.leave = leave;
+    const idx = ALL_WEEKS.findIndex(w=> w.date === sheetWeek.date);
+    if(idx >= 0) ALL_WEEKS[idx] = sheetWeek;
+    setApiCache({ action:'getWeeks' }, { weeks: ALL_WEEKS.map(w=> w._raw) });
+
+    openWeek(sheetWeek.date);
+    if(currentPeriod === 'year') renderYear(currentYear); else renderMonth(currentMonth);
+    showToast('已更新出席與請假名單');
+  } catch(e){
+    showToast('儲存失敗，請稍後再試');
+  } finally{
+    const b = document.getElementById('saveAttendBtn');
+    if(b){ b.disabled = false; b.textContent = '儲存出席'; }
+  }
+}
+
+async function addDropinToWeek(){
+  if(!sheetWeek) return;
+  const name = document.getElementById('editDropinName').value.trim();
+  if(!name){ showToast('請輸入姓名'); return; }
+  const referrer = document.getElementById('editDropinReferrer').value;
+
+  const existingEntries = splitNames(sheetWeek._raw.dropin_names);
+  if(existingEntries.some(entry=> parseDropinEntry(entry).name === name)){
+    showToast(name + ' 已經在這週的臨打名單裡');
+    return;
+  }
+
+  const updatedRaw = Object.assign({}, sheetWeek._raw, {
+    dropin_names: existingEntries.concat([formatDropinEntry(name, referrer)]).join(','),
+    original_week_date: sheetWeek._raw.week_date
+  });
+
+  const btn = document.getElementById('addDropinBtn');
+  btn.disabled = true;
+  btn.textContent = '新增中…';
+  try{
+    await apiPost('saveWeek', updatedRaw);
+    sheetWeek._raw = updatedRaw;
+    sheetWeek.dropins = splitNames(updatedRaw.dropin_names).map(entry=> parseDropinEntry(entry).name);
+    const idx = ALL_WEEKS.findIndex(w=> w.date === sheetWeek.date);
+    if(idx >= 0) ALL_WEEKS[idx] = sheetWeek;
+    setApiCache({ action:'getWeeks' }, { weeks: ALL_WEEKS.map(w=> w._raw) });
+
+    openWeek(sheetWeek.date);
+    if(currentPeriod === 'year') renderYear(currentYear); else renderMonth(currentMonth);
+    showToast('已新增 ' + name + ' 為臨打');
+  } catch(e){
+    showToast('新增失敗，請稍後再試');
+  } finally{
+    const b = document.getElementById('addDropinBtn');
+    if(b){ b.disabled = false; b.textContent = '新增'; }
+  }
+}
 
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -566,13 +710,13 @@ async function saveFinanceEdit(){
 
 (async function init(){
   await loadAllWeeks();
-  const ys = years();
-  if(!ys.length){
+  const ms = months();
+  if(!ms.length){
     document.getElementById('monthLabel').textContent = '無資料';
     document.getElementById('weekList').innerHTML = '<div class="row"><div class="row-body"><p class="rmeta">尚無收支紀錄</p></div></div>';
     return;
   }
-  renderYear(ys[ys.length - 1]);
+  renderMonth(ms[ms.length - 1]);
 })();
 </script>
 
