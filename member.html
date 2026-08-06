@@ -6,6 +6,7 @@
 <title>成員 — WHONEXT UNIVERSE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="auth.css">
 <style>
   :root{
     --n-accent:#9FB3C8; --n-glow:rgba(159,179,200,0.5);
@@ -73,6 +74,10 @@
   .wrap{ max-width: 640px; margin:0 auto; padding: 20px 16px 8px; }
 
   .hero{ padding: 4px 4px 22px; }
+  .hero .hero-eyebrow{
+    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary);
+    text-transform:uppercase; margin-bottom:8px;
+  }
   .hero .wordmark{
     font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.06em;
     font-size: clamp(24px,6.4vw,30px); margin-bottom:8px; color: var(--gold);
@@ -99,16 +104,75 @@
     font-size:13.5px; font-weight:700; line-height:1;
     background: rgba(255,255,255,0.05); border:1px solid var(--line);
   }
+  .row-main{ flex:1; min-width:0; }
+  .row-top{ display:flex; align-items:center; gap:8px; }
   .row-name{ flex:1; font-size:14.5px; font-weight:700; line-height:1.3; min-width:0; }
   .row-tag{
     font-size:10.5px; font-weight:600; color:var(--secondary);
     border:1px solid var(--line); border-radius:999px; padding:3px 10px; flex-shrink:0;
   }
 
+  .row-admin{
+    flex-direction:row; align-items:center; justify-content:space-between; gap:10px;
+    margin-top:9px; padding-top:9px; border-top:1px dashed var(--line);
+  }
+  .row-fee{
+    font-size:11.5px; color:var(--secondary); font-family: var(--sf-mono);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+  }
+  .row-fee .fee-sep{ color:var(--tertiary); margin:0 6px; }
+  .row-admin-actions{ display:flex; gap:8px; flex-shrink:0; }
+  .row-btn{
+    font-size:11px; font-weight:700; padding:6px 12px; border-radius:999px;
+    border:1px solid var(--line); color: var(--label); background: rgba(255,255,255,0.05);
+    white-space:nowrap;
+  }
+  .row-btn-ghost{ color: var(--secondary); background:none; }
+  .row-btn-danger{ color: var(--warn, #E7A15A); border-color: rgba(231,161,90,0.4); background: rgba(231,161,90,0.1); }
+
+  .add-row{
+    display:block; width:100%; text-align:center;
+    padding:14px 6px; margin-top:2px;
+    border-top:1px dashed var(--line);
+    font-size:13px; font-weight:700; color:var(--secondary);
+  }
+  .add-row:active{ color:var(--label); }
+
   .wordmark-footer{
     text-align:center; margin: 24px 0 6px;
     font-family:'Archivo Black', var(--sf); font-size:12px; letter-spacing:.16em; color: var(--tertiary);
   }
+
+  /* ---------- EDIT SHEET ---------- */
+  .edit-title{ font-size:16px; font-weight:800; margin-bottom:16px; color:var(--label); }
+  .edit-field-label{ font-size:11px; color:var(--tertiary); margin: 0 2px 6px; }
+  .edit-input{
+    width:100%; box-sizing:border-box;
+    font-family: var(--sf-mono); font-size:14px; color: var(--label);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 11px 14px; margin-bottom:14px;
+  }
+  .edit-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
+  .edit-input[readonly]{ color: var(--secondary); background: rgba(255,255,255,0.03); }
+  .edit-actions{ display:flex; gap:8px; margin-top:2px; }
+  .edit-actions button{
+    flex:1; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px;
+  }
+  .edit-cancel{ background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--secondary); }
+  .edit-save{ background: var(--label); color:#000; }
+
+  .toast{
+    position:fixed; bottom: max(24px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(20px);
+    max-width: calc(100vw - 32px);
+    background: rgba(30,30,32,0.92);
+    backdrop-filter: blur(16px);
+    color: var(--label); font-size:13.5px; padding:11px 20px;
+    border: 1px solid var(--line);
+    border-radius: 999px; opacity:0; transition: all .3s ease; pointer-events:none; z-index:200;
+    text-align:center;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -119,6 +183,12 @@
       <div class="nav-title">
         <div class="eyebrow">WHONEXT</div>
         <h1>UNIVERSE</h1>
+      </div>
+      <div class="nav-role">
+        <div class="role-toggle">
+          <button class="active" data-role="player">球員</button>
+          <button data-role="admin">管理員</button>
+        </div>
       </div>
     </div>
   </div>
@@ -131,16 +201,7 @@
     </div>
 
     <div class="section-label"><span class="t">月繳成員</span><span class="n">單位：位</span></div>
-    <div class="member-list glass">
-      <div class="row"><div class="row-avatar">忠</div><div class="row-name">忠</div><div class="row-tag">月繳</div></div>
-      <div class="row"><div class="row-avatar">安</div><div class="row-name">安</div><div class="row-tag">月繳</div></div>
-      <div class="row"><div class="row-avatar">J</div><div class="row-name">Jessica</div><div class="row-tag">月繳</div></div>
-      <div class="row"><div class="row-avatar">韶</div><div class="row-name">韶恩</div><div class="row-tag">月繳</div></div>
-      <div class="row"><div class="row-avatar">孟</div><div class="row-name">孟翰</div><div class="row-tag">月繳</div></div>
-      <div class="row"><div class="row-avatar">儒</div><div class="row-name">儒</div><div class="row-tag">月繳</div></div>
-      <div class="row"><div class="row-avatar">扯</div><div class="row-name">扯翔</div><div class="row-tag">月繳</div></div>
-      <div class="row"><div class="row-avatar">煒</div><div class="row-name">煒</div><div class="row-tag">月繳</div></div>
-    </div>
+    <div class="member-list glass" id="monthlyList"></div>
 
     <div class="section-label"><span class="t">臨打球員</span><span class="n">單位：位</span></div>
     <div class="member-list glass">
@@ -154,5 +215,210 @@
 
   </div>
 
+  <div class="auth-overlay" id="editOverlay">
+    <div class="auth-box">
+      <div class="edit-title" id="editTitle">月繳管理</div>
+
+      <div class="edit-field-label">姓名</div>
+      <input type="text" id="editName" class="edit-input" placeholder="輸入姓名">
+
+      <div class="edit-field-label">單週費用（$）</div>
+      <input type="number" id="editWeekly" class="edit-input" inputmode="numeric">
+      <div class="edit-field-label">預繳金額（$）</div>
+      <input type="number" id="editPrepaid" class="edit-input" inputmode="numeric">
+      <div class="edit-field-label">剩餘次數（預繳金額 ÷ 單週費用，自動計算）</div>
+      <input type="text" id="editSessions" class="edit-input" readonly>
+
+      <div class="edit-actions">
+        <button type="button" class="edit-cancel" id="editCancel">取消</button>
+        <button type="button" class="edit-save" id="editSave">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script src="auth.js"></script>
+<script>
+  const DEFAULT_WEEKLY = 210;
+  let MONTHLY_MEMBERS = [
+    { id:'zhong', name:'忠', weekly:DEFAULT_WEEKLY, prepaid:1200 },
+    { id:'an', name:'安', weekly:DEFAULT_WEEKLY, prepaid:800 },
+    { id:'jessica', name:'Jessica', weekly:DEFAULT_WEEKLY, prepaid:1200 },
+    { id:'shaoen', name:'韶恩', weekly:DEFAULT_WEEKLY, prepaid:400 },
+    { id:'menghan', name:'孟翰', weekly:DEFAULT_WEEKLY, prepaid:1200 },
+    { id:'ru', name:'儒', weekly:DEFAULT_WEEKLY, prepaid:1200 },
+    { id:'chexiang', name:'扯翔', weekly:DEFAULT_WEEKLY, prepaid:800 },
+    { id:'wei', name:'煒', weekly:DEFAULT_WEEKLY, prepaid:1200 }
+  ];
+  const FEE_KEY = 'whonext_member_fees';
+  const REMOVED_KEY = 'whonext_member_removed';
+  const ADDED_KEY = 'whonext_member_added';
+  let editingId = null;
+  let sheetMode = 'edit';
+
+  function sessionsOf(m){
+    return m.weekly > 0 ? Math.floor(m.prepaid / m.weekly) : 0;
+  }
+
+  function loadAddedMembers(){
+    let added = [];
+    try{ added = JSON.parse(localStorage.getItem(ADDED_KEY)) || []; } catch(e){}
+    added.forEach(a=>{
+      if(!MONTHLY_MEMBERS.find(m=>m.id === a.id)) MONTHLY_MEMBERS.push(a);
+    });
+  }
+  function persistAddedMember(m){
+    let added = [];
+    try{ added = JSON.parse(localStorage.getItem(ADDED_KEY)) || []; } catch(e){}
+    added.push({ id:m.id, name:m.name, weekly:m.weekly, prepaid:m.prepaid });
+    localStorage.setItem(ADDED_KEY, JSON.stringify(added));
+  }
+
+  function loadFees(){
+    loadAddedMembers();
+    let saved = {};
+    try{ saved = JSON.parse(localStorage.getItem(FEE_KEY)) || {}; } catch(e){}
+    MONTHLY_MEMBERS.forEach(m=>{
+      const rec = saved[m.id];
+      if(!rec) return;
+      if(typeof rec.weekly === 'number') m.weekly = rec.weekly;
+      if(typeof rec.prepaid === 'number') m.prepaid = rec.prepaid;
+    });
+    let removed = [];
+    try{ removed = JSON.parse(localStorage.getItem(REMOVED_KEY)) || []; } catch(e){}
+    MONTHLY_MEMBERS = MONTHLY_MEMBERS.filter(m=> !removed.includes(m.id));
+  }
+  function saveFees(){
+    const out = {};
+    MONTHLY_MEMBERS.forEach(m=>{ out[m.id] = { weekly:m.weekly, prepaid:m.prepaid }; });
+    localStorage.setItem(FEE_KEY, JSON.stringify(out));
+  }
+  function markRemoved(id){
+    let removed = [];
+    try{ removed = JSON.parse(localStorage.getItem(REMOVED_KEY)) || []; } catch(e){}
+    if(!removed.includes(id)) removed.push(id);
+    localStorage.setItem(REMOVED_KEY, JSON.stringify(removed));
+  }
+  function removeMember(id){
+    const m = MONTHLY_MEMBERS.find(x=>x.id === id);
+    if(!m) return;
+    markRemoved(id);
+    MONTHLY_MEMBERS = MONTHLY_MEMBERS.filter(x=>x.id !== id);
+    renderMonthlyMembers();
+    showToast('已將 ' + m.name + ' 移出月繳名單');
+  }
+
+  function renderMonthlyMembers(){
+    const list = document.getElementById('monthlyList');
+    list.innerHTML = MONTHLY_MEMBERS.map(m=>`
+      <div class="row">
+        <div class="row-avatar">${m.name.slice(0,1)}</div>
+        <div class="row-main">
+          <div class="row-top">
+            <div class="row-name">${m.name}</div>
+            <div class="row-tag">月繳</div>
+          </div>
+          <div class="row-admin admin-only flex">
+            <div class="row-fee">單週 $${m.weekly}<span class="fee-sep">・</span>預繳 $${m.prepaid.toLocaleString()}<span class="fee-sep">・</span>剩 ${sessionsOf(m)} 次</div>
+            <div class="row-admin-actions">
+              <button type="button" class="row-btn row-btn-ghost" data-action="edit" data-id="${m.id}">修改</button>
+              <button type="button" class="row-btn row-btn-danger" data-action="remove" data-id="${m.id}">移除</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('') + `<button type="button" class="add-row admin-only" id="addMemberBtn">＋ 新增月繳成員</button>`;
+
+    list.querySelectorAll('[data-action="edit"]').forEach(btn=>{
+      btn.addEventListener('click', ()=> openEdit(btn.dataset.id));
+    });
+    list.querySelectorAll('[data-action="remove"]').forEach(btn=>{
+      btn.addEventListener('click', ()=> removeMember(btn.dataset.id));
+    });
+    document.getElementById('addMemberBtn').addEventListener('click', openNew);
+  }
+
+  function recalcSessionsField(){
+    const weekly = Number(document.getElementById('editWeekly').value) || 0;
+    const prepaid = Number(document.getElementById('editPrepaid').value) || 0;
+    document.getElementById('editSessions').value = weekly > 0 ? Math.floor(prepaid / weekly) : 0;
+  }
+
+  function openEdit(id){
+    const m = MONTHLY_MEMBERS.find(x=>x.id === id);
+    sheetMode = 'edit';
+    editingId = id;
+    document.getElementById('editTitle').textContent = '月繳管理';
+    document.getElementById('editName').value = m.name;
+    document.getElementById('editWeekly').value = m.weekly;
+    document.getElementById('editPrepaid').value = m.prepaid;
+    document.getElementById('editSave').textContent = '儲存';
+    recalcSessionsField();
+    document.getElementById('editOverlay').classList.add('open');
+  }
+  function openNew(){
+    sheetMode = 'new';
+    editingId = null;
+    document.getElementById('editTitle').textContent = '新增月繳成員';
+    document.getElementById('editName').value = '';
+    document.getElementById('editWeekly').value = DEFAULT_WEEKLY;
+    document.getElementById('editPrepaid').value = 0;
+    document.getElementById('editSave').textContent = '新增';
+    recalcSessionsField();
+    document.getElementById('editOverlay').classList.add('open');
+    setTimeout(()=> document.getElementById('editName').focus(), 50);
+  }
+  function closeEdit(){
+    document.getElementById('editOverlay').classList.remove('open');
+    editingId = null;
+  }
+  function saveEdit(){
+    const name = document.getElementById('editName').value.trim();
+    if(!name){ showToast('請輸入姓名'); return; }
+    const weekly = Math.max(0, Number(document.getElementById('editWeekly').value) || 0);
+    const prepaid = Math.max(0, Number(document.getElementById('editPrepaid').value) || 0);
+
+    if(sheetMode === 'new'){
+      const m = { id:'m_' + Date.now().toString(36), name, weekly, prepaid };
+      MONTHLY_MEMBERS.push(m);
+      persistAddedMember(m);
+      saveFees();
+      renderMonthlyMembers();
+      closeEdit();
+      showToast('已新增 ' + name + ' 為月繳成員');
+      return;
+    }
+
+    const m = MONTHLY_MEMBERS.find(x=>x.id === editingId);
+    if(!m) return;
+    m.name = name;
+    m.weekly = weekly;
+    m.prepaid = prepaid;
+    saveFees();
+    renderMonthlyMembers();
+    closeEdit();
+    showToast('已更新 ' + m.name + ' 的月繳資料');
+  }
+
+  document.getElementById('editCancel').addEventListener('click', closeEdit);
+  document.getElementById('editSave').addEventListener('click', saveEdit);
+  document.getElementById('editOverlay').addEventListener('click', e=>{
+    if(e.target.id === 'editOverlay') closeEdit();
+  });
+  document.getElementById('editWeekly').addEventListener('input', recalcSessionsField);
+  document.getElementById('editPrepaid').addEventListener('input', recalcSessionsField);
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> t.classList.remove('show'), 2200);
+  }
+
+  loadFees();
+  renderMonthlyMembers();
+</script>
 </body>
 </html>

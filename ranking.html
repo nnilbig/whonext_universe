@@ -6,6 +6,7 @@
 <title>排名 — WHONEXT UNIVERSE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="auth.css">
 <style>
   :root{
     --n-accent:#9FB3C8; --n-glow:rgba(159,179,200,0.5);
@@ -77,6 +78,10 @@
   .wrap{ max-width: 640px; margin:0 auto; padding: 20px 16px 8px; }
 
   .hero{ padding: 4px 4px 22px; }
+  .hero .hero-eyebrow{
+    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary);
+    text-transform:uppercase; margin-bottom:8px;
+  }
   .hero .wordmark{
     font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.06em;
     font-size: clamp(24px,6.4vw,30px); margin-bottom:8px; color: var(--gold);
@@ -174,13 +179,19 @@
         <div class="eyebrow">WHONEXT</div>
         <h1>UNIVERSE</h1>
       </div>
+      <div class="nav-role">
+        <div class="role-toggle">
+          <button class="active" data-role="player">球員</button>
+          <button data-role="admin">管理員</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="wrap">
 
     <div class="hero">
-      <div class="wordmark">排行</div>
+      <div class="wordmark">排行榜</div>
     </div>
 
     <div class="tabs" id="rankTabs">
@@ -191,7 +202,7 @@
 
     <div id="board-friend">
       <div class="board-title"><span class="t">WHO朋引伴 Top 5</span><span class="n">單位：位朋友</span></div>
-      <div class="board-subtitle">球隊推廣大使</div>
+      <div class="board-subtitle">WHO朋引伴來打球，你就是推廣大使</div>
       <div class="podium">
         <div class="podium-slot p2"><div class="podium-rank">NO.2</div><div class="podium-avatar">安</div><div class="podium-name">安</div><div class="podium-value">6 位</div></div>
         <div class="podium-slot p1"><div class="podium-rank">NO.1</div><div class="podium-avatar">忠</div><div class="podium-name">忠</div><div class="podium-value">8 位</div></div>
@@ -205,7 +216,7 @@
 
     <div id="board-attend" style="display:none">
       <div class="board-title"><span class="t">WHO常出席 Top 5</span><span class="n">單位：場次</span></div>
-      <div class="board-subtitle">場上核心班底</div>
+      <div class="board-subtitle">場場常出席，你就是場上核心</div>
       <div class="podium">
         <div class="podium-slot p2"><div class="podium-rank">NO.2</div><div class="podium-avatar">孟</div><div class="podium-name">孟翰</div><div class="podium-value">22 場</div></div>
         <div class="podium-slot p1"><div class="podium-rank">NO.1</div><div class="podium-avatar">儒</div><div class="podium-name">儒</div><div class="podium-value">23 場</div></div>
@@ -219,7 +230,7 @@
 
     <div id="board-dropin" style="display:none">
       <div class="board-title"><span class="t">WHO常報名 Top 5</span><span class="n">單位：場次</span></div>
-      <div class="board-subtitle">臨場助陣先鋒</div>
+      <div class="board-subtitle">場場常報名，你就是助陣先鋒</div>
       <div class="podium">
         <div class="podium-slot p2"><div class="podium-rank">NO.2</div><div class="podium-avatar">V</div><div class="podium-name">Vic</div><div class="podium-value">10 場</div></div>
         <div class="podium-slot p1"><div class="podium-rank">NO.1</div><div class="podium-avatar">韶</div><div class="podium-name">韶恩</div><div class="podium-value">17 場</div></div>
@@ -245,6 +256,7 @@ function setBoard(key){
   });
 }
 </script>
+<script src="auth.js"></script>
 
 </body>
 </html>

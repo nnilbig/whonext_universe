@@ -6,6 +6,7 @@
 <title>WHONEXT x 卡牌系統</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="auth.css">
 <style>
   :root{
     --n-accent:#9FB3C8; --n-glow:rgba(159,179,200,0.5);
@@ -95,6 +96,10 @@
   .wrap{ max-width: 640px; margin:0 auto; padding: 20px 16px 8px; }
 
   .hero{ padding: 4px 4px 22px; }
+  .hero .hero-eyebrow{
+    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary);
+    text-transform:uppercase; margin-bottom:8px;
+  }
   .hero .wordmark{
     font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.06em;
     font-size: clamp(24px,6.4vw,30px); margin-bottom:8px; color: var(--gold);
@@ -310,16 +315,21 @@
         <div class="eyebrow">WHONEXT</div>
         <h1>UNIVERSE</h1>
       </div>
+      <div class="nav-role">
+        <div class="role-toggle">
+          <button class="active" data-role="player">球員</button>
+          <button data-role="admin">管理員</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="wrap">
 
     <div class="hero">
-      <div class="wordmark">卡牌系統</div>
-      <p>WHONEXT 2026 卡牌賽制，翻牌還是翻盤。</p>
+      <div class="wordmark">卡牌賽</div>
+      <p>WHONEXT 2026 卡牌賽，翻牌就是翻盤。</p>
       <div class="nav-actions">
-        <a href="whonext_ig_intro_site.html" target="_blank" rel="noopener" id="btnPromo" aria-label="卡牌系統介紹">▤</a>
         <button id="btnReset" aria-label="全部重置">↺</button>
         <button id="btnSwap" aria-label="交換場地">⇄</button>
         <button id="btnRules" aria-label="規則說明">ⓘ</button>
@@ -428,39 +438,14 @@
     { name: "歷史重演", desc: "即刻生效，可以指定使用我方歷史牌池的任一卡牌。", isAce: true }
   ];
 
-  function placeholderDeck(prefix, count){
-    const normalCount = Math.round(count * 10 / 15); // 同樣維持約 3:1 的一般:王牌比例
-    const aceCount = count - normalCount;
-    const cards = [];
-    for(let i = 1; i <= normalCount; i++){
-      cards.push({ name: prefix + '卡 ' + String(i).padStart(2,'0'), desc: '開發中，內容尚未定案。' });
-    }
-    for(let i = 1; i <= aceCount; i++){
-      cards.push({ name: prefix + '王牌 ' + String(i).padStart(2,'0'), desc: '開發中，內容尚未定案。', isAce: true });
-    }
-    return cards;
-  }
-
-  const DECK_B_CARDS = placeholderDeck('陷阱', 15);
-  const DECK_C_CARDS = placeholderDeck('道具', 15);
-
-  // 每副牌組的抽卡機率規則各自獨立設定，目前三副數值先設成一樣，
-  // 之後要讓某副牌組機率不同，只需要改這裡對應的 rules，不用動抽卡邏輯本身。
+  // 目前僅開放標準牌組，其餘牌組待開發後再加回 DECKS / DECK_ORDER。
   const DECKS = {
     A: {
       id: 'A', name: '標準牌組', desc: '一般規則限制卡＋分數操作王牌卡', cards: DECK_A_CARDS,
       rules: { aceUnlockScore: 5, baseAceProb: 1/4, trailingAceMultiplier: 1.5 }
-    },
-    B: {
-      id: 'B', name: '陷阱卡牌組', desc: '15 張卡，內容開發中', cards: DECK_B_CARDS,
-      rules: { aceUnlockScore: 5, baseAceProb: 1/4, trailingAceMultiplier: 1.5 }
-    },
-    C: {
-      id: 'C', name: '道具牌組', desc: '15 張卡，內容開發中', cards: DECK_C_CARDS,
-      rules: { aceUnlockScore: 5, baseAceProb: 1/4, trailingAceMultiplier: 1.5 }
     }
   };
-  const DECK_ORDER = ['A', 'B', 'C'];
+  const DECK_ORDER = ['A'];
   let currentDeckId = 'A';
   let cardPool = DECKS[currentDeckId].cards;
 
@@ -817,5 +802,6 @@
   renderSharedPool();
   render();
 </script>
+<script src="auth.js"></script>
 </body>
 </html>

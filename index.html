@@ -6,6 +6,7 @@
 <title>WHONEXT UNIVERSE — 首頁</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="auth.css">
 <style>
   :root{
     --n-accent:#9FB3C8; --n-glow:rgba(159,179,200,0.5);
@@ -72,15 +73,6 @@
   }
   .nav-title .eyebrow{ font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary); text-transform:uppercase; }
   .nav-title h1{ margin:1px 0 0; font-size:20px; font-weight:800; letter-spacing:-.01em; }
-  .nav-actions{ display:flex; align-items:center; gap:8px; }
-  .role-toggle{
-    display:flex; background: var(--card); border:1px solid var(--line);
-    border-radius:999px; padding:2px;
-  }
-  .role-toggle button{
-    font-size:11px; font-weight:700; padding:6px 12px; border-radius:999px; color:var(--tertiary);
-  }
-  .role-toggle button.active{ background: var(--card-strong); color: var(--label); }
 
   .wrap{ max-width: 640px; margin:0 auto; padding: 20px 16px 8px; }
 
@@ -181,10 +173,10 @@
         <div class="eyebrow">WHONEXT</div>
         <h1>UNIVERSE</h1>
       </div>
-      <div class="nav-actions">
+      <div class="nav-role">
         <div class="role-toggle">
-          <button class="active">球員</button>
-          <button>管理員</button>
+          <button class="active" data-role="player">球員</button>
+          <button data-role="admin">管理員</button>
         </div>
       </div>
     </div>
@@ -193,34 +185,16 @@
   <div class="wrap">
 
     <div class="hero">
-      <div class="hero-eyebrow">WHONEXT</div>
+      <div class="hero-eyebrow">WHONEXT BADMINTON CLUB</div>
       <div class="wordmark">WHONEXT B.C.</div>
       <p>重新定義，換誰上場</p>
     </div>
-
-    <div class="section-label">核心模組</div>
-
-    <a class="module-card glass" data-accent="finance" href="finance.html">
-      <div class="m-icon">$</div>
-      <div class="m-body">
-        <div class="m-title-row">
-          <div class="m-title">帳務</div>
-          <div class="m-status live">已上線</div>
-        </div>
-        <div class="m-desc">收支紀錄。</div>
-        <div class="m-meta">
-          <div class="stat">本月餘額 <b>$1,240</b></div>
-          <div class="stat">待繳 <b>$0</b></div>
-        </div>
-      </div>
-      <div class="m-arrow">›</div>
-    </a>
 
     <a class="module-card glass" data-accent="rank" href="ranking.html">
       <div class="m-icon">★</div>
       <div class="m-body">
         <div class="m-title-row">
-          <div class="m-title">排名</div>
+          <div class="m-title">排行榜</div>
           <div class="m-status live">已上線</div>
         </div>
         <div class="m-desc">出席、糾團與更多榜單，讓每一份參與都被看見。</div>
@@ -236,13 +210,29 @@
       <div class="m-icon">⚑</div>
       <div class="m-body">
         <div class="m-title-row">
-          <div class="m-title">賽制</div>
+          <div class="m-title">卡牌賽</div>
           <div class="m-status live">已上線</div>
         </div>
         <div class="m-desc">卡牌賽制與積分賽制，把每一分變成一場博弈與長期賽季經營。</div>
         <div class="sub-tags">
           <span>卡牌賽制 · WHONEXT 2026</span>
           <span>積分賽制 · 第 6 名</span>
+        </div>
+      </div>
+      <div class="m-arrow">›</div>
+    </a>
+
+    <a class="module-card glass" data-accent="finance" href="finance.html">
+      <div class="m-icon">$</div>
+      <div class="m-body">
+        <div class="m-title-row">
+          <div class="m-title">帳務</div>
+          <div class="m-status live">已上線</div>
+        </div>
+        <div class="m-desc">收支紀錄。</div>
+        <div class="m-meta">
+          <div class="stat">本月餘額 <b>$1,240</b></div>
+          <div class="stat">待繳 <b>$0</b></div>
         </div>
       </div>
       <div class="m-arrow">›</div>
@@ -268,5 +258,6 @@
 
   </div>
 
+<script src="auth.js"></script>
 </body>
 </html>
