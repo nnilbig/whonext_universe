@@ -119,8 +119,11 @@
     font-size:10px; font-weight:700; padding:3px 9px; border-radius:999px; flex-shrink:0; white-space:nowrap;
     cursor:default;
   }
+  .event-status.upcoming{ background: rgba(255,255,255,0.08); color: var(--secondary); }
   .event-status.open{ background: rgba(127,215,154,0.15); color: var(--good); }
+  .event-status.waitlist{ background: rgba(228,201,122,0.15); color: var(--gold); }
   .event-status.full{ background: rgba(231,161,90,0.15); color: var(--warn); }
+  .event-status.closed{ background: rgba(255,255,255,0.05); color: var(--tertiary); }
   body.is-admin .event-status{ cursor:pointer; box-shadow: inset 0 0 0 1px currentColor; }
   body.is-admin .event-status:active{ opacity:.7; }
   .event-meta{ font-size:12.5px; color:var(--secondary); line-height:1.5; font-family: var(--sf-mono); }
@@ -371,12 +374,36 @@
 <script src="auth.js"></script>
 <script src="bottom-nav.js"></script>
 <script>
-  // 賽事資料存在後端 events 分頁，status 只有兩種：
-  // open（開放報名中）／full（報名額滿），管理員可點擊狀態標籤切換。
+  // 賽事資料存在後端 events 分頁。status 是管理員手動控制的三段式：
+  // upcoming（即將開放）／open（報名中，實際名額狀態由系統判斷）／closed（已截止），
+  // 管理員點擊狀態標籤依序切換。open 底下的顯示文字再依報名人數/上限/候補設定
+  // 自動判斷成「報名中」「已額滿」「開放候補」三種，不用手動選。
+  // 舊資料的 status 若是 full 或空值，一律當成 open 處理（走自動判斷）。
   let EVENTS = [];
   let eventsLoaded = false;
   const WEEKDAYS = ['日','一','二','三','四','五','六'];
-  const STATUS_LABEL = { open:'開放報名中', full:'報名額滿' };
+  const STATUS_CYCLE = ['upcoming', 'open', 'closed'];
+  const STATUS_MANUAL_META = {
+    upcoming: { label: '即將開放', cls: 'upcoming' },
+    closed:   { label: '已截止',   cls: 'closed' }
+  };
+
+  function normalizeStatus(status){
+    return STATUS_CYCLE.includes(status) ? status : 'open';
+  }
+
+  function eventStatusMeta(ev){
+    const status = normalizeStatus(ev.status);
+    if(STATUS_MANUAL_META[status]) return STATUS_MANUAL_META[status];
+    const capacity = Number(ev.capacity) || 0;
+    const count = Number(ev.signup_count) || 0;
+    if(capacity && count >= capacity){
+      return ev.overflow_mode === 'waitlist'
+        ? { label: '開放候補', cls: 'waitlist' }
+        : { label: '已額滿', cls: 'full' };
+    }
+    return { label: '報名中', cls: 'open' };
+  }
 
   function loadCachedEvents(){
     const cached = getApiCache({ action:'getEvents' });
@@ -401,11 +428,12 @@
 
   async function persistEvents(){
     try{
-      await apiPost('saveEvents', EVENTS);
+      const result = await apiPost('saveEvents', EVENTS);
+      if(!result || !result.success) return null;
       setApiCache({ action:'getEvents' }, { events: EVENTS });
-      return true;
+      return result;
     } catch(e){
-      return false;
+      return null;
     }
   }
 
@@ -445,6 +473,7 @@
       const mm = isoDate.slice(5,7);
       const dd = isoDate.slice(8,10);
       const wd = WEEKDAYS[new Date(isoDate + 'T00:00:00').getDay()];
+      const statusMeta = eventStatusMeta(ev);
       return '<div class="event-card glass" data-index="' + i + '">' +
         '<div class="event-date">' +
           '<div class="ed-month">' + mm + '月</div>' +
@@ -455,7 +484,7 @@
           '<div class="event-title-row">' +
             '<div class="event-title">' + ev.title + '</div>' +
             '<div class="event-title-actions">' +
-              '<button type="button" class="event-status ' + ev.status + '" data-index="' + i + '">' + STATUS_LABEL[ev.status] + '</button>' +
+              '<button type="button" class="event-status ' + statusMeta.cls + '" data-index="' + i + '">' + statusMeta.label + '</button>' +
               '<button type="button" class="event-edit-btn admin-only" data-index="' + i + '">編輯</button>' +
             '</div>' +
           '</div>' +
@@ -477,7 +506,8 @@
         if(!document.body.classList.contains('is-admin')) return;
         const ev = EVENTS[Number(btn.dataset.index)];
         const prevStatus = ev.status;
-        ev.status = ev.status === 'open' ? 'full' : 'open';
+        const cur = normalizeStatus(ev.status);
+        ev.status = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur) + 1) % STATUS_CYCLE.length];
         renderEvents();
         const ok = await persistEvents();
         if(!ok){
@@ -571,6 +601,13 @@
     document.getElementById('eventEditCapacity').value = tpl.capacity;
     document.getElementById('eventEditOverflow').value = tpl.overflow_mode;
 
+    // 名單還在抓的時候先鎖住儲存鈕，避免手速太快在清單填好前就存檔，
+    // 導致賽事建立成功但月繳名單沒有一起匯入、卻完全沒有提示。
+    const saveBtn = document.getElementById('eventEditSave');
+    saveBtn.disabled = true;
+    document.getElementById('eventEditAttendWrap').style.display = '';
+    document.getElementById('eventEditAttendList').innerHTML = '<div class="signup-empty">載入月繳名單中…</div>';
+
     const month = currentCalendarMonth();
     try{
       const memberResult = await apiGet({ action:'getMembers', month: month });
@@ -585,6 +622,8 @@
     } catch(e){
       document.getElementById('eventEditAttendWrap').style.display = 'none';
       showToast('讀取月繳名單失敗，請稍後再試');
+    } finally {
+      saveBtn.disabled = false;
     }
   }
 
@@ -631,20 +670,31 @@
     const ok = await persistEvents();
 
     if(ok){
-      await refreshEvents(); // 後端會幫沒有 id 的賽事自動產生 id，重抓一次同步回來
+      await refreshEvents(); // 重抓一次同步回來，更新 signup_count 等欄位
       let importMsg = '';
       if(isNew && attendNames.length){
-        const newEv = EVENTS[EVENTS.length - 1];
-        try{
-          const bulkResult = await apiPost('bulkSignupEvent', { event_id: newEv.id, names: attendNames });
-          if(bulkResult.success){
-            const parts = [];
-            if(bulkResult.confirmed) parts.push('確認 ' + bulkResult.confirmed + ' 人');
-            if(bulkResult.waitlist) parts.push('候補 ' + bulkResult.waitlist + ' 人');
-            if(parts.length) importMsg = '，' + parts.join('、');
-            await refreshEvents();
+        // 用後端這次寫入實際回傳的 events（已含新產生的 id），
+        // 而不是靠「本地陣列最後一筆」去猜，避免順序假設錯了就找錯賽事。
+        const createdEvents = ok.events || [];
+        const newEv = createdEvents[createdEvents.length - 1];
+        if(newEv && newEv.id){
+          try{
+            const bulkResult = await apiPost('bulkSignupEvent', { event_id: newEv.id, names: attendNames });
+            if(bulkResult.success){
+              const parts = [];
+              if(bulkResult.confirmed) parts.push('確認 ' + bulkResult.confirmed + ' 人');
+              if(bulkResult.waitlist) parts.push('候補 ' + bulkResult.waitlist + ' 人');
+              if(parts.length) importMsg = '，' + parts.join('、');
+              await refreshEvents();
+            } else {
+              importMsg = '，但月繳名單匯入失敗（' + (SIGNUP_FAIL_MSG[bulkResult.reason] || '請稍後手動匯入') + '）';
+            }
+          } catch(e){
+            importMsg = '，但月繳名單匯入失敗，請稍後手動匯入';
           }
-        } catch(e){ /* 賽事本身已建立成功,匯入失敗不影響儲存結果 */ }
+        } else {
+          importMsg = '，但月繳名單匯入失敗，請稍後手動匯入';
+        }
       }
       saveBtn.disabled = false;
       saveBtn.textContent = '儲存';
@@ -751,7 +801,9 @@
   const SIGNUP_FAIL_MSG = {
     full: '報名已額滿',
     duplicate: '您已經報名過了',
-    event_not_found: '找不到這筆賽事'
+    event_not_found: '找不到這筆賽事',
+    not_open: '報名尚未開放',
+    closed: '報名已截止'
   };
 
   async function submitSignup(){

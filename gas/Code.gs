@@ -281,7 +281,7 @@ function saveEvents(data) {
     sheet.getRange(2, 1, newRows.length, headers.length).setValues(newRows);
   }
 
-  return { success: true, count: newRows.length };
+  return { success: true, count: newRows.length, events: data };
 }
 
 // 賽事報名。用 LockService 避免多人同時報名時,名額判斷算錯(超賣)。
@@ -295,9 +295,14 @@ function signupEvent(data) {
     const idCol = eventHeaders.indexOf('id');
     const capacityCol = eventHeaders.indexOf('capacity');
     const overflowCol = eventHeaders.indexOf('overflow_mode');
+    const eventStatusCol = eventHeaders.indexOf('status');
 
     const eventRow = eventRows.find(r => String(r[idCol]) === String(data.event_id));
     if (!eventRow) return { success: false, reason: 'event_not_found' };
+
+    const eventStatus = eventRow[eventStatusCol];
+    if (eventStatus === 'upcoming') return { success: false, reason: 'not_open' };
+    if (eventStatus === 'closed') return { success: false, reason: 'closed' };
 
     const capacity = Number(eventRow[capacityCol]) || 0;
     const overflowMode = eventRow[overflowCol] === 'waitlist' ? 'waitlist' : 'reject';
@@ -364,9 +369,14 @@ function bulkSignupEvent(data) {
     const idCol = eventHeaders.indexOf('id');
     const capacityCol = eventHeaders.indexOf('capacity');
     const overflowCol = eventHeaders.indexOf('overflow_mode');
+    const eventStatusCol = eventHeaders.indexOf('status');
 
     const eventRow = eventRows.find(r => String(r[idCol]) === String(data.event_id));
     if (!eventRow) return { success: false, reason: 'event_not_found' };
+
+    const eventStatus = eventRow[eventStatusCol];
+    if (eventStatus === 'upcoming') return { success: false, reason: 'not_open' };
+    if (eventStatus === 'closed') return { success: false, reason: 'closed' };
 
     const capacity = Number(eventRow[capacityCol]) || 0;
     const overflowMode = eventRow[overflowCol] === 'waitlist' ? 'waitlist' : 'reject';
