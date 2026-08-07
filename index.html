@@ -167,6 +167,9 @@
   .edit-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
   select.edit-input{ color: var(--label); }
   select.edit-input option{ color: var(--label); background:#1c1c1e; }
+  .time-range-row{ display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .time-range-row .edit-input{ flex:1; min-width:0; margin-bottom:0; }
+  .time-range-sep{ color:var(--tertiary); flex-shrink:0; }
   .edit-actions{ display:flex; gap:8px; margin-top:2px; }
   .edit-actions button{
     flex:1; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px;
@@ -299,7 +302,11 @@
       <input type="date" id="eventEditDate" class="edit-input">
 
       <div class="edit-field-label">時間</div>
-      <input type="text" id="eventEditTime" class="edit-input" placeholder="例如 14:00–17:00">
+      <div class="time-range-row">
+        <select id="eventEditTimeStart" class="edit-input"></select>
+        <span class="time-range-sep">–</span>
+        <select id="eventEditTimeEnd" class="edit-input"></select>
+      </div>
 
       <div class="edit-field-label">地點</div>
       <input type="text" id="eventEditLocation" class="edit-input" placeholder="例如 林口高中體育館">
@@ -528,6 +535,35 @@
 
   let editingIndex = null;
 
+  // 每 30 分鐘一個選項，06:00～23:30，涵蓋大部分活動時段。
+  const TIME_OPTIONS = (function(){
+    const opts = [];
+    for(let mins = 6 * 60; mins <= 23 * 60 + 30; mins += 30){
+      opts.push(String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0'));
+    }
+    return opts;
+  })();
+
+  function timeSelectOptionsHTML(extraValue){
+    const values = new Set(TIME_OPTIONS);
+    if(extraValue) values.add(extraValue); // 舊資料的時間若不在半點上，補一個選項讓它顯示得出來
+    return [...values].sort().map(function(t){ return '<option value="' + t + '">' + t + '</option>'; }).join('');
+  }
+
+  function setTimeSelects(startVal, endVal){
+    const startEl = document.getElementById('eventEditTimeStart');
+    const endEl = document.getElementById('eventEditTimeEnd');
+    startEl.innerHTML = timeSelectOptionsHTML(startVal);
+    endEl.innerHTML = timeSelectOptionsHTML(endVal);
+    startEl.value = startVal || TIME_OPTIONS[0];
+    endEl.value = endVal || TIME_OPTIONS[0];
+  }
+
+  function parseTimeRange(str){
+    const parts = String(str || '').split(/[-–]/).map(function(s){ return s.trim(); });
+    return { start: parts[0] || '', end: parts[1] || '' };
+  }
+
   function openEventEdit(index){
     editingIndex = index;
     const ev = EVENTS[index];
@@ -538,7 +574,8 @@
     document.getElementById('eventEditTitle').value = ev.title;
     document.getElementById('eventEditType').value = ev.type || '球類';
     document.getElementById('eventEditDate').value = String(ev.date).slice(0, 10);
-    document.getElementById('eventEditTime').value = ev.time;
+    const parsedTime = parseTimeRange(ev.time);
+    setTimeSelects(parsedTime.start, parsedTime.end);
     document.getElementById('eventEditLocation').value = ev.location;
     document.getElementById('eventEditCapacity').value = ev.capacity || '';
     document.getElementById('eventEditOverflow').value = ev.overflow_mode === 'waitlist' ? 'waitlist' : 'reject';
@@ -553,7 +590,7 @@
     document.getElementById('eventEditTitle').value = '';
     document.getElementById('eventEditType').value = '球類';
     document.getElementById('eventEditDate').value = '';
-    document.getElementById('eventEditTime').value = '';
+    setTimeSelects('20:00', '22:00');
     document.getElementById('eventEditLocation').value = '';
     document.getElementById('eventEditCapacity').value = '';
     document.getElementById('eventEditOverflow').value = 'reject';
@@ -597,7 +634,8 @@
     document.getElementById('eventEditTitle').value = tpl.title;
     document.getElementById('eventEditType').value = tpl.type;
     document.getElementById('eventEditLocation').value = tpl.location;
-    document.getElementById('eventEditTime').value = tpl.time;
+    const tplTime = parseTimeRange(tpl.time);
+    setTimeSelects(tplTime.start, tplTime.end);
     document.getElementById('eventEditDate').value = nextFridayISO();
     document.getElementById('eventEditCapacity').value = tpl.capacity;
     document.getElementById('eventEditOverflow').value = tpl.overflow_mode;
@@ -633,11 +671,14 @@
     const title = document.getElementById('eventEditTitle').value.trim();
     const type = document.getElementById('eventEditType').value;
     const date = document.getElementById('eventEditDate').value;
-    const time = document.getElementById('eventEditTime').value.trim();
+    const timeStart = document.getElementById('eventEditTimeStart').value;
+    const timeEnd = document.getElementById('eventEditTimeEnd').value;
     const location = document.getElementById('eventEditLocation').value.trim();
     const capacityRaw = document.getElementById('eventEditCapacity').value.trim();
     const overflowMode = document.getElementById('eventEditOverflow').value;
-    if(!title || !date || !time || !location){ showToast('請填寫完整資訊'); return; }
+    if(!title || !date || !timeStart || !timeEnd || !location){ showToast('請填寫完整資訊'); return; }
+    if(timeEnd <= timeStart){ showToast('結束時間需晚於開始時間'); return; }
+    const time = timeStart + '-' + timeEnd;
 
     const isNew = editingIndex === 'new';
     const capacity = capacityRaw === '' ? '' : Number(capacityRaw);
