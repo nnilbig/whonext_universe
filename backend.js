@@ -3,7 +3,7 @@
 // 所有頁面共用同一個 BACKEND_URL，先讀快取立刻顯示，同時背景重新
 // 抓取最新資料（stale-while-revalidate），首頁會預先暖機常用資料。
 // ---------------------------------------------------------------
-const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzNUXmrzUER66RE6TgmWYLmexZdM9PeZiaqyZ_dzS1YKiuVM1qGQNFKznVB4oq40uESTw/exec';
+const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbwnXCYW2C8P6FnNHoMNYJb2VprWVK6_mTRIoFyIu6DsWtyZnn46mEa5IMLnCO1hpmjr/exec';
 const API_CACHE_PREFIX = 'whonext_api_';
 
 function apiGet(params){

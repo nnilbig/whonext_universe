@@ -134,7 +134,8 @@
       if(playerBtn) playerBtn.addEventListener('click', function(){ setRole('player'); });
       if(adminBtn) adminBtn.addEventListener('click', function(){
         if(getRole() === 'admin') return;
-        openModal();
+        // TODO: 開發階段暫時跳過登入驗證，直接切換管理員。上線前要改回 openModal()。
+        setRole('admin');
       });
     });
   }

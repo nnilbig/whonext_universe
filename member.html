@@ -166,10 +166,6 @@
   }
   .more-row:active{ color:var(--label); }
 
-  .wordmark-footer{
-    text-align:center; margin: 24px 0 6px;
-    font-family:'Archivo Black', var(--sf); font-size:12px; letter-spacing:.16em; color: var(--tertiary);
-  }
 
   /* ---------- EDIT SHEET ---------- */
   .edit-title{ font-size:16px; font-weight:800; margin-bottom:16px; color:var(--label); }
@@ -184,7 +180,7 @@
   .edit-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
   .edit-input[readonly]{ color: var(--secondary); background: rgba(255,255,255,0.03); }
   select.edit-input{ color: var(--label); }
-  select.edit-input option{ color:#111; background:#fff; }
+  select.edit-input option{ color: var(--label); background:#1c1c1e; }
   .edit-actions{ display:flex; gap:8px; margin-top:2px; }
   .edit-actions button{
     flex:1; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px;
@@ -248,8 +244,6 @@
 
     <div class="section-label"><span class="t">臨打球員</span><span class="n" id="dropinCount">共 0 位</span></div>
     <div class="member-list glass" id="dropinList"></div>
-
-    <div class="wordmark-footer">WHONEXT</div>
 
   </div>
 

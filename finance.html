@@ -143,10 +143,6 @@
   .row-value{ font-size:14.5px; font-weight:700; font-family: var(--sf-mono); flex-shrink:0; }
   .chev{ color:var(--tertiary); font-size:15px; margin-left:2px; flex-shrink:0; }
 
-  .wordmark-footer{
-    text-align:center; margin: 24px 0 6px;
-    font-family:'Archivo Black', var(--sf); font-size:12px; letter-spacing:.16em; color: var(--tertiary);
-  }
 
   /* ---- detail sheet ---- */
   .sheet-overlay{
@@ -217,7 +213,7 @@
   }
   .edit-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
   select.edit-input{ color: var(--label); }
-  select.edit-input option{ color:#111; background:#fff; }
+  select.edit-input option{ color: var(--label); background:#1c1c1e; }
   .edit-save-btn{
     width:100%; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px;
     background: var(--label); color:#000;
@@ -294,8 +290,6 @@
 
     <div class="board-title"><span class="t">每週紀錄</span><span class="n" id="weekCount">共 0 週</span></div>
     <div class="board-list glass" id="weekList"></div>
-
-    <div class="wordmark-footer">WHONEXT</div>
 
   </div>
 
