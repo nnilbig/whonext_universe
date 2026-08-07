@@ -12,6 +12,12 @@
     return path === '' ? 'index.html' : path;
   }
 
+  // 球隊錢包／我的錢包依身分切換：管理員看球隊錢包，其他人看我的錢包。
+  function financeLabel(){
+    const role = window.WhonextAuth ? WhonextAuth.getRole() : 'player';
+    return role === 'admin' ? '球隊錢包' : '我的錢包';
+  }
+
   function buildNav(){
     const page = currentPage();
     const nav = document.createElement('nav');
@@ -19,13 +25,20 @@
     nav.innerHTML = '<div class="bottom-nav-inner">' +
       TABS.map(function(t){
         const cls = t.href === page ? 'active' : '';
+        const label = t.href === 'finance.html' ? financeLabel() : t.label;
         return '<a class="' + cls + '" data-accent="' + t.accent + '" href="' + t.href + '">' +
           '<span class="bn-icon">' + t.icon + '</span>' +
-          '<span>' + t.label + '</span>' +
+          '<span class="bn-label">' + label + '</span>' +
         '</a>';
       }).join('') +
     '</div>';
     document.body.appendChild(nav);
+
+    const financeLabelEl = nav.querySelector('a[href="finance.html"] .bn-label');
+    if(financeLabelEl){
+      new MutationObserver(function(){ financeLabelEl.textContent = financeLabel(); })
+        .observe(document.body, { attributes:true, attributeFilter:['class'] });
+    }
   }
 
   if(document.readyState === 'loading'){

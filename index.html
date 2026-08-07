@@ -14,9 +14,10 @@
     --e-accent:#C9B79B; --e-glow:rgba(201,183,155,0.5);
     --x-accent:#B9B9BD; --x-glow:rgba(185,185,189,0.5);
     --t-accent:#E9E9E4; --t-glow:rgba(233,233,228,0.5);
-    --good:#7FD79A; --good-glow:rgba(127,215,154,0.35);
-    --warn:#E7A15A; --warn-glow:rgba(231,161,90,0.35);
-    --gold:#E4C97A; --gold-glow:rgba(228,201,122,0.35);
+    --good:#7FD79A; --good-glow:rgba(127,215,154,0.35); --good-bg:rgba(127,215,154,0.14);
+    --warn:#E7A15A; --warn-glow:rgba(231,161,90,0.35); --warn-bg:rgba(231,161,90,0.14);
+    --gold:#E4C97A; --gold-glow:rgba(228,201,122,0.35); --gold-bg:rgba(228,201,122,0.14);
+    --info:#7FA8D9; --info-bg:rgba(127,168,217,0.14);
 
     --bg:#000000;
     --card:rgba(255,255,255,0.07);
@@ -52,6 +53,28 @@
     border-radius: 22px;
   }
 
+  /* ---------- BRAND MASK ---------- */
+  .brand-mask{
+    position:fixed; inset:0; z-index:200;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:
+      radial-gradient(ellipse at 15% -10%, rgba(159,179,200,0.09), transparent 45%),
+      radial-gradient(ellipse at 90% 105%, rgba(228,201,122,0.06), transparent 50%),
+      var(--bg);
+    transition: opacity .4s ease;
+  }
+  .brand-mask.hide{ opacity:0; pointer-events:none; }
+  .brand-mask-eyebrow{
+    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--gold);
+    text-transform:uppercase; margin-bottom:10px;
+  }
+  .brand-mask-title{
+    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
+    font-size: clamp(30px,8vw,40px);
+  }
+  .login-stage{ width:100%; max-width:300px; margin-top:28px; padding:0 6px; text-align:left; }
+  .login-stage .signup-submit{ margin-top:2px; }
+
   /* ---------- NAV ---------- */
   .navbar{
     position:sticky; top:0; z-index:30;
@@ -69,6 +92,9 @@
   .nav-title{ display:block; text-decoration:none; color:inherit; }
   .nav-title .eyebrow{ font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary); text-transform:uppercase; }
   .nav-title h1{ margin:1px 0 0; font-size:20px; font-weight:800; letter-spacing:-.01em; }
+
+  .nav-welcome{ display:flex; align-items:center; gap:10px; font-size:12px; color:var(--secondary); }
+  .nav-welcome #navLogoutBtn{ font-size:11px; font-weight:700; color:var(--tertiary); padding:4px 2px; }
 
   .wrap{
     max-width: 640px; margin:0 auto; width:100%;
@@ -201,22 +227,23 @@
   }
   .signup-submit:disabled{ opacity:.5; }
 
-  .bulk-import-btn{
-    width:100%; font-size:12px; font-weight:700; padding:9px 0; border-radius:12px;
-    border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
-    margin: 4px 0 4px;
-  }
-  .bulk-import-btn:disabled{ opacity:.5; }
-
   .signup-list{ display:flex; flex-direction:column; gap:6px; }
-  .signup-row{
-    display:flex; align-items:center; justify-content:space-between; gap:8px;
-    padding:9px 12px; border-radius:12px; background: rgba(255,255,255,0.04); border:1px solid var(--line);
-  }
-  .signup-row-name{ font-size:13px; font-weight:600; min-width:0; }
-  .signup-row-sub{ font-size:11px; color:var(--tertiary); margin-top:1px; }
-  .signup-row-cancel{ flex-shrink:0; font-size:11px; color: var(--warn); font-weight:700; padding:4px 8px; }
   .signup-empty{ font-size:12.5px; color:var(--tertiary); padding: 4px 2px; }
+
+  /* 賽事名單 - 唯讀呈現，排版同 錢包／當周 的月繳・臨打・請假 */
+  .group-card{ margin: 0 0 14px; padding: 14px 14px 12px; }
+  .group-title{ display:flex; align-items:center; justify-content:space-between; margin:0 0 12px; font-size:12px; font-weight:800; }
+  .group-title .cnt{ font-family: var(--sf-mono); font-weight:700; }
+  .att-grid{ display:grid; grid-template-columns: repeat(5, 1fr); gap: 12px 4px; }
+  .att-cell{ text-align:center; }
+  .att-avatar{
+    width:38px; height:38px; border-radius:50%; margin:0 auto 4px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:13px; line-height:1;
+    border:1.5px solid var(--line); background: var(--card-strong);
+  }
+  .att-cell p{ margin:0; font-size:9.5px; color:var(--tertiary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .att-empty{ margin:0; font-size:12px; color:var(--tertiary); }
 
   .import-toggle-row{
     display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -241,6 +268,27 @@
 </head>
 <body>
 
+  <div class="brand-mask" id="brandMask">
+    <div class="brand-mask-eyebrow">WHONEXT</div>
+    <div class="brand-mask-title">UNIVERSE</div>
+
+    <div class="login-stage" id="loginStage" style="display:none">
+      <div class="edit-field-label">選擇身分</div>
+      <select id="loginSelect" class="edit-input">
+        <option value="" selected disabled>請選擇…</option>
+      </select>
+
+      <div id="loginAdminStage" style="display:none">
+        <div class="edit-field-label">帳號</div>
+        <input type="text" id="loginAdminUser" class="edit-input" autocomplete="username">
+        <div class="edit-field-label">密碼</div>
+        <input type="password" id="loginAdminPass" class="edit-input" autocomplete="current-password">
+        <div class="auth-error" id="loginAdminError" style="display:none">帳號或密碼錯誤</div>
+        <button type="button" class="signup-submit" id="loginAdminSubmit">登入</button>
+      </div>
+    </div>
+  </div>
+
   <div class="navbar">
     <div class="nav-inner">
       <a class="nav-title" href="index.html">
@@ -248,9 +296,9 @@
         <h1>UNIVERSE</h1>
       </a>
       <div class="nav-role">
-        <div class="role-toggle">
-          <button class="active" data-role="player">球員</button>
-          <button data-role="admin">管理員</button>
+        <div class="nav-welcome" id="navWelcome">
+          <span id="navWelcomeText">歡迎</span>
+          <button type="button" id="navLogoutBtn">登出</button>
         </div>
       </div>
     </div>
@@ -338,41 +386,47 @@
       <div class="detail-meta" id="detailMeta"></div>
       <div id="detailProgress"></div>
 
-      <div class="detail-section-label">我要報名</div>
-      <div class="signup-mode-toggle">
-        <button type="button" class="active" data-mode="member" id="signupModeMember">球員</button>
-        <button type="button" data-mode="guest" id="signupModeGuest">訪客</button>
-      </div>
-
-      <div id="signupMemberFields">
-        <select id="signupMemberName" class="edit-input"></select>
-      </div>
-      <div id="signupGuestFields" style="display:none">
-        <input type="text" id="signupGuestName" class="edit-input" placeholder="輸入姓名">
-        <div class="edit-field-label">推薦人（選填）</div>
-        <select id="signupReferrer" class="edit-input">
-          <option value="">— 無 —</option>
-        </select>
-      </div>
-
-      <button type="button" class="signup-submit" id="signupSubmit">送出報名</button>
-
-      <button type="button" class="bulk-import-btn admin-only" id="bulkImportBtn">匯入本月月繳名單</button>
-
-      <div class="admin-only" id="bulkImportPanel" style="display:none">
-        <div class="detail-section-label">確認出席名單（<span id="bulkImportMonth"></span>）</div>
-        <div class="signup-list" id="bulkImportList"></div>
-        <div class="edit-actions" style="margin-top:10px">
-          <button type="button" class="edit-cancel" id="bulkImportCancel">取消</button>
-          <button type="button" class="edit-save" id="bulkImportSave">儲存</button>
+      <!-- 暫時移除賽事卡片點擊的報名功能，之後要恢復把 display:none 拿掉即可 -->
+      <div id="eventSignupSection" style="display:none">
+        <div class="detail-section-label">我要報名</div>
+        <div class="signup-mode-toggle">
+          <button type="button" class="active" data-mode="member" id="signupModeMember">球員</button>
+          <button type="button" data-mode="guest" id="signupModeGuest">臨打</button>
         </div>
+
+        <div id="signupMemberFields">
+          <select id="signupMemberName" class="edit-input"></select>
+        </div>
+        <div id="signupGuestFields" style="display:none">
+          <input type="text" id="signupGuestName" class="edit-input" placeholder="輸入姓名">
+          <div class="edit-field-label">推薦人（選填）</div>
+          <select id="signupReferrer" class="edit-input">
+            <option value="">— 無 —</option>
+          </select>
+        </div>
+
+        <button type="button" class="signup-submit" id="signupSubmit">送出報名</button>
       </div>
 
-      <div class="detail-section-label">已確認名單</div>
-      <div class="signup-list" id="signupConfirmedList"></div>
+      <div class="group-card glass">
+        <p class="group-title" style="color:var(--warn);">月繳出席 <span class="cnt" id="signupMemberCount">0 人</span></p>
+        <div id="signupMemberList"></div>
+      </div>
 
-      <div class="detail-section-label">候補名單</div>
-      <div class="signup-list" id="signupWaitlist"></div>
+      <div class="group-card glass">
+        <p class="group-title" style="color:var(--good);">請假 <span class="cnt" id="signupLeaveCount">0 人</span></p>
+        <div id="signupLeaveList"></div>
+      </div>
+
+      <div class="group-card glass">
+        <p class="group-title" style="color:var(--info);">臨打 <span class="cnt" id="signupGuestCount">0 人</span></p>
+        <div id="signupGuestList"></div>
+      </div>
+
+      <div class="group-card glass">
+        <p class="group-title" style="color:var(--gold);">候補名單 <span class="cnt" id="signupWaitlistCount">0 人</span></p>
+        <div id="signupWaitlist"></div>
+      </div>
     </div>
   </div>
 
@@ -780,7 +834,6 @@
     document.getElementById('signupMemberName').innerHTML = nameOptions;
     document.getElementById('signupReferrer').innerHTML = '<option value="">— 無 —</option>' + nameOptions;
 
-    closeBulkImportPanel();
     document.getElementById('eventDetailOverlay').classList.add('open');
     refreshSignupList();
   }
@@ -790,52 +843,62 @@
     detailIndex = null;
   }
 
-  function signupRowHTML(s){
-    const name = s.type === 'guest' ? (s.guest_name + '（訪客）') : s.member_name;
-    const sub = s.type === 'guest' && s.referrer ? ('推薦人：' + s.referrer) : '';
-    return '<div class="signup-row">' +
-      '<div>' +
-        '<div class="signup-row-name">' + name + '</div>' +
-        (sub ? '<div class="signup-row-sub">' + sub + '</div>' : '') +
-      '</div>' +
-      '<button type="button" class="signup-row-cancel" data-id="' + s.id + '">取消</button>' +
-    '</div>';
-  }
+  function initialOf(name){ return String(name).slice(0, 1); }
 
-  function wireCancelButtons(container){
-    container.querySelectorAll('.signup-row-cancel').forEach(function(btn){
-      btn.addEventListener('click', async function(){
-        btn.disabled = true;
-        try{
-          await apiPost('cancelSignup', { id: btn.dataset.id });
-          await refreshEvents();
-          if(detailIndex !== null) document.getElementById('detailProgress').innerHTML = progressHTML(EVENTS[detailIndex]);
-          await refreshSignupList();
-          showToast('已取消報名');
-        } catch(e){
-          btn.disabled = false;
-          showToast('取消失敗，請稍後再試');
-        }
-      });
-    });
+  // 唯讀名單呈現，排版同 錢包／當周 的月繳・臨打・請假 avatar grid。
+  function attGroupHTML(list, colorVar, bgVar){
+    if(!list.length) return '<p class="att-empty">目前無人員</p>';
+    return '<div class="att-grid">' + list.map(function(s){
+      const name = s.type === 'guest' ? s.guest_name : s.member_name;
+      return '<div class="att-cell">' +
+        '<div class="att-avatar" style="border-color:' + colorVar + ';color:' + colorVar + ';background:' + bgVar + ';">' + initialOf(name) + '</div>' +
+        '<p>' + name + '</p>' +
+      '</div>';
+    }).join('') + '</div>';
   }
 
   async function refreshSignupList(){
     if(detailIndex === null) return;
     const ev = EVENTS[detailIndex];
-    const confirmedEl = document.getElementById('signupConfirmedList');
+    const memberEl = document.getElementById('signupMemberList');
+    const leaveEl = document.getElementById('signupLeaveList');
+    const guestEl = document.getElementById('signupGuestList');
     const waitlistEl = document.getElementById('signupWaitlist');
+    const memberCountEl = document.getElementById('signupMemberCount');
+    const leaveCountEl = document.getElementById('signupLeaveCount');
+    const guestCountEl = document.getElementById('signupGuestCount');
+    const waitlistCountEl = document.getElementById('signupWaitlistCount');
     try{
-      const result = await apiGet({ action:'getEventSignups', event_id: ev.id });
-      const signups = result.signups || [];
+      const month = String(ev.date).slice(0, 7);
+      const [signupResult, memberResult] = await Promise.all([
+        apiGet({ action:'getEventSignups', event_id: ev.id }),
+        apiGet({ action:'getMembers', month: month })
+      ]);
+      const signups = signupResult.signups || [];
       const confirmed = signups.filter(function(s){ return s.status === 'confirmed'; });
       const waitlist = signups.filter(function(s){ return s.status === 'waitlist'; });
-      confirmedEl.innerHTML = confirmed.length ? confirmed.map(signupRowHTML).join('') : '<div class="signup-empty">目前尚無人報名</div>';
-      waitlistEl.innerHTML = waitlist.length ? waitlist.map(signupRowHTML).join('') : '<div class="signup-empty">目前沒有候補名單</div>';
-      wireCancelButtons(confirmedEl);
-      wireCancelButtons(waitlistEl);
+      const confirmedMembers = confirmed.filter(function(s){ return s.type !== 'guest'; });
+      const confirmedGuests = confirmed.filter(function(s){ return s.type === 'guest'; });
+
+      // 請假 = 本月月繳名單裡，這場賽事沒報名的人。
+      const confirmedMemberNames = new Set(confirmedMembers.map(function(s){ return s.member_name; }));
+      const monthlyNames = [...new Set((memberResult.members || []).map(function(m){ return m.name; }).filter(Boolean))]
+        .sort(function(a, b){ return a.localeCompare(b); });
+      const leaveMembers = monthlyNames.filter(function(n){ return !confirmedMemberNames.has(n); })
+        .map(function(n){ return { type:'member', member_name:n }; });
+
+      memberCountEl.textContent = confirmedMembers.length + ' 人';
+      leaveCountEl.textContent = leaveMembers.length + ' 人';
+      guestCountEl.textContent = confirmedGuests.length + ' 人';
+      waitlistCountEl.textContent = waitlist.length + ' 人';
+      memberEl.innerHTML = attGroupHTML(confirmedMembers, 'var(--warn)', 'var(--warn-bg)');
+      leaveEl.innerHTML = attGroupHTML(leaveMembers, 'var(--good)', 'var(--good-bg)');
+      guestEl.innerHTML = attGroupHTML(confirmedGuests, 'var(--info)', 'var(--info-bg)');
+      waitlistEl.innerHTML = attGroupHTML(waitlist, 'var(--gold)', 'var(--gold-bg)');
     } catch(e){
-      confirmedEl.innerHTML = '<div class="signup-empty">載入失敗，請稍後再試</div>';
+      memberEl.innerHTML = '<p class="att-empty">載入失敗，請稍後再試</p>';
+      leaveEl.innerHTML = '';
+      guestEl.innerHTML = '';
       waitlistEl.innerHTML = '';
     }
   }
@@ -915,76 +978,6 @@
     });
   }
 
-  // 打開「確認出席名單」面板:抓本月月繳名單,預設全部「出席」,
-  // 管理員可以逐一點成「請假」暫存起來,最後一次送出,跟錢包頁的編輯出席/請假同一套互動。
-  async function openBulkImportPanel(){
-    if(detailIndex === null) return;
-    const month = currentCalendarMonth();
-    const btn = document.getElementById('bulkImportBtn');
-    btn.disabled = true;
-    try{
-      const memberResult = await apiGet({ action:'getMembers', month: month });
-      const names = [...new Set((memberResult.members || []).map(function(m){ return m.name; }).filter(Boolean))]
-        .sort(function(a, b){ return a.localeCompare(b); });
-      if(!names.length){
-        showToast('本月（' + month + '）尚無月繳名單');
-        return;
-      }
-      document.getElementById('bulkImportMonth').textContent = month;
-      document.getElementById('bulkImportList').innerHTML = names.map(importRowHTML).join('');
-      wireImportToggleRows('bulkImportList');
-      document.getElementById('bulkImportPanel').style.display = '';
-      btn.style.display = 'none';
-    } catch(e){
-      showToast('讀取月繳名單失敗，請稍後再試');
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  function closeBulkImportPanel(){
-    document.getElementById('bulkImportPanel').style.display = 'none';
-    document.getElementById('bulkImportBtn').style.display = '';
-  }
-
-  async function saveBulkImport(){
-    if(detailIndex === null) return;
-    const ev = EVENTS[detailIndex];
-    const names = [];
-    document.querySelectorAll('#bulkImportList .import-toggle-row').forEach(function(row){
-      if(row.dataset.present === '1') names.push(row.dataset.name);
-    });
-    if(!names.length){
-      showToast('沒有勾選出席的人');
-      return;
-    }
-
-    const btn = document.getElementById('bulkImportSave');
-    btn.disabled = true;
-    btn.textContent = '儲存中…';
-    try{
-      const result = await apiPost('bulkSignupEvent', { event_id: ev.id, names: names });
-      if(result.success){
-        const parts = [];
-        if(result.confirmed) parts.push('確認 ' + result.confirmed + ' 人');
-        if(result.waitlist) parts.push('候補 ' + result.waitlist + ' 人');
-        if(result.skipped) parts.push('略過 ' + result.skipped + ' 人（已報名或已額滿）');
-        showToast(parts.length ? '已匯入：' + parts.join('、') : '沒有新增任何人');
-        closeBulkImportPanel();
-        await refreshEvents();
-        if(detailIndex !== null) document.getElementById('detailProgress').innerHTML = progressHTML(EVENTS[detailIndex]);
-        await refreshSignupList();
-      } else {
-        showToast(SIGNUP_FAIL_MSG[result.reason] || '匯入失敗，請稍後再試');
-      }
-    } catch(e){
-      showToast('匯入失敗，請稍後再試');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '儲存';
-    }
-  }
-
   function showToast(msg){
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -1018,16 +1011,175 @@
     document.getElementById('signupGuestFields').style.display = '';
   });
   document.getElementById('signupSubmit').addEventListener('click', submitSignup);
-  document.getElementById('bulkImportBtn').addEventListener('click', openBulkImportPanel);
-  document.getElementById('bulkImportCancel').addEventListener('click', closeBulkImportPanel);
-  document.getElementById('bulkImportSave').addEventListener('click', saveBulkImport);
   document.getElementById('eventDetailOverlay').addEventListener('click', function(e){
     if(e.target.id === 'eventDetailOverlay') closeEventDetail();
   });
 
-  loadCachedEvents();
-  renderEvents();
-  refreshEvents();
+  let dataReady = false;
+  let loggedIn = !!localStorage.getItem(WhonextAuth.ROLE_KEY);
+  const loginNames = { member: [], dropin: [] };
+
+  function hideBrandMask(){
+    const mask = document.getElementById('brandMask');
+    if(!mask || mask.classList.contains('hide')) return;
+    mask.classList.add('hide');
+    setTimeout(function(){ mask.remove(); }, 400);
+  }
+
+  function maybeHideBrandMask(){
+    if(dataReady && loggedIn) hideBrandMask();
+  }
+
+  function parseDropinName(entry){
+    const m = String(entry || '').match(/^(.*?)\(([^()]+)\)$/);
+    return m ? m[1].trim() : String(entry || '').trim();
+  }
+
+  // 「月繳」「臨打」姓名格要點擊後直接進入，不能再跳一次讀取，
+  // 所以先在登入畫面出現前，把兩邊名單背景抓好放著。
+  // 臨打只抓「本週」（week_date 離今天最近的那筆）的臨打名單，不追過去歷史。
+  function findClosestWeek(weeks){
+    if(!weeks.length) return null;
+    const todayMs = Date.now();
+    let best = null, bestDiff = Infinity;
+    weeks.forEach(function(w){
+      const d = new Date(String(w.week_date) + 'T00:00:00');
+      if(isNaN(d.getTime())) return;
+      const diff = Math.abs(d.getTime() - todayMs);
+      if(diff < bestDiff){ bestDiff = diff; best = w; }
+    });
+    return best;
+  }
+
+  async function loadLoginIdentityData(){
+    try{
+      const [memberResult, weekResult] = await Promise.all([
+        apiGet({ action:'getMembers' }),
+        apiGet({ action:'getWeeks' })
+      ]);
+      loginNames.member = [...new Set((memberResult.members || []).map(function(m){ return m.name; }).filter(Boolean))]
+        .sort(function(a, b){ return a.localeCompare(b); });
+      const thisWeek = findClosestWeek(weekResult.weeks || []);
+      const dropinNames = thisWeek
+        ? String(thisWeek.dropin_names || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean).map(parseDropinName)
+        : [];
+      loginNames.dropin = [...new Set(dropinNames.filter(Boolean))]
+        .sort(function(a, b){ return a.localeCompare(b); });
+    } catch(e){
+      // 保持空陣列，下拉選單只會剩訪客／管理員可選
+    }
+  }
+
+  function populateLoginSelect(){
+    const sel = document.getElementById('loginSelect');
+    const groups = [];
+    if(loginNames.member.length){
+      groups.push('<optgroup label="月繳成員">' + loginNames.member.map(function(n){
+        return '<option value="member:' + n + '">' + n + '</option>';
+      }).join('') + '</optgroup>');
+    }
+    if(loginNames.dropin.length){
+      groups.push('<optgroup label="本週臨打">' + loginNames.dropin.map(function(n){
+        return '<option value="dropin:' + n + '">' + n + '</option>';
+      }).join('') + '</optgroup>');
+    }
+    groups.push('<option value="guest">訪客</option>');
+    groups.push('<option value="admin">管理員</option>');
+    sel.innerHTML = '<option value="" selected disabled>請選擇…</option>' + groups.join('');
+  }
+
+  function updateNavWelcome(){
+    const role = WhonextAuth.getRole();
+    const name = role === 'admin' ? '管理員'
+      : role === 'guest' ? '訪客'
+      : (localStorage.getItem('whonext_player_name') || (role === 'dropin' ? '臨打' : '球員'));
+    document.getElementById('navWelcomeText').textContent = '歡迎，' + name;
+  }
+
+  document.getElementById('navLogoutBtn').addEventListener('click', function(){
+    localStorage.removeItem(WhonextAuth.ROLE_KEY);
+    localStorage.removeItem('whonext_player_name');
+    location.reload();
+  });
+
+  function completeLogin(){
+    loggedIn = true;
+    document.getElementById('loginStage').style.display = 'none';
+    updateNavWelcome();
+    maybeHideBrandMask();
+  }
+
+  document.getElementById('loginSelect').addEventListener('change', function(){
+    const val = this.value;
+    const adminStage = document.getElementById('loginAdminStage');
+    if(val === 'admin'){
+      adminStage.style.display = '';
+      return;
+    }
+    adminStage.style.display = 'none';
+    if(val === 'guest'){
+      WhonextAuth.setRole('guest');
+      completeLogin();
+    } else if(val.indexOf('member:') === 0){
+      localStorage.setItem('whonext_player_name', val.slice(7));
+      WhonextAuth.setRole('player');
+      completeLogin();
+    } else if(val.indexOf('dropin:') === 0){
+      localStorage.setItem('whonext_player_name', val.slice(7));
+      WhonextAuth.setRole('dropin');
+      completeLogin();
+    }
+  });
+
+  document.getElementById('loginAdminSubmit').addEventListener('click', async function(){
+    const user = document.getElementById('loginAdminUser').value.trim();
+    const pass = document.getElementById('loginAdminPass').value;
+    const errorEl = document.getElementById('loginAdminError');
+    errorEl.style.display = 'none';
+    if(!user || !pass){
+      errorEl.textContent = '請輸入帳號密碼';
+      errorEl.style.display = 'block';
+      return;
+    }
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = '登入中…';
+    try{
+      const result = await apiPost('login', { username: user, password: pass });
+      if(result && result.success){
+        WhonextAuth.setRole('admin');
+        completeLogin();
+      } else {
+        errorEl.textContent = '帳號或密碼錯誤';
+        errorEl.style.display = 'block';
+      }
+    } catch(e){
+      errorEl.textContent = '無法連線後台，請稍後再試';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '登入';
+    }
+  });
+
+  (async function initialLoad(){
+    const hadCache = loadCachedEvents();
+    renderEvents();
+    if(hadCache){ dataReady = true; maybeHideBrandMask(); }
+
+    if(!loggedIn){
+      loadLoginIdentityData().then(function(){
+        populateLoginSelect();
+        document.getElementById('loginStage').style.display = '';
+      });
+    } else {
+      updateNavWelcome();
+    }
+
+    await refreshEvents();
+    dataReady = true;
+    maybeHideBrandMask();
+  })();
 
   // 賽事是首頁第一眼看到的內容，先讓它的請求送出去，
   // 再暖機其他子頁面用的資料，避免跟 GAS 執行配額擠在一起拖慢賽事回應。

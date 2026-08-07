@@ -145,4 +145,6 @@
     updateToggleUI();
     if(getRole() === 'admin') resetIdleTimer();
   });
+
+  window.WhonextAuth = { ROLE_KEY: ROLE_KEY, getRole: getRole, setRole: setRole };
 })();
