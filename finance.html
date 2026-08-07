@@ -813,6 +813,15 @@ function setWalletNote(text, alert){
   noteEl.style.fontWeight = alert ? '700' : '400';
 }
 
+// 月繳名單優先用登入當下就預先載好的快取（不分月份的 getMembers）
+// 篩本月出來，不用等進到這頁才重新打一次 API；快取沒有才回退成即時查詢。
+async function getMonthlyMembers(month){
+  const cached = getApiCache({ action:'getMembers' });
+  if(cached && cached.members) return cached.members.filter(function(m){ return String(m.month) === month; });
+  const result = await apiGet({ action:'getMembers', month: month });
+  return result.members || [];
+}
+
 async function updateMyWallet(){
   const amountEl = document.getElementById('myWalletAmount');
   const role = WhonextAuth.getRole();
@@ -823,8 +832,8 @@ async function updateMyWallet(){
     return;
   }
   try{
-    const result = await apiGet({ action:'getMembers', month: walletCalendarMonth() });
-    const record = (result.members || []).find(function(m){ return m.name === name; });
+    const members = await getMonthlyMembers(walletCalendarMonth());
+    const record = members.find(function(m){ return m.name === name; });
     if(!record){
       amountEl.textContent = '$' + MONTHLY_WALLET_BASE.toLocaleString();
       setWalletNote('本月尚無月繳紀錄', false);

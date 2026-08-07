@@ -854,49 +854,72 @@
     }).join('') + '</div>';
   }
 
+  // 本月月繳名單優先用登入時就預先載好的快取（不分月份的 getMembers）
+  // 篩本月出來，不用等這裡才重新打一次 API；快取沒有才回退成即時查詢。
+  async function getMonthlyMemberNames(month){
+    const cached = getApiCache({ action:'getMembers' });
+    if(cached && cached.members){
+      return [...new Set(cached.members.filter(function(m){ return String(m.month) === month; }).map(function(m){ return m.name; }).filter(Boolean))]
+        .sort(function(a, b){ return a.localeCompare(b); });
+    }
+    try{
+      const result = await apiGet({ action:'getMembers', month: month });
+      return [...new Set((result.members || []).map(function(m){ return m.name; }).filter(Boolean))]
+        .sort(function(a, b){ return a.localeCompare(b); });
+    } catch(e){
+      return [];
+    }
+  }
+
+  function renderSignupLists(signups, monthlyNames){
+    const confirmed = signups.filter(function(s){ return s.status === 'confirmed'; });
+    const waitlist = signups.filter(function(s){ return s.status === 'waitlist'; });
+    const confirmedMembers = confirmed.filter(function(s){ return s.type !== 'guest'; });
+    const confirmedGuests = confirmed.filter(function(s){ return s.type === 'guest'; });
+
+    // 請假 = 本月月繳名單裡，這場賽事沒報名的人。
+    const confirmedMemberNames = new Set(confirmedMembers.map(function(s){ return s.member_name; }));
+    const leaveMembers = monthlyNames.filter(function(n){ return !confirmedMemberNames.has(n); })
+      .map(function(n){ return { type:'member', member_name:n }; });
+
+    document.getElementById('signupMemberCount').textContent = confirmedMembers.length + ' 人';
+    document.getElementById('signupLeaveCount').textContent = leaveMembers.length + ' 人';
+    document.getElementById('signupGuestCount').textContent = confirmedGuests.length + ' 人';
+    document.getElementById('signupWaitlistCount').textContent = waitlist.length + ' 人';
+    document.getElementById('signupMemberList').innerHTML = attGroupHTML(confirmedMembers, 'var(--warn)', 'var(--warn-bg)');
+    document.getElementById('signupLeaveList').innerHTML = attGroupHTML(leaveMembers, 'var(--good)', 'var(--good-bg)');
+    document.getElementById('signupGuestList').innerHTML = attGroupHTML(confirmedGuests, 'var(--info)', 'var(--info-bg)');
+    document.getElementById('signupWaitlist').innerHTML = attGroupHTML(waitlist, 'var(--gold)', 'var(--gold-bg)');
+  }
+
   async function refreshSignupList(){
     if(detailIndex === null) return;
     const ev = EVENTS[detailIndex];
-    const memberEl = document.getElementById('signupMemberList');
-    const leaveEl = document.getElementById('signupLeaveList');
-    const guestEl = document.getElementById('signupGuestList');
-    const waitlistEl = document.getElementById('signupWaitlist');
-    const memberCountEl = document.getElementById('signupMemberCount');
-    const leaveCountEl = document.getElementById('signupLeaveCount');
-    const guestCountEl = document.getElementById('signupGuestCount');
-    const waitlistCountEl = document.getElementById('signupWaitlistCount');
+    const month = String(ev.date).slice(0, 7);
+
+    // 賽事開放時已經在背景預先抓過每場的報名名單，先用快取秒開，
+    // 不用等真的點開才打 API；後面還是會抓一次最新的來更新。
+    const cached = getApiCache({ action:'getEventSignups', event_id: ev.id });
+    if(cached){
+      renderSignupLists(cached.signups || [], await getMonthlyMemberNames(month));
+      if(detailIndex === null || EVENTS[detailIndex] !== ev) return;
+    }
+
     try{
-      const month = String(ev.date).slice(0, 7);
-      const [signupResult, memberResult] = await Promise.all([
+      const [signupResult, monthlyNames] = await Promise.all([
         apiGet({ action:'getEventSignups', event_id: ev.id }),
-        apiGet({ action:'getMembers', month: month })
+        getMonthlyMemberNames(month)
       ]);
-      const signups = signupResult.signups || [];
-      const confirmed = signups.filter(function(s){ return s.status === 'confirmed'; });
-      const waitlist = signups.filter(function(s){ return s.status === 'waitlist'; });
-      const confirmedMembers = confirmed.filter(function(s){ return s.type !== 'guest'; });
-      const confirmedGuests = confirmed.filter(function(s){ return s.type === 'guest'; });
-
-      // 請假 = 本月月繳名單裡，這場賽事沒報名的人。
-      const confirmedMemberNames = new Set(confirmedMembers.map(function(s){ return s.member_name; }));
-      const monthlyNames = [...new Set((memberResult.members || []).map(function(m){ return m.name; }).filter(Boolean))]
-        .sort(function(a, b){ return a.localeCompare(b); });
-      const leaveMembers = monthlyNames.filter(function(n){ return !confirmedMemberNames.has(n); })
-        .map(function(n){ return { type:'member', member_name:n }; });
-
-      memberCountEl.textContent = confirmedMembers.length + ' 人';
-      leaveCountEl.textContent = leaveMembers.length + ' 人';
-      guestCountEl.textContent = confirmedGuests.length + ' 人';
-      waitlistCountEl.textContent = waitlist.length + ' 人';
-      memberEl.innerHTML = attGroupHTML(confirmedMembers, 'var(--warn)', 'var(--warn-bg)');
-      leaveEl.innerHTML = attGroupHTML(leaveMembers, 'var(--good)', 'var(--good-bg)');
-      guestEl.innerHTML = attGroupHTML(confirmedGuests, 'var(--info)', 'var(--info-bg)');
-      waitlistEl.innerHTML = attGroupHTML(waitlist, 'var(--gold)', 'var(--gold-bg)');
+      setApiCache({ action:'getEventSignups', event_id: ev.id }, signupResult);
+      if(detailIndex === null || EVENTS[detailIndex] !== ev) return;
+      renderSignupLists(signupResult.signups || [], monthlyNames);
     } catch(e){
-      memberEl.innerHTML = '<p class="att-empty">載入失敗，請稍後再試</p>';
-      leaveEl.innerHTML = '';
-      guestEl.innerHTML = '';
-      waitlistEl.innerHTML = '';
+      if(!cached){
+        document.getElementById('signupMemberList').innerHTML = '<p class="att-empty">載入失敗，請稍後再試</p>';
+        document.getElementById('signupLeaveList').innerHTML = '';
+        document.getElementById('signupGuestList').innerHTML = '';
+        document.getElementById('signupWaitlist').innerHTML = '';
+      }
     }
   }
 
@@ -1144,10 +1167,18 @@
     }
   });
 
+  // 賽事卡片點進去要秒開，所以名單資料在登入當下（賽事清單一到手）
+  // 就背景逐場預先抓好塞進快取，不要等使用者點了才臨時去要。
+  function prefetchAllEventSignups(){
+    EVENTS.forEach(function(ev){
+      apiPrefetch({ action:'getEventSignups', event_id: ev.id });
+    });
+  }
+
   (async function initialLoad(){
     const hadCache = loadCachedEvents();
     renderEvents();
-    if(hadCache){ dataReady = true; maybeHideBrandMask(); }
+    if(hadCache){ dataReady = true; maybeHideBrandMask(); prefetchAllEventSignups(); }
 
     if(!loggedIn){
       loadLoginIdentityData().then(function(){
@@ -1159,6 +1190,7 @@
     await refreshEvents();
     dataReady = true;
     maybeHideBrandMask();
+    prefetchAllEventSignups();
   })();
 
   // 賽事是首頁第一眼看到的內容，先讓它的請求送出去，
