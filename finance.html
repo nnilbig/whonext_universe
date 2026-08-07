@@ -297,7 +297,7 @@
     <div id="myWalletView" class="balance-card glass" style="display:none">
       <p class="label">目前餘額</p>
       <p class="amount" id="myWalletAmount">$0</p>
-      <p id="myWalletNote" style="margin:14px 0 0; font-size:12px; color:var(--tertiary); line-height:1.6;">載入中…</p>
+      <p id="myWalletNote" style="margin:14px 0 0; font-size:12px; color:var(--tertiary); line-height:1.6; white-space:pre-line;">載入中…</p>
     </div>
 
   </div>
@@ -794,10 +794,12 @@ async function saveFinanceEdit(){
   }
 }
 
-// 「我的錢包」餘額暫定規則：月繳基準 840（可打 4 次）。
+// 「我的錢包」餘額暫定規則：月繳基準 840（可打 4 場次，每場次 210）。
 // 本月已繳費 -> 顯示 840；未繳費 -> 840 扣掉應繳的 monthly_total_fee，
-// 提示要再繳 monthly_total_fee 才符合月繳資格。
+// 剩餘餘額換算成場次數，並提示要再繳 monthly_total_fee 才符合月繳資格。
 const MONTHLY_WALLET_BASE = 840;
+const MONTHLY_WALLET_SESSIONS = 4;
+const SESSION_RATE = MONTHLY_WALLET_BASE / MONTHLY_WALLET_SESSIONS;
 
 function walletCalendarMonth(){
   const d = new Date();
@@ -831,10 +833,12 @@ async function updateMyWallet(){
     const total = Number(record.monthly_total_fee) || 0;
     if(record.paid){
       amountEl.textContent = '$' + MONTHLY_WALLET_BASE.toLocaleString();
-      setWalletNote('本月已繳費，可打 4 次', false);
+      setWalletNote('本月已繳費，可打 ' + MONTHLY_WALLET_SESSIONS + ' 場次', false);
     } else {
-      amountEl.textContent = '$' + (MONTHLY_WALLET_BASE - total).toLocaleString();
-      setWalletNote('本月尚未繳費，需再繳 $' + total.toLocaleString() + ' 才符合月繳資格', true);
+      const balance = MONTHLY_WALLET_BASE - total;
+      const sessions = Math.max(0, Math.floor(balance / SESSION_RATE));
+      amountEl.textContent = '$' + balance.toLocaleString();
+      setWalletNote('可打 ' + sessions + ' 場次\n再繳 $' + total.toLocaleString() + ' 可符合月繳資格', true);
     }
   } catch(e){
     amountEl.textContent = '$' + MONTHLY_WALLET_BASE.toLocaleString();
