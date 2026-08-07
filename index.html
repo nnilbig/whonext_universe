@@ -14,10 +14,9 @@
     --e-accent:#C9B79B; --e-glow:rgba(201,183,155,0.5);
     --x-accent:#B9B9BD; --x-glow:rgba(185,185,189,0.5);
     --t-accent:#E9E9E4; --t-glow:rgba(233,233,228,0.5);
-    --good:#7FD79A; --good-glow:rgba(127,215,154,0.35); --good-bg:rgba(127,215,154,0.14);
-    --warn:#E7A15A; --warn-glow:rgba(231,161,90,0.35); --warn-bg:rgba(231,161,90,0.14);
-    --gold:#E4C97A; --gold-glow:rgba(228,201,122,0.35); --gold-bg:rgba(228,201,122,0.14);
-    --info:#7FA8D9; --info-bg:rgba(127,168,217,0.14);
+    --good:#7FD79A; --good-glow:rgba(127,215,154,0.35);
+    --warn:#E7A15A; --warn-glow:rgba(231,161,90,0.35);
+    --gold:#E4C97A; --gold-glow:rgba(228,201,122,0.35);
 
     --bg:#000000;
     --card:rgba(255,255,255,0.07);
@@ -203,6 +202,7 @@
   /* ---------- EVENT DETAIL / SIGNUP ---------- */
   .detail-box{ max-width:420px; max-height:85vh; overflow-y:auto; }
   .detail-meta{ font-size:12.5px; color:var(--secondary); line-height:1.6; font-family: var(--sf-mono); margin-bottom:14px; }
+  .detail-contact-note{ font-size:12.5px; font-weight:700; color:var(--gold); margin:2px 2px 14px; }
   .detail-section-label{
     font-size:11px; font-weight:700; letter-spacing:.1em; color:var(--tertiary);
     text-transform:uppercase; margin: 18px 2px 8px;
@@ -226,21 +226,6 @@
 
   .signup-list{ display:flex; flex-direction:column; gap:6px; }
   .signup-empty{ font-size:12.5px; color:var(--tertiary); padding: 4px 2px; }
-
-  /* 賽事名單 - 唯讀呈現，排版同 錢包／當周 的月繳・臨打・請假 */
-  .group-card{ margin: 0 0 14px; padding: 14px 14px 12px; }
-  .group-title{ display:flex; align-items:center; justify-content:space-between; margin:0 0 12px; font-size:12px; font-weight:800; }
-  .group-title .cnt{ font-family: var(--sf-mono); font-weight:700; }
-  .att-grid{ display:grid; grid-template-columns: repeat(5, 1fr); gap: 12px 4px; }
-  .att-cell{ text-align:center; }
-  .att-avatar{
-    width:38px; height:38px; border-radius:50%; margin:0 auto 4px;
-    display:flex; align-items:center; justify-content:center;
-    font-weight:800; font-size:13px; line-height:1;
-    border:1.5px solid var(--line); background: var(--card-strong);
-  }
-  .att-cell p{ margin:0; font-size:9.5px; color:var(--tertiary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .att-empty{ margin:0; font-size:12px; color:var(--tertiary); }
 
   .import-toggle-row{
     display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -382,6 +367,7 @@
       <div class="edit-title" id="detailTitle"></div>
       <div class="detail-meta" id="detailMeta"></div>
       <div id="detailProgress"></div>
+      <p class="detail-contact-note" id="detailContactNote" style="display:none"></p>
 
       <!-- 暫時移除賽事卡片點擊的報名功能，之後要恢復把 display:none 拿掉即可 -->
       <div id="eventSignupSection" style="display:none">
@@ -403,26 +389,6 @@
         </div>
 
         <button type="button" class="signup-submit" id="signupSubmit">送出報名</button>
-      </div>
-
-      <div class="group-card glass">
-        <p class="group-title" style="color:var(--warn);">月繳出席 <span class="cnt" id="signupMemberCount">0 人</span></p>
-        <div id="signupMemberList"></div>
-      </div>
-
-      <div class="group-card glass">
-        <p class="group-title" style="color:var(--good);">請假 <span class="cnt" id="signupLeaveCount">0 人</span></p>
-        <div id="signupLeaveList"></div>
-      </div>
-
-      <div class="group-card glass">
-        <p class="group-title" style="color:var(--info);">臨打 <span class="cnt" id="signupGuestCount">0 人</span></p>
-        <div id="signupGuestList"></div>
-      </div>
-
-      <div class="group-card glass">
-        <p class="group-title" style="color:var(--gold);">候補名單 <span class="cnt" id="signupWaitlistCount">0 人</span></p>
-        <div id="signupWaitlist"></div>
       </div>
     </div>
   </div>
@@ -812,12 +778,25 @@
       .sort(function(a, b){ return a.localeCompare(b); });
   }
 
+  // 賽事標題含隊伍關鍵字，就顯示對應的報名聯絡窗口。
+  function captainContactNote(title){
+    const t = String(title || '');
+    if(t.indexOf('WHONEXT') !== -1) return '報名請洽隊長';
+    if(t.indexOf('黑狗') !== -1) return '報名請洽友團隊長Eden';
+    return '';
+  }
+
   function openEventDetail(index){
     detailIndex = index;
     const ev = EVENTS[index];
     document.getElementById('detailTitle').textContent = ev.title;
     document.getElementById('detailMeta').textContent = (ev.type ? ev.type + '　' : '') + String(ev.date).slice(0, 10) + '　' + ev.time + '　' + ev.location;
     document.getElementById('detailProgress').innerHTML = progressHTML(ev);
+
+    const contactNote = captainContactNote(ev.title);
+    const contactEl = document.getElementById('detailContactNote');
+    contactEl.textContent = contactNote;
+    contactEl.style.display = contactNote ? '' : 'none';
 
     signupMode = 'member';
     document.getElementById('signupModeMember').classList.add('active');
@@ -832,95 +811,11 @@
     document.getElementById('signupReferrer').innerHTML = '<option value="">— 無 —</option>' + nameOptions;
 
     document.getElementById('eventDetailOverlay').classList.add('open');
-    refreshSignupList();
   }
 
   function closeEventDetail(){
     document.getElementById('eventDetailOverlay').classList.remove('open');
     detailIndex = null;
-  }
-
-  function initialOf(name){ return String(name).slice(0, 1); }
-
-  // 唯讀名單呈現，排版同 錢包／當周 的月繳・臨打・請假 avatar grid。
-  function attGroupHTML(list, colorVar, bgVar){
-    if(!list.length) return '<p class="att-empty">目前無人員</p>';
-    return '<div class="att-grid">' + list.map(function(s){
-      const name = s.type === 'guest' ? s.guest_name : s.member_name;
-      return '<div class="att-cell">' +
-        '<div class="att-avatar" style="border-color:' + colorVar + ';color:' + colorVar + ';background:' + bgVar + ';">' + initialOf(name) + '</div>' +
-        '<p>' + name + '</p>' +
-      '</div>';
-    }).join('') + '</div>';
-  }
-
-  // 本月月繳名單優先用登入時就預先載好的快取（不分月份的 getMembers）
-  // 篩本月出來，不用等這裡才重新打一次 API；快取沒有才回退成即時查詢。
-  async function getMonthlyMemberNames(month){
-    const cached = getApiCache({ action:'getMembers' });
-    if(cached && cached.members){
-      return [...new Set(cached.members.filter(function(m){ return String(m.month) === month; }).map(function(m){ return m.name; }).filter(Boolean))]
-        .sort(function(a, b){ return a.localeCompare(b); });
-    }
-    try{
-      const result = await apiGet({ action:'getMembers', month: month });
-      return [...new Set((result.members || []).map(function(m){ return m.name; }).filter(Boolean))]
-        .sort(function(a, b){ return a.localeCompare(b); });
-    } catch(e){
-      return [];
-    }
-  }
-
-  function renderSignupLists(signups, monthlyNames){
-    const confirmed = signups.filter(function(s){ return s.status === 'confirmed'; });
-    const waitlist = signups.filter(function(s){ return s.status === 'waitlist'; });
-    const confirmedMembers = confirmed.filter(function(s){ return s.type !== 'guest'; });
-    const confirmedGuests = confirmed.filter(function(s){ return s.type === 'guest'; });
-
-    // 請假 = 本月月繳名單裡，這場賽事沒報名的人。
-    const confirmedMemberNames = new Set(confirmedMembers.map(function(s){ return s.member_name; }));
-    const leaveMembers = monthlyNames.filter(function(n){ return !confirmedMemberNames.has(n); })
-      .map(function(n){ return { type:'member', member_name:n }; });
-
-    document.getElementById('signupMemberCount').textContent = confirmedMembers.length + ' 人';
-    document.getElementById('signupLeaveCount').textContent = leaveMembers.length + ' 人';
-    document.getElementById('signupGuestCount').textContent = confirmedGuests.length + ' 人';
-    document.getElementById('signupWaitlistCount').textContent = waitlist.length + ' 人';
-    document.getElementById('signupMemberList').innerHTML = attGroupHTML(confirmedMembers, 'var(--warn)', 'var(--warn-bg)');
-    document.getElementById('signupLeaveList').innerHTML = attGroupHTML(leaveMembers, 'var(--good)', 'var(--good-bg)');
-    document.getElementById('signupGuestList').innerHTML = attGroupHTML(confirmedGuests, 'var(--info)', 'var(--info-bg)');
-    document.getElementById('signupWaitlist').innerHTML = attGroupHTML(waitlist, 'var(--gold)', 'var(--gold-bg)');
-  }
-
-  async function refreshSignupList(){
-    if(detailIndex === null) return;
-    const ev = EVENTS[detailIndex];
-    const month = String(ev.date).slice(0, 7);
-
-    // 賽事開放時已經在背景預先抓過每場的報名名單，先用快取秒開，
-    // 不用等真的點開才打 API；後面還是會抓一次最新的來更新。
-    const cached = getApiCache({ action:'getEventSignups', event_id: ev.id });
-    if(cached){
-      renderSignupLists(cached.signups || [], await getMonthlyMemberNames(month));
-      if(detailIndex === null || EVENTS[detailIndex] !== ev) return;
-    }
-
-    try{
-      const [signupResult, monthlyNames] = await Promise.all([
-        apiGet({ action:'getEventSignups', event_id: ev.id }),
-        getMonthlyMemberNames(month)
-      ]);
-      setApiCache({ action:'getEventSignups', event_id: ev.id }, signupResult);
-      if(detailIndex === null || EVENTS[detailIndex] !== ev) return;
-      renderSignupLists(signupResult.signups || [], monthlyNames);
-    } catch(e){
-      if(!cached){
-        document.getElementById('signupMemberList').innerHTML = '<p class="att-empty">載入失敗，請稍後再試</p>';
-        document.getElementById('signupLeaveList').innerHTML = '';
-        document.getElementById('signupGuestList').innerHTML = '';
-        document.getElementById('signupWaitlist').innerHTML = '';
-      }
-    }
   }
 
   const SIGNUP_FAIL_MSG = {
@@ -956,7 +851,6 @@
         if(signupMode === 'guest') document.getElementById('signupGuestName').value = '';
         await refreshEvents();
         if(detailIndex !== null) document.getElementById('detailProgress').innerHTML = progressHTML(EVENTS[detailIndex]);
-        await refreshSignupList();
       } else {
         showToast(SIGNUP_FAIL_MSG[result.reason] || '報名失敗，請稍後再試');
       }
@@ -1167,18 +1061,10 @@
     }
   });
 
-  // 賽事卡片點進去要秒開，所以名單資料在登入當下（賽事清單一到手）
-  // 就背景逐場預先抓好塞進快取，不要等使用者點了才臨時去要。
-  function prefetchAllEventSignups(){
-    EVENTS.forEach(function(ev){
-      apiPrefetch({ action:'getEventSignups', event_id: ev.id });
-    });
-  }
-
   (async function initialLoad(){
     const hadCache = loadCachedEvents();
     renderEvents();
-    if(hadCache){ dataReady = true; maybeHideBrandMask(); prefetchAllEventSignups(); }
+    if(hadCache){ dataReady = true; maybeHideBrandMask(); }
 
     if(!loggedIn){
       loadLoginIdentityData().then(function(){
@@ -1190,7 +1076,6 @@
     await refreshEvents();
     dataReady = true;
     maybeHideBrandMask();
-    prefetchAllEventSignups();
   })();
 
   // 賽事是首頁第一眼看到的內容，先讓它的請求送出去，
