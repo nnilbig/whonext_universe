@@ -250,9 +250,9 @@
         <h1>UNIVERSE</h1>
       </a>
       <div class="nav-role">
-        <div class="role-toggle">
-          <button class="active" data-role="player">球員</button>
-          <button data-role="admin">管理員</button>
+        <div class="nav-welcome" id="navWelcome">
+          <span id="navWelcomeText">歡迎</span>
+          <button type="button" id="navLogoutBtn">登出</button>
         </div>
       </div>
     </div>
@@ -804,14 +804,20 @@ function walletCalendarMonth(){
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
 
+function setWalletNote(text, alert){
+  const noteEl = document.getElementById('myWalletNote');
+  noteEl.textContent = text;
+  noteEl.style.color = alert ? 'var(--warn)' : 'var(--tertiary)';
+  noteEl.style.fontWeight = alert ? '700' : '400';
+}
+
 async function updateMyWallet(){
   const amountEl = document.getElementById('myWalletAmount');
-  const noteEl = document.getElementById('myWalletNote');
   const role = WhonextAuth.getRole();
   const name = localStorage.getItem('whonext_player_name');
   if(role !== 'player' || !name){
     amountEl.textContent = '$' + MONTHLY_WALLET_BASE.toLocaleString();
-    noteEl.textContent = '功能開發中，之後會顯示您的月費與臨打紀錄';
+    setWalletNote('功能開發中，之後會顯示您的月費與臨打紀錄', false);
     return;
   }
   try{
@@ -819,20 +825,20 @@ async function updateMyWallet(){
     const record = (result.members || []).find(function(m){ return m.name === name; });
     if(!record){
       amountEl.textContent = '$' + MONTHLY_WALLET_BASE.toLocaleString();
-      noteEl.textContent = '本月尚無月繳紀錄';
+      setWalletNote('本月尚無月繳紀錄', false);
       return;
     }
     const total = Number(record.monthly_total_fee) || 0;
     if(record.paid){
       amountEl.textContent = '$' + MONTHLY_WALLET_BASE.toLocaleString();
-      noteEl.textContent = '本月已繳費，可打 4 次';
+      setWalletNote('本月已繳費，可打 4 次', false);
     } else {
       amountEl.textContent = '$' + (MONTHLY_WALLET_BASE - total).toLocaleString();
-      noteEl.textContent = '本月尚未繳費，需再繳 $' + total.toLocaleString() + ' 才符合月繳資格';
+      setWalletNote('本月尚未繳費，需再繳 $' + total.toLocaleString() + ' 才符合月繳資格', true);
     }
   } catch(e){
     amountEl.textContent = '$' + MONTHLY_WALLET_BASE.toLocaleString();
-    noteEl.textContent = '讀取繳費狀態失敗，請稍後再試';
+    setWalletNote('讀取繳費狀態失敗，請稍後再試', false);
   }
 }
 

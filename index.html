@@ -93,9 +93,6 @@
   .nav-title .eyebrow{ font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary); text-transform:uppercase; }
   .nav-title h1{ margin:1px 0 0; font-size:20px; font-weight:800; letter-spacing:-.01em; }
 
-  .nav-welcome{ display:flex; align-items:center; gap:10px; font-size:12px; color:var(--secondary); }
-  .nav-welcome #navLogoutBtn{ font-size:11px; font-weight:700; color:var(--tertiary); padding:4px 2px; }
-
   .wrap{
     max-width: 640px; margin:0 auto; width:100%;
     padding: 20px 16px calc(96px + env(safe-area-inset-bottom));
@@ -1088,24 +1085,9 @@
     sel.innerHTML = '<option value="" selected disabled>請選擇…</option>' + groups.join('');
   }
 
-  function updateNavWelcome(){
-    const role = WhonextAuth.getRole();
-    const name = role === 'admin' ? '管理員'
-      : role === 'guest' ? '訪客'
-      : (localStorage.getItem('whonext_player_name') || (role === 'dropin' ? '臨打' : '球員'));
-    document.getElementById('navWelcomeText').textContent = '歡迎，' + name;
-  }
-
-  document.getElementById('navLogoutBtn').addEventListener('click', function(){
-    localStorage.removeItem(WhonextAuth.ROLE_KEY);
-    localStorage.removeItem('whonext_player_name');
-    location.reload();
-  });
-
   function completeLogin(){
     loggedIn = true;
     document.getElementById('loginStage').style.display = 'none';
-    updateNavWelcome();
     maybeHideBrandMask();
   }
 
@@ -1172,8 +1154,6 @@
         populateLoginSelect();
         document.getElementById('loginStage').style.display = '';
       });
-    } else {
-      updateNavWelcome();
     }
 
     await refreshEvents();
