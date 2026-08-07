@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="top-nav.css">
 <link rel="stylesheet" href="bottom-nav.css">
 <style>
   :root{
@@ -56,25 +57,7 @@
   [data-team="X"]{ --ac: var(--x-accent); --gl: var(--x-glow); }
   [data-team="T"]{ --ac: var(--t-accent); --gl: var(--t-glow); }
 
-  /* ---------- NAV BAR ---------- */
-  .navbar{
-    position:sticky; top:0; z-index:30;
-    padding-top: max(10px, env(safe-area-inset-top));
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border-bottom: 1px solid var(--line);
-  }
-  .nav-inner{
-    max-width: 640px; margin:0 auto;
-    display:flex; align-items:center; gap:12px;
-    padding: 10px 16px 12px;
-  }
-  .nav-title{ flex:1; min-width:0; display:block; text-decoration:none; color:inherit; }
-  .nav-title .eyebrow{
-    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary); text-transform:uppercase;
-  }
-  .nav-title h1{ margin:1px 0 0; font-size:20px; font-weight:800; letter-spacing:-.01em; }
+  /* ---------- NAV ACTIONS (hero buttons) ---------- */
   .nav-actions{ display:flex; gap:6px; flex-shrink:0; }
   .nav-actions button, .nav-actions a{
     width:36px; height:36px; border-radius:50%;
@@ -298,21 +281,6 @@
 </style>
 </head>
 <body>
-
-  <div class="navbar">
-    <div class="nav-inner">
-      <a class="nav-title" href="index.html">
-        <div class="eyebrow">WHONEXT</div>
-        <h1>UNIVERSE</h1>
-      </a>
-      <div class="nav-role">
-        <div class="nav-welcome" id="navWelcome">
-          <span id="navWelcomeText">歡迎</span>
-          <button type="button" id="navLogoutBtn">登出</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <div class="wrap">
 
@@ -789,6 +757,7 @@
   render();
 </script>
 <script src="backend.js"></script>
+<script src="top-nav.js"></script>
 <script src="auth.js"></script>
 <script src="bottom-nav.js"></script>
 </body>

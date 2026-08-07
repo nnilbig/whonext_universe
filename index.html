@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="top-nav.css">
 <link rel="stylesheet" href="bottom-nav.css">
 <style>
   :root{
@@ -74,24 +75,6 @@
   .login-stage{ width:100%; max-width:300px; margin-top:28px; padding:0 6px; text-align:left; }
   .login-stage .signup-submit{ margin-top:2px; }
 
-  /* ---------- NAV ---------- */
-  .navbar{
-    position:sticky; top:0; z-index:30;
-    padding-top: max(10px, env(safe-area-inset-top));
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border-bottom: 1px solid var(--line);
-  }
-  .nav-inner{
-    max-width: 640px; margin:0 auto;
-    display:flex; align-items:center; justify-content:space-between;
-    padding: 10px 16px 12px;
-  }
-  .nav-title{ display:block; text-decoration:none; color:inherit; }
-  .nav-title .eyebrow{ font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary); text-transform:uppercase; }
-  .nav-title h1{ margin:1px 0 0; font-size:20px; font-weight:800; letter-spacing:-.01em; }
-
   .wrap{
     max-width: 640px; margin:0 auto; width:100%;
     padding: 20px 16px calc(96px + env(safe-area-inset-bottom));
@@ -147,6 +130,8 @@
   .event-status.waitlist{ background: rgba(228,201,122,0.15); color: var(--gold); }
   .event-status.full{ background: rgba(231,161,90,0.15); color: var(--warn); }
   .event-status.closed{ background: rgba(255,255,255,0.05); color: var(--tertiary); }
+  .event-status.ongoing{ background: rgba(159,179,200,0.18); color: var(--n-accent); }
+  .event-status.ended{ background: rgba(255,255,255,0.05); color: var(--tertiary); }
   body.is-admin .event-status{ cursor:pointer; box-shadow: inset 0 0 0 1px currentColor; }
   body.is-admin .event-status:active{ opacity:.7; }
   .event-meta{ font-size:12.5px; color:var(--secondary); line-height:1.5; font-family: var(--sf-mono); }
@@ -271,21 +256,6 @@
     </div>
   </div>
 
-  <div class="navbar">
-    <div class="nav-inner">
-      <a class="nav-title" href="index.html">
-        <div class="eyebrow">WHONEXT</div>
-        <h1>UNIVERSE</h1>
-      </a>
-      <div class="nav-role">
-        <div class="nav-welcome" id="navWelcome">
-          <span id="navWelcomeText">歡迎</span>
-          <button type="button" id="navLogoutBtn">登出</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="wrap">
 
     <div class="hero">
@@ -396,6 +366,7 @@
   <div class="toast" id="toast"></div>
 
 <script src="backend.js"></script>
+<script src="top-nav.js"></script>
 <script src="auth.js"></script>
 <script src="bottom-nav.js"></script>
 <script>
@@ -404,6 +375,8 @@
   // 管理員點擊狀態標籤依序切換。open 底下的顯示文字再依報名人數/上限/候補設定
   // 自動判斷成「報名中」「已額滿」「開放候補」三種，不用手動選。
   // 舊資料的 status 若是 full 或空值，一律當成 open 處理（走自動判斷）。
+  // 「進行中」「已結束」是額外依賽事日期＋時間自動判斷，時間到了就蓋過上述顯示，
+  // 底層 ev.status 不受影響，事後時間往前捲動時仍會回到原本的報名狀態顯示。
   let EVENTS = [];
   let eventsLoaded = false;
   const WEEKDAYS = ['日','一','二','三','四','五','六'];
@@ -417,7 +390,20 @@
     return STATUS_CYCLE.includes(status) ? status : 'open';
   }
 
+  function getEventTimeRange(ev){
+    const isoDate = String(ev.date || '').slice(0, 10);
+    const range = parseTimeRange(ev.time);
+    if(!isoDate || !range.start || !range.end) return { start: null, end: null };
+    return { start: new Date(isoDate + 'T' + range.start), end: new Date(isoDate + 'T' + range.end) };
+  }
+
   function eventStatusMeta(ev){
+    const { start, end } = getEventTimeRange(ev);
+    if(start && end && !isNaN(start) && !isNaN(end)){
+      const now = new Date();
+      if(now >= end) return { label: '已結束', cls: 'ended' };
+      if(now >= start) return { label: '進行中', cls: 'ongoing' };
+    }
     const status = normalizeStatus(ev.status);
     if(STATUS_MANUAL_META[status]) return STATUS_MANUAL_META[status];
     const capacity = Number(ev.capacity) || 0;
@@ -434,6 +420,31 @@
     const cached = getApiCache({ action:'getEvents' });
     if(cached){ EVENTS = cached.events || []; eventsLoaded = true; }
     return !!cached;
+  }
+
+  // 賽事「進行中／已結束」時，卡片人數改顯示錢包那邊記錄的實際出席人數
+  // （weeks 分頁，依日期比對），取代賽事開始前使用的報名人數。
+  let ALL_WEEKS = [];
+  function splitNames(val){
+    return String(val || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  }
+  function weekAttendanceCount(isoDate){
+    const week = ALL_WEEKS.find(function(w){ return String(w.week_date).slice(0, 10) === isoDate; });
+    if(!week) return null;
+    return splitNames(week.present_names).length + splitNames(week.dropin_names).length;
+  }
+  function loadCachedWeeksForEvents(){
+    const cached = getApiCache({ action:'getWeeks' });
+    if(cached) ALL_WEEKS = cached.weeks || [];
+    return !!cached;
+  }
+  async function refreshWeeksForEvents(){
+    try{
+      const result = await apiGet({ action:'getWeeks' });
+      setApiCache({ action:'getWeeks' }, result);
+      ALL_WEEKS = result.weeks || [];
+      renderEvents();
+    } catch(e){}
   }
 
   async function refreshEvents(){
@@ -462,15 +473,17 @@
     }
   }
 
-  function progressHTML(ev){
+  function progressHTML(ev, statusMeta){
     const capacity = Number(ev.capacity) || 0;
     const hasCapacity = capacity > 0;
-    const count = Number(ev.signup_count) || 0;
+    const isPast = statusMeta.cls === 'ongoing' || statusMeta.cls === 'ended';
+    const attendance = isPast ? weekAttendanceCount(String(ev.date).slice(0, 10)) : null;
+    const count = attendance !== null ? attendance : (Number(ev.signup_count) || 0);
     const waitlist = Number(ev.waitlist_count) || 0;
     const pct = hasCapacity ? Math.min(100, Math.round(count / capacity * 100)) : 0;
     const full = hasCapacity && count >= capacity;
-    let label = hasCapacity ? (count + ' / ' + capacity + ' 人報名') : ' ';
-    if(hasCapacity && waitlist > 0) label += '・候補 ' + waitlist;
+    let label = hasCapacity ? (count + ' / ' + capacity + (attendance !== null ? ' 人出席' : ' 人報名')) : ' ';
+    if(attendance === null && hasCapacity && waitlist > 0) label += '・候補 ' + waitlist;
     // 沒設上限時還是把容器印出來(用 visibility:hidden 隱藏),讓卡片不管有沒有
     // 上限，高度都一致，避免清單裡卡片高低不一。
     return '<div class="event-progress"' + (hasCapacity ? '' : ' style="visibility:hidden"') + '>' +
@@ -514,7 +527,7 @@
             '</div>' +
           '</div>' +
           '<div class="event-meta">' + (ev.type ? ev.type + '<span class="sep">・</span>' : '') + ev.time + '<span class="sep">・</span>' + ev.location + '</div>' +
-          progressHTML(ev) +
+          progressHTML(ev, statusMeta) +
         '</div>' +
       '</div>';
     }).join('');
@@ -1063,6 +1076,7 @@
 
   (async function initialLoad(){
     const hadCache = loadCachedEvents();
+    loadCachedWeeksForEvents();
     renderEvents();
     if(hadCache){ dataReady = true; maybeHideBrandMask(); }
 
@@ -1080,7 +1094,8 @@
 
   // 賽事是首頁第一眼看到的內容，先讓它的請求送出去，
   // 再暖機其他子頁面用的資料，避免跟 GAS 執行配額擠在一起拖慢賽事回應。
-  apiPrefetch({ action:'getWeeks' });
+  // getWeeks 額外拿來算「進行中／已結束」賽事卡片的實際出席人數，所以讀完要重繪一次。
+  refreshWeeksForEvents();
   apiPrefetch({ action:'getMembers' });
 </script>
 </body>
