@@ -70,7 +70,7 @@
     display:flex; align-items:center; gap:12px;
     padding: 10px 16px 12px;
   }
-  .nav-title{ flex:1; min-width:0; }
+  .nav-title{ flex:1; min-width:0; display:block; text-decoration:none; color:inherit; }
   .nav-title .eyebrow{
     font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary); text-transform:uppercase;
   }
@@ -301,10 +301,10 @@
 
   <div class="navbar">
     <div class="nav-inner">
-      <div class="nav-title">
+      <a class="nav-title" href="index.html">
         <div class="eyebrow">WHONEXT</div>
         <h1>UNIVERSE</h1>
-      </div>
+      </a>
       <div class="nav-role">
         <div class="role-toggle">
           <button class="active" data-role="player">球員</button>
