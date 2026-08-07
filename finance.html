@@ -827,8 +827,8 @@ async function updateMyWallet(){
   const role = WhonextAuth.getRole();
   const name = localStorage.getItem('whonext_player_name');
   if(role !== 'player' || !name){
-    amountEl.textContent = '$' + MONTHLY_WALLET_BASE.toLocaleString();
-    setWalletNote('功能開發中，之後會顯示您的月費與臨打紀錄', false);
+    amountEl.textContent = '$0';
+    setWalletNote('儲值功能開發中', false);
     return;
   }
   try{
