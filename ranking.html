@@ -149,12 +149,15 @@
     </div>
 
     <div class="section-label-row">
-      <div class="section-label">歷屆賽事得名</div>
+      <div class="section-label">歷屆賽事</div>
     </div>
     <div class="event-toggle" id="eventToggle"></div>
     <div class="trophy-row" id="trophyRow"></div>
     <button type="button" class="more-btn" id="trophyMore">查看更多 ↓</button>
 
+    <div class="section-label-row">
+      <div class="section-label">賽季排行</div>
+    </div>
     <div class="controls-row">
       <button type="button" class="board-year-btn" id="boardYearBtn"></button>
     </div>
@@ -172,17 +175,17 @@
 <script>
   const BOARDS = {
     friend: {
-      title: 'WHO朋引伴MVP', unit: '單位：人次', valueSuffix: '',
+      title: 'WHO朋引伴', unit: '揪團／帶新人次數', valueSuffix: '',
       month: [],
       year: []
     },
     attend: {
-      title: '出勤MVP', unit: '單位：場次', valueSuffix: '',
+      title: '出勤MVP', unit: '出席場次數', valueSuffix: '',
       month: [],
       year: []
     },
     dropin: {
-      title: '臨打MVP', unit: '單位：場次', valueSuffix: '',
+      title: '臨打MVP', unit: '臨打參與場次數', valueSuffix: '',
       month: [],
       year: []
     }
