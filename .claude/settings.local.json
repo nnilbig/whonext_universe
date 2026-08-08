@@ -22,7 +22,10 @@
       "Bash(node test-ranking.js)",
       "Bash(node test-whoami-members.js)",
       "Bash(node test-myactivities.js)",
-      "Bash(lsof -ti:8795 -sTCP:LISTEN)"
+      "Bash(lsof -ti:8795 -sTCP:LISTEN)",
+      "Bash(node test-topnav-identity.js)",
+      "Bash(lsof -ti:8796 -sTCP:LISTEN)",
+      "Bash(lsof -ti:8799 -sTCP:LISTEN)"
     ]
   }
 }

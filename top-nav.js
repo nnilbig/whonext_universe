@@ -11,7 +11,6 @@
         '<div class="nav-role">' +
           '<div class="role-toggle" id="navRoleToggle">' +
             '<button type="button" class="role-toggle-btn" data-role="player">球員</button>' +
-            '<button type="button" class="role-toggle-btn" data-role="admin">管理員</button>' +
           '</div>' +
         '</div>' +
       '</div>';

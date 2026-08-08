@@ -6,6 +6,17 @@
 
   function getRole(){ return localStorage.getItem(ROLE_KEY) || 'player'; }
 
+  function getPlayerName(){ return localStorage.getItem(PLAYER_NAME_KEY) || ''; }
+
+  // 設定/清除目前綁定的球員身分，並同步更新 top nav 的頭像顯示，
+  // 讓正在看 profile.html 的頁面也能透過事件即時重繪。
+  function setPlayerName(name){
+    if(name) localStorage.setItem(PLAYER_NAME_KEY, name);
+    else localStorage.removeItem(PLAYER_NAME_KEY);
+    updateNavRoleToggle();
+    document.dispatchEvent(new CustomEvent('whonext:playername-change'));
+  }
+
   function setRole(role){
     localStorage.setItem(ROLE_KEY, role);
     applyAdminClass();
@@ -52,12 +63,24 @@
     document.body.classList.toggle('is-admin', getRole() === 'admin');
   }
 
-  // Top nav 的「球員／管理員」切換鈕，反映目前角色的 active 狀態。
+  // Top nav 的「球員／管理員」切換鈕，反映目前角色的 active 狀態；
+  // 球員那顆按鈕如果已經綁定身分，改顯示頭像＋姓名取代「球員」文字。
   function updateNavRoleToggle(){
     var isAdmin = getRole() === 'admin';
     document.querySelectorAll('#navRoleToggle .role-toggle-btn').forEach(function(btn){
       btn.classList.toggle('active', (btn.dataset.role === 'admin') === isAdmin);
     });
+    var playerBtn = document.querySelector('#navRoleToggle .role-toggle-btn[data-role="player"]');
+    if(playerBtn){
+      var name = getPlayerName();
+      if(name){
+        playerBtn.classList.add('has-identity');
+        playerBtn.innerHTML = '<span class="nav-id-avatar">' + name.slice(0,1) + '</span><span class="nav-id-name">' + name + '</span>';
+      } else {
+        playerBtn.classList.remove('has-identity');
+        playerBtn.textContent = '球員';
+      }
+    }
   }
 
   function openAdminLogin(){
@@ -105,8 +128,10 @@
     }
   }
 
-  // 點「球員」直接切回去（等同登出管理員）；點「管理員」跳帳密驗證，
-  // 通過才切換，取消或失敗都留在原本身分。
+  // 點「球員／頭像」：如果目前是管理員，直接切回球員（等同登出管理員，
+  // 並清空球員身分要求重新選）；如果已經是球員身分，點下去是去
+  // 「我的活動」重新挑選／更換身分。點「管理員」跳帳密驗證，通過才
+  // 切換，取消或失敗都留在原本身分。
   function wireNavRoleToggle(){
     var toggle = document.getElementById('navRoleToggle');
     if(!toggle) return;
@@ -118,9 +143,14 @@
         if(getRole() === 'admin') return;
         openAdminLogin();
       } else {
-        if(getRole() === 'player') return;
-        localStorage.removeItem(PLAYER_NAME_KEY);
-        setRole('player');
+        if(getRole() === 'admin'){
+          setPlayerName('');
+          setRole('player');
+          return;
+        }
+        setPlayerName('');
+        var page = location.pathname.split('/').pop();
+        if(page !== 'profile.html') location.href = 'profile.html';
       }
     });
 
@@ -143,5 +173,8 @@
     if(getRole() === 'admin') resetIdleTimer();
   });
 
-  window.WhonextAuth = { ROLE_KEY: ROLE_KEY, getRole: getRole, setRole: setRole };
+  window.WhonextAuth = {
+    ROLE_KEY: ROLE_KEY, getRole: getRole, setRole: setRole,
+    getPlayerName: getPlayerName, setPlayerName: setPlayerName
+  };
 })();

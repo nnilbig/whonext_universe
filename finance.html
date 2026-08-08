@@ -80,6 +80,12 @@
   .balance-sub div p:first-child{ margin:0 0 2px; font-size:10.5px; color:var(--tertiary); }
   .balance-sub div p:last-child{ margin:0; font-size:14.5px; font-weight:700; font-family: var(--sf-mono); }
 
+  .wallet-login-btn{
+    display:block; text-align:center; text-decoration:none;
+    font-size:13px; font-weight:700; padding:11px 0; border-radius:12px;
+    background: var(--label); color:#000;
+  }
+
   .board-title{
     display:flex; align-items:baseline; justify-content:space-between;
     margin: 4px 4px 12px;
@@ -245,6 +251,12 @@
       <p class="label">目前餘額</p>
       <p class="amount" id="myWalletAmount">$0</p>
       <p id="myWalletNote" style="margin:14px 0 0; font-size:12px; color:var(--tertiary); line-height:1.6; white-space:pre-line;">載入中…</p>
+    </div>
+
+    <div id="walletLoginRequired" class="balance-card glass" style="display:none">
+      <p class="label">尚未登入</p>
+      <p style="margin:10px 0 18px; font-size:12.5px; color:var(--tertiary); line-height:1.6;">登入後才能查看你的錢包餘額。</p>
+      <a href="profile.html" class="wallet-login-btn">前往登入</a>
     </div>
 
   </div>
@@ -749,10 +761,17 @@ function setWalletNote(text, alert){
   noteEl.style.fontWeight = alert ? '700' : '400';
 }
 
+// 還沒綁定身分（whonext_player_name 是空的）就不算登入，錢包餘額要先擋起來，
+// 引導去「我的活動」登入／選身分，不能直接看到任何人的錢包資料。
 async function updateMyWallet(){
-  const amountEl = document.getElementById('myWalletAmount');
   const role = WhonextAuth.getRole();
-  const name = localStorage.getItem('whonext_player_name');
+  const name = WhonextAuth.getPlayerName();
+  const needsLogin = role !== 'admin' && !name;
+  document.getElementById('walletLoginRequired').style.display = needsLogin ? '' : 'none';
+  document.getElementById('myWalletView').style.display = needsLogin ? 'none' : '';
+  if(needsLogin) return;
+
+  const amountEl = document.getElementById('myWalletAmount');
   const status = await getWalletStatus(role, name);
   amountEl.textContent = '$' + status.amount.toLocaleString();
   setWalletNote(status.note, status.alert);
@@ -763,10 +782,15 @@ function updateWalletMode(){
   const isAdmin = document.body.classList.contains('is-admin');
   document.getElementById('walletTitle').textContent = isAdmin ? '球隊錢包' : '我的錢包';
   document.getElementById('teamWalletView').style.display = isAdmin ? '' : 'none';
-  document.getElementById('myWalletView').style.display = isAdmin ? 'none' : '';
-  if(!isAdmin) updateMyWallet();
+  if(isAdmin){
+    document.getElementById('myWalletView').style.display = 'none';
+    document.getElementById('walletLoginRequired').style.display = 'none';
+  } else {
+    updateMyWallet();
+  }
 }
 document.addEventListener('DOMContentLoaded', updateWalletMode);
+document.addEventListener('whonext:playername-change', updateWalletMode);
 new MutationObserver(updateWalletMode).observe(document.body, { attributes:true, attributeFilter:['class'] });
 
 (async function init(){

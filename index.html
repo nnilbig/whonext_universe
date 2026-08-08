@@ -346,9 +346,9 @@
       <div id="detailProgress"></div>
       <p class="detail-contact-note" id="detailContactNote" style="display:none"></p>
 
-      <!-- 暫時移除賽事卡片點擊的報名功能，之後要恢復把 display:none 拿掉即可 -->
+      <button type="button" class="signup-submit" id="signupToggleBtn">我要報名</button>
+
       <div id="eventSignupSection" style="display:none">
-        <div class="detail-section-label">我要報名</div>
         <div class="signup-mode-toggle">
           <button type="button" class="active" data-mode="member" id="signupModeMember">球員</button>
           <button type="button" data-mode="guest" id="signupModeGuest">臨打</button>
@@ -946,6 +946,9 @@
     document.getElementById('signupMemberName').innerHTML = nameOptions;
     document.getElementById('signupReferrer').innerHTML = '<option value="">— 無 —</option>' + nameOptions;
 
+    document.getElementById('signupToggleBtn').style.display = '';
+    document.getElementById('eventSignupSection').style.display = 'none';
+
     document.getElementById('eventDetailOverlay').classList.add('open');
   }
 
@@ -953,6 +956,11 @@
     document.getElementById('eventDetailOverlay').classList.remove('open');
     detailIndex = null;
   }
+
+  document.getElementById('signupToggleBtn').addEventListener('click', function(){
+    this.style.display = 'none';
+    document.getElementById('eventSignupSection').style.display = '';
+  });
 
   const SIGNUP_FAIL_MSG = {
     full: '報名已額滿',

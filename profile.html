@@ -70,17 +70,6 @@
   .whoami-btn{ width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px; background: var(--label); color:#000; }
   .whoami-btn:disabled{ opacity:.5; }
 
-  .identity-row{ display:flex; align-items:center; justify-content:space-between; margin: 0 4px 20px; }
-  .identity-hi{ display:flex; align-items:center; gap:10px; }
-  .identity-avatar{
-    width:38px; height:38px; border-radius:50%; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-    font-weight:800; font-size:14px; background: var(--gold-bg); border:1.5px solid var(--gold); color:var(--gold);
-  }
-  .identity-name{ font-size:14.5px; font-weight:800; }
-  .identity-sub{ font-size:11px; color:var(--tertiary); margin-top:1px; }
-  .identity-switch{ font-size:12px; font-weight:700; color:var(--secondary); padding:6px 4px; }
-
   /* ---- 活動列表 ---- */
   .plist{ padding: 6px 6px; margin-bottom: 8px; }
   .prow{
@@ -206,17 +195,6 @@
         <button type="button" class="whoami-btn" id="whoamiConfirm" disabled>確認</button>
       </div>
 
-      <div id="identityRow" class="identity-row" style="display:none">
-        <div class="identity-hi">
-          <div class="identity-avatar" id="identityAvatar"></div>
-          <div>
-            <div class="identity-name" id="identityName"></div>
-            <div class="identity-sub">歡迎回來</div>
-          </div>
-        </div>
-        <button type="button" class="identity-switch" id="identitySwitchBtn">更換身分</button>
-      </div>
-
       <div id="personalContent" style="display:none">
 
         <div class="section-label-row">
@@ -252,7 +230,6 @@
 <script src="auth.js"></script>
 <script src="bottom-nav.js"></script>
 <script>
-  const PLAYER_NAME_KEY = 'whonext_player_name';
   const HISTORY_PREVIEW_COUNT = 1;
   let historyExpanded = false;
 
@@ -294,13 +271,11 @@
 
   // ---------------------------------------------------------------
   // 身分綁定：正式站目前沒有帳號系統，先用選單讓球員自己挑名字，
-  // 存進 whonext_player_name，跟「我的錢包」讀的是同一個 key。
+  // 存進 whonext_player_name（透過 auth.js，跟 top nav 的頭像共用同一份
+  // 狀態）。頭像顯示跟「更換身分」都在 top nav 那顆球員按鈕上處理，
+  // 這裡改身分後靠 whonext:playername-change 事件重繪即可。
   // ---------------------------------------------------------------
-  function getPlayerName(){ return localStorage.getItem(PLAYER_NAME_KEY) || ''; }
-  function setPlayerName(name){
-    if(name) localStorage.setItem(PLAYER_NAME_KEY, name);
-    else localStorage.removeItem(PLAYER_NAME_KEY);
-  }
+  function getPlayerName(){ return WhonextAuth.getPlayerName(); }
 
   // 先只放月繳成員進選單，臨打／訪客的身分綁定之後再開放。
   function knownPlayerNames(){
@@ -321,13 +296,10 @@
   document.getElementById('whoamiConfirm').addEventListener('click', function(){
     const name = document.getElementById('whoamiSelect').value;
     if(!name) return;
-    setPlayerName(name);
-    renderPersonalView();
+    WhonextAuth.setPlayerName(name);
   });
-  document.getElementById('identitySwitchBtn').addEventListener('click', function(){
-    setPlayerName('');
-    renderPersonalView();
-  });
+  // top nav 的頭像／「球員」按鈕是改身分的入口，這裡只要跟著重繪就好。
+  document.addEventListener('whonext:playername-change', renderPersonalView);
 
   // ---------------------------------------------------------------
   // 報名中／歷史活動
@@ -475,22 +447,17 @@
   function renderPersonalView(){
     const name = getPlayerName();
     const whoamiCard = document.getElementById('whoamiCard');
-    const identityRow = document.getElementById('identityRow');
     const content = document.getElementById('personalContent');
 
     if(!name){
       renderWhoami();
       whoamiCard.style.display = '';
-      identityRow.style.display = 'none';
       content.style.display = 'none';
       return;
     }
 
     whoamiCard.style.display = 'none';
-    identityRow.style.display = 'flex';
     content.style.display = '';
-    document.getElementById('identityAvatar').textContent = name.slice(0,1);
-    document.getElementById('identityName').textContent = name;
 
     historyExpanded = false;
     renderUpcomingList(name);

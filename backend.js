@@ -37,14 +37,10 @@ function apiPrefetch(params){
 }
 
 // ---------------------------------------------------------------
-// 「我的錢包」餘額規則，finance.html 跟 profile.html 共用同一份邏輯。
-// 月繳基準 840（可打 4 場次，每場次 210）。本月已繳費 -> 顯示 840；
-// 未繳費 -> 840 扣掉應繳的 monthly_total_fee，剩餘餘額換算成場次數。
+// 「我的錢包」餘額規則。members 表目前還沒有專門的餘額欄位，先直接
+// 把 monthly_total_fee 當作錢包餘額的數字來源；之後有專門的儲值／
+// 支付紀錄表時，這裡再換成真的加總算法。
 // ---------------------------------------------------------------
-const MONTHLY_WALLET_BASE = 840;
-const MONTHLY_WALLET_SESSIONS = 4;
-const WALLET_SESSION_RATE = MONTHLY_WALLET_BASE / MONTHLY_WALLET_SESSIONS;
-
 function walletCalendarMonth(){
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -67,16 +63,11 @@ async function getWalletStatus(role, name){
     const members = await getMonthlyMembersCached(walletCalendarMonth());
     const record = members.find(function(m){ return m.name === name; });
     if(!record){
-      return { amount: MONTHLY_WALLET_BASE, note: '本月尚無月繳紀錄', alert: false };
+      return { amount: 0, note: '本月尚無錢包紀錄', alert: false };
     }
-    const total = Number(record.monthly_total_fee) || 0;
-    if(record.paid){
-      return { amount: MONTHLY_WALLET_BASE, note: '本月已繳費，可打 ' + MONTHLY_WALLET_SESSIONS + ' 場次', alert: false };
-    }
-    const balance = MONTHLY_WALLET_BASE - total;
-    const sessions = Math.max(0, Math.floor(balance / WALLET_SESSION_RATE));
-    return { amount: balance, note: '可打 ' + sessions + ' 場次\n再繳 $' + total.toLocaleString() + ' 可符合月繳資格', alert: true };
+    const balance = Number(record.monthly_total_fee) || 0;
+    return { amount: balance, note: balance > 0 ? '目前餘額' : '餘額不足，請洽管理員儲值', alert: balance <= 0 };
   } catch(e){
-    return { amount: MONTHLY_WALLET_BASE, note: '讀取繳費狀態失敗，請稍後再試', alert: false };
+    return { amount: 0, note: '讀取錢包餘額失敗，請稍後再試', alert: false };
   }
 }
