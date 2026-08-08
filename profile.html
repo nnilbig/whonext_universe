@@ -402,7 +402,7 @@
     return rank === 1 ? '' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'other';
   }
   function medalLabel(rank){
-    return rank === 1 ? '冠' : rank === 2 ? '亞' : rank === 3 ? '季' : ('NO.' + rank);
+    return rank === 1 ? '冠' : rank === 2 ? '亞' : rank === 3 ? '季' : String(rank);
   }
 
   function renderTrophyList(name){
