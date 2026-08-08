@@ -87,6 +87,11 @@
   .board-title .t{ font-size:14px; font-weight:800; }
   .board-title .n{ font-size:11px; color:var(--tertiary); }
 
+  .section-label{
+    font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--tertiary);
+    text-transform:uppercase; margin: 4px 4px 12px;
+  }
+
   /* ---- weekly list ---- */
   .board-list{ padding: 6px 6px; margin-bottom: 22px; }
   .row{
@@ -241,8 +246,8 @@
       <div class="board-list glass" id="weekList"></div>
     </div>
 
+    <div id="myWalletLabel" class="section-label" style="display:none">目前餘額</div>
     <div id="myWalletView" class="balance-card glass" style="display:none">
-      <p class="label">目前餘額</p>
       <p class="amount" id="myWalletAmount">$0</p>
       <p id="myWalletNote" style="margin:14px 0 0; font-size:12px; color:var(--tertiary); line-height:1.6; white-space:pre-line;">載入中…</p>
     </div>
@@ -761,6 +766,7 @@ async function updateMyWallet(){
   const needsLogin = role !== 'admin' && !name;
   const loginEl = document.getElementById('walletLoginRequired');
   loginEl.style.display = needsLogin ? '' : 'none';
+  document.getElementById('myWalletLabel').style.display = needsLogin ? 'none' : '';
   document.getElementById('myWalletView').style.display = needsLogin ? 'none' : '';
   if(needsLogin){
     WhonextIdentityPicker.render(loginEl);
@@ -779,6 +785,7 @@ function updateWalletMode(){
   document.getElementById('walletTitle').textContent = isAdmin ? '球隊錢包' : '我的錢包';
   document.getElementById('teamWalletView').style.display = isAdmin ? '' : 'none';
   if(isAdmin){
+    document.getElementById('myWalletLabel').style.display = 'none';
     document.getElementById('myWalletView').style.display = 'none';
     document.getElementById('walletLoginRequired').style.display = 'none';
   } else {

@@ -198,8 +198,14 @@
   .edit-save{ background: var(--label); color:#000; }
 
   /* ---------- EVENT DETAIL / SIGNUP ---------- */
-  .detail-box{ max-width:420px; max-height:85vh; overflow-y:auto; }
+  /* 固定高度先把文字跟報名欄位的空間留好，展開表單時內容不會整個跳動，
+     「我要報名」按鈕（跟展開後表單裡的送出按鈕）都貼齊底部。 */
+  .detail-box{
+    max-width:420px; max-height:85vh; min-height:420px;
+    overflow-y:auto; display:flex; flex-direction:column; justify-content:space-between;
+  }
   .detail-meta{ font-size:12.5px; color:var(--secondary); line-height:1.6; font-family: var(--sf-mono); margin-bottom:14px; }
+  #eventSignupSection{ display:flex; flex-direction:column; flex:1; }
 
   .signup-mode-toggle{
     display:flex; background: rgba(255,255,255,0.05); border:1px solid var(--line);
@@ -330,9 +336,11 @@
 
   <div class="auth-overlay" id="eventDetailOverlay">
     <div class="auth-box detail-box">
-      <div class="edit-title" id="detailTitle"></div>
-      <div class="detail-meta" id="detailMeta"></div>
-      <div id="detailProgress"></div>
+      <div>
+        <div class="edit-title" id="detailTitle"></div>
+        <div class="detail-meta" id="detailMeta"></div>
+        <div id="detailProgress"></div>
+      </div>
 
       <button type="button" class="signup-submit" id="signupToggleBtn">我要報名</button>
 

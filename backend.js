@@ -66,7 +66,7 @@ async function getWalletStatus(role, name){
       return { amount: 0, note: '本月尚無錢包紀錄', alert: false };
     }
     const balance = Number(record.monthly_total_fee) || 0;
-    return { amount: balance, note: balance > 0 ? '目前餘額' : '餘額不足，請洽管理員儲值', alert: balance <= 0 };
+    return { amount: balance, note: balance > 0 ? '' : '餘額不足，請洽管理員儲值', alert: balance <= 0 };
   } catch(e){
     return { amount: 0, note: '讀取錢包餘額失敗，請稍後再試', alert: false };
   }
