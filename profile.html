@@ -54,22 +54,6 @@
     text-transform:uppercase; margin:0;
   }
 
-  /* ---- 身分綁定卡 ---- */
-  .whoami-card{ padding:20px; margin-bottom:10px; }
-  .whoami-title{ font-size:14px; font-weight:800; margin-bottom:4px; }
-  .whoami-sub{ font-size:12px; color:var(--secondary); margin-bottom:14px; line-height:1.5; }
-  .whoami-input{
-    width:100%; box-sizing:border-box;
-    font-family: var(--sf); font-size:16px; color: var(--label);
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--line); border-radius: 12px;
-    padding: 11px 14px; margin-bottom:12px;
-  }
-  select.whoami-input{ color: var(--label); }
-  select.whoami-input option{ color: var(--label); background:#1c1c1e; }
-  .whoami-btn{ width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px; background: var(--label); color:#000; }
-  .whoami-btn:disabled{ opacity:.5; }
-
   /* ---- 活動列表 ---- */
   .plist{ padding: 6px 6px; margin-bottom: 8px; }
   .prow{
@@ -188,12 +172,7 @@
     <!-- ---------- 球員：個人頁 ---------- -->
     <div id="personalView" style="display:none">
 
-      <div class="whoami-card glass" id="whoamiCard" style="display:none">
-        <div class="whoami-title">你是哪位球員？</div>
-        <div class="whoami-sub">選擇你的名字，之後才能看到自己的報名和排名紀錄。</div>
-        <select class="whoami-input" id="whoamiSelect"><option value="">— 選擇姓名 —</option></select>
-        <button type="button" class="whoami-btn" id="whoamiConfirm" disabled>確認</button>
-      </div>
+      <div id="whoamiContainer" style="display:none"></div>
 
       <div id="personalContent" style="display:none">
 
@@ -228,6 +207,7 @@
 <script src="tournaments.js"></script>
 <script src="top-nav.js"></script>
 <script src="auth.js"></script>
+<script src="identity-picker.js"></script>
 <script src="bottom-nav.js"></script>
 <script>
   const HISTORY_PREVIEW_COUNT = 1;
@@ -235,7 +215,6 @@
 
   let EVENTS = [];
   let ALL_WEEKS = [];
-  let ALL_MEMBERS = [];
 
   function showToast(msg){
     const t = document.getElementById('toast');
@@ -270,35 +249,13 @@
   }
 
   // ---------------------------------------------------------------
-  // 身分綁定：正式站目前沒有帳號系統，先用選單讓球員自己挑名字，
-  // 存進 whonext_player_name（透過 auth.js，跟 top nav 的頭像共用同一份
-  // 狀態）。頭像顯示跟「更換身分」都在 top nav 那顆球員按鈕上處理，
-  // 這裡改身分後靠 whonext:playername-change 事件重繪即可。
+  // 身分綁定：正式站目前沒有帳號系統，選單畫面跟邏輯共用
+  // identity-picker.js（我的錢包也是同一份）。存進 whonext_player_name
+  // 之後（透過 auth.js，跟 top nav 的頭像共用同一份狀態），靠
+  // whonext:playername-change 事件重繪即可。
   // ---------------------------------------------------------------
   function getPlayerName(){ return WhonextAuth.getPlayerName(); }
 
-  // 先只放月繳成員進選單，臨打／訪客的身分綁定之後再開放。
-  function knownPlayerNames(){
-    return [...new Set(ALL_MEMBERS.map(m=> m.name))].sort((a,b)=> a.localeCompare(b));
-  }
-
-  function renderWhoami(){
-    const select = document.getElementById('whoamiSelect');
-    const names = knownPlayerNames();
-    select.innerHTML = '<option value="">— 選擇姓名 —</option>' + names.map(function(n){
-      return '<option value="' + n + '">' + n + '</option>';
-    }).join('');
-  }
-
-  document.getElementById('whoamiSelect').addEventListener('change', function(){
-    document.getElementById('whoamiConfirm').disabled = !this.value;
-  });
-  document.getElementById('whoamiConfirm').addEventListener('click', function(){
-    const name = document.getElementById('whoamiSelect').value;
-    if(!name) return;
-    WhonextAuth.setPlayerName(name);
-  });
-  // top nav 的頭像／「球員」按鈕是改身分的入口，這裡只要跟著重繪就好。
   document.addEventListener('whonext:playername-change', renderPersonalView);
 
   // ---------------------------------------------------------------
@@ -446,17 +403,17 @@
   // ---------------------------------------------------------------
   function renderPersonalView(){
     const name = getPlayerName();
-    const whoamiCard = document.getElementById('whoamiCard');
+    const whoamiContainer = document.getElementById('whoamiContainer');
     const content = document.getElementById('personalContent');
 
     if(!name){
-      renderWhoami();
-      whoamiCard.style.display = '';
+      WhonextIdentityPicker.render(whoamiContainer);
+      whoamiContainer.style.display = '';
       content.style.display = 'none';
       return;
     }
 
-    whoamiCard.style.display = 'none';
+    whoamiContainer.style.display = 'none';
     content.style.display = '';
 
     historyExpanded = false;
@@ -484,23 +441,18 @@
     if(events) EVENTS = events.events || [];
     const weeks = getApiCache({ action:'getWeeks' });
     if(weeks) ALL_WEEKS = weeks.weeks || [];
-    const members = getApiCache({ action:'getMembers' });
-    if(members) ALL_MEMBERS = members.members || [];
   }
 
   async function refreshAll(){
     try{
-      const [eventsRes, weeksRes, membersRes] = await Promise.all([
+      const [eventsRes, weeksRes] = await Promise.all([
         apiGet({ action:'getEvents' }),
-        apiGet({ action:'getWeeks' }),
-        apiGet({ action:'getMembers' })
+        apiGet({ action:'getWeeks' })
       ]);
       setApiCache({ action:'getEvents' }, eventsRes);
       setApiCache({ action:'getWeeks' }, weeksRes);
-      setApiCache({ action:'getMembers' }, membersRes);
       EVENTS = eventsRes.events || [];
       ALL_WEEKS = weeksRes.weeks || [];
-      ALL_MEMBERS = membersRes.members || [];
       if(!document.body.classList.contains('is-admin')) renderPersonalView();
     } catch(e){
       // 讀取失敗就沿用快取（可能是空陣列）

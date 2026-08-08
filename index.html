@@ -200,12 +200,6 @@
   /* ---------- EVENT DETAIL / SIGNUP ---------- */
   .detail-box{ max-width:420px; max-height:85vh; overflow-y:auto; }
   .detail-meta{ font-size:12.5px; color:var(--secondary); line-height:1.6; font-family: var(--sf-mono); margin-bottom:14px; }
-  .detail-contact-note{ font-size:12.5px; font-weight:700; color:var(--gold); margin:2px 2px 14px; }
-  .detail-section-label{
-    font-size:11px; font-weight:700; letter-spacing:.1em; color:var(--tertiary);
-    text-transform:uppercase; margin: 18px 2px 8px;
-  }
-  .detail-section-label:first-of-type{ margin-top:2px; }
 
   .signup-mode-toggle{
     display:flex; background: rgba(255,255,255,0.05); border:1px solid var(--line);
@@ -288,14 +282,9 @@
 
       <div class="edit-field-label">類型</div>
       <select id="eventEditType" class="edit-input">
-        <option value="球類">球類</option>
+        <option value="練習">練習</option>
+        <option value="企劃">企劃</option>
         <option value="賽事">賽事</option>
-        <option value="聚餐">聚餐</option>
-        <option value="訓練">訓練</option>
-        <option value="路跑">路跑</option>
-        <option value="爬山">爬山</option>
-        <option value="露營">露營</option>
-        <option value="其他">其他</option>
       </select>
 
       <div class="edit-field-label">日期</div>
@@ -344,7 +333,6 @@
       <div class="edit-title" id="detailTitle"></div>
       <div class="detail-meta" id="detailMeta"></div>
       <div id="detailProgress"></div>
-      <p class="detail-contact-note" id="detailContactNote" style="display:none"></p>
 
       <button type="button" class="signup-submit" id="signupToggleBtn">我要報名</button>
 
@@ -396,10 +384,10 @@
     return FRIEND_CLUB_KEYWORDS.some(function(k){ return t.indexOf(k) !== -1; });
   }
 
-  // 賽事標題關鍵字對應主辦人，卡片頭像、詳情頁的報名聯絡窗口都吃這份資料。
+  // 賽事標題關鍵字對應主辦人，卡片頭像用這份資料顯示。
   const HOST_MAP = [
-    { keywords: ['WHONEXT'], name: '儒', note: '報名請洽隊長儒' },
-    { keywords: ['黑狗'], name: 'Eden', note: '報名請洽友團隊長Eden' }
+    { keywords: ['WHONEXT'], name: '儒' },
+    { keywords: ['黑狗'], name: 'Eden' }
   ];
   function eventHostInfo(title){
     const t = String(title || '');
@@ -690,7 +678,7 @@
     document.getElementById('eventEditRecurringWrap').style.display = 'none';
     document.getElementById('eventEditRecurring').checked = false;
     document.getElementById('eventEditTitle').value = ev.title;
-    document.getElementById('eventEditType').value = ev.type || '球類';
+    document.getElementById('eventEditType').value = ev.type || '練習';
     document.getElementById('eventEditDate').value = String(ev.date).slice(0, 10);
     const parsedTime = parseTimeRange(ev.time);
     setTimeSelects(parsedTime.start, parsedTime.end);
@@ -706,7 +694,7 @@
     document.getElementById('eventEditTemplateWrap').style.display = '';
     document.getElementById('eventEditTemplate').value = 'manual';
     document.getElementById('eventEditTitle').value = '';
-    document.getElementById('eventEditType').value = '球類';
+    document.getElementById('eventEditType').value = '練習';
     document.getElementById('eventEditDate').value = '';
     setTimeSelects('20:00', '22:00');
     document.getElementById('eventEditLocation').value = '';
@@ -749,7 +737,7 @@
   const EVENT_TEMPLATES = {
     whonext_badminton: {
       title: 'WHONEXT 羽球',
-      type: '球類',
+      type: '練習',
       location: '大墩大慶羽球館',
       time: '20:00-22:00',
       capacity: 16,
@@ -916,23 +904,12 @@
       .sort(function(a, b){ return a.localeCompare(b); });
   }
 
-  // 賽事標題含隊伍關鍵字，就顯示對應的報名聯絡窗口。
-  function captainContactNote(title){
-    const info = eventHostInfo(title);
-    return info ? info.note : '';
-  }
-
   function openEventDetail(index){
     detailIndex = index;
     const ev = EVENTS[index];
     document.getElementById('detailTitle').textContent = ev.title;
     document.getElementById('detailMeta').textContent = (ev.type ? ev.type + '　' : '') + String(ev.date).slice(0, 10) + '　' + ev.time + '　' + ev.location;
     document.getElementById('detailProgress').innerHTML = progressHTML(ev, eventStatusMeta(ev));
-
-    const contactNote = captainContactNote(ev.title);
-    const contactEl = document.getElementById('detailContactNote');
-    contactEl.textContent = contactNote;
-    contactEl.style.display = contactNote ? '' : 'none';
 
     signupMode = 'member';
     document.getElementById('signupModeMember').classList.add('active');

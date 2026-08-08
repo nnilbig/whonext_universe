@@ -23,6 +23,22 @@ body.is-admin .admin-only.flex{ display:flex; }
 .nav-login-submit{ background: var(--label); color:#000; }
 .nav-login-submit:disabled{ opacity:.5; }
 
+/* ---------- IDENTITY PICKER (shared, injected by identity-picker.js) ---------- */
+.whoami-card{ padding:20px; margin-bottom:10px; }
+.whoami-title{ font-size:14px; font-weight:800; margin-bottom:4px; }
+.whoami-sub{ font-size:12px; color:var(--secondary); margin-bottom:14px; line-height:1.5; }
+.whoami-input{
+  width:100%; box-sizing:border-box;
+  font-family: var(--sf); font-size:16px; color: var(--label);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--line); border-radius: 12px;
+  padding: 11px 14px; margin-bottom:12px;
+}
+select.whoami-input{ color: var(--label); }
+select.whoami-input option{ color: var(--label); background:#1c1c1e; }
+.whoami-btn{ width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px; background: var(--label); color:#000; }
+.whoami-btn:disabled{ opacity:.5; }
+
 /* ---------- SHARED MODAL/OVERLAY SHELL (event edit, detail, member edit, login...) ---------- */
 .auth-overlay{
   position:fixed; inset:0; z-index:100;

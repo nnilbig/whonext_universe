@@ -80,12 +80,6 @@
   .balance-sub div p:first-child{ margin:0 0 2px; font-size:10.5px; color:var(--tertiary); }
   .balance-sub div p:last-child{ margin:0; font-size:14.5px; font-weight:700; font-family: var(--sf-mono); }
 
-  .wallet-login-btn{
-    display:block; text-align:center; text-decoration:none;
-    font-size:13px; font-weight:700; padding:11px 0; border-radius:12px;
-    background: var(--label); color:#000;
-  }
-
   .board-title{
     display:flex; align-items:baseline; justify-content:space-between;
     margin: 4px 4px 12px;
@@ -253,11 +247,7 @@
       <p id="myWalletNote" style="margin:14px 0 0; font-size:12px; color:var(--tertiary); line-height:1.6; white-space:pre-line;">載入中…</p>
     </div>
 
-    <div id="walletLoginRequired" class="balance-card glass" style="display:none">
-      <p class="label">尚未登入</p>
-      <p style="margin:10px 0 18px; font-size:12.5px; color:var(--tertiary); line-height:1.6;">登入後才能查看你的錢包餘額。</p>
-      <a href="profile.html" class="wallet-login-btn">前往登入</a>
-    </div>
+    <div id="walletLoginRequired" style="display:none"></div>
 
   </div>
 
@@ -278,6 +268,7 @@
 <script src="backend.js"></script>
 <script src="top-nav.js"></script>
 <script src="auth.js"></script>
+<script src="identity-picker.js"></script>
 <script src="bottom-nav.js"></script>
 <script>
 const BALLS_PER_TUBE = 12;
@@ -761,15 +752,20 @@ function setWalletNote(text, alert){
   noteEl.style.fontWeight = alert ? '700' : '400';
 }
 
-// 還沒綁定身分（whonext_player_name 是空的）就不算登入，錢包餘額要先擋起來，
-// 引導去「我的活動」登入／選身分，不能直接看到任何人的錢包資料。
+// 還沒綁定身分（whonext_player_name 是空的）就不算登入，錢包餘額要先擋起來。
+// 登入畫面跟「我的活動」共用同一份 identity-picker.js，選完身分後
+// whonext:playername-change 事件會讓這裡重新渲染成真正的餘額。
 async function updateMyWallet(){
   const role = WhonextAuth.getRole();
   const name = WhonextAuth.getPlayerName();
   const needsLogin = role !== 'admin' && !name;
-  document.getElementById('walletLoginRequired').style.display = needsLogin ? '' : 'none';
+  const loginEl = document.getElementById('walletLoginRequired');
+  loginEl.style.display = needsLogin ? '' : 'none';
   document.getElementById('myWalletView').style.display = needsLogin ? 'none' : '';
-  if(needsLogin) return;
+  if(needsLogin){
+    WhonextIdentityPicker.render(loginEl);
+    return;
+  }
 
   const amountEl = document.getElementById('myWalletAmount');
   const status = await getWalletStatus(role, name);
