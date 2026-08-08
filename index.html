@@ -523,14 +523,24 @@
 
   const AVATAR_COLORS = ['n', 'e', 'x', 't'];
 
+  // 友團活動不走我們的報名系統，人數/名單沒有真實資料可抓，先寫死顯示。
+  const FRIEND_ATTENDEE_OVERRIDE = [
+    { keywords: ['黑狗'], count: 15, names: ['韶恩', '學承', '安', '育誠'] }
+  ];
+  function friendAttendeeOverride(title){
+    const t = String(title || '');
+    return FRIEND_ATTENDEE_OVERRIDE.find(function(h){ return h.keywords.some(function(k){ return t.indexOf(k) !== -1; }); }) || null;
+  }
+
   // 卡片列表用頭像疊圖取代長條進度圖，最多顯示 4 個頭像 + 剩餘人數。
   // ev.signup_names 是後端 getEvents 才會回傳的名單快照，舊快取或後端還沒
   // 部署新版時會是 undefined，這裡退回只顯示人數，不會整張卡片壞掉。
   function attendeesHTML(ev, statusMeta){
     const isPast = statusMeta.cls === 'ongoing' || statusMeta.cls === 'ended';
     const attendance = isPast ? weekAttendanceCount(String(ev.date).slice(0, 10)) : null;
-    const names = Array.isArray(ev.signup_names) ? ev.signup_names : [];
-    const count = attendance !== null ? attendance : (names.length || Number(ev.signup_count) || 0);
+    const override = friendAttendeeOverride(ev.title);
+    const names = override ? override.names : (Array.isArray(ev.signup_names) ? ev.signup_names : []);
+    const count = attendance !== null ? attendance : (override ? override.count : (names.length || Number(ev.signup_count) || 0));
     const waitlist = Number(ev.waitlist_count) || 0;
 
     const hostInfo = eventHostInfo(ev.title);
@@ -569,7 +579,12 @@
         const ev = EVENTS[i];
         return eventFilter === 'friend' ? isFriendEvent(ev.title) : (!isFriendEvent(ev.title) && isThisCalendarMonth(ev.date));
       })
-      .sort(function(a, b){ return String(EVENTS[a].date).slice(0,10).localeCompare(String(EVENTS[b].date).slice(0,10)); });
+      .sort(function(a, b){
+        const aEnded = eventStatusMeta(EVENTS[a]).cls === 'ended' ? 1 : 0;
+        const bEnded = eventStatusMeta(EVENTS[b]).cls === 'ended' ? 1 : 0;
+        if(aEnded !== bEnded) return aEnded - bEnded;
+        return String(EVENTS[a].date).slice(0,10).localeCompare(String(EVENTS[b].date).slice(0,10));
+      });
 
     if(!order.length){
       list.innerHTML = '<div class="event-empty glass">' + (eventFilter === 'friend' ? '目前沒有友團活動' : '本月目前沒有排定的活動') + '</div>';
