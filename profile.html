@@ -210,7 +210,7 @@
 <script src="identity-picker.js"></script>
 <script src="bottom-nav.js"></script>
 <script>
-  const HISTORY_PREVIEW_COUNT = 1;
+  const HISTORY_PREVIEW_COUNT = 3;
   let historyExpanded = false;
 
   let EVENTS = [];
@@ -290,9 +290,18 @@
       : '<div class="empty-row">目前沒有報名中的活動</div>';
   }
 
+  // 賽事／企劃優先排在前面，同優先度內再依日期新到舊排序。
+  function historyPriority(ev){
+    return (ev.type === '賽事' || ev.type === '企劃') ? 0 : 1;
+  }
+
   function renderHistoryList(name){
     const list = eventsForPlayer(name).filter(isEventEnded)
-      .sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
+      .sort(function(a,b){
+        const pa = historyPriority(a), pb = historyPriority(b);
+        if(pa !== pb) return pa - pb;
+        return String(b.date).localeCompare(String(a.date));
+      });
     const el = document.getElementById('historyList');
     if(!list.length){
       el.innerHTML = '<div class="empty-row">尚無歷史活動紀錄</div>';

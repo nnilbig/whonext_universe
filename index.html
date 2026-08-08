@@ -92,6 +92,10 @@
   .event-card{
     display:flex; gap:14px; padding:16px;
   }
+  /* 賽事／企劃／練習用很淡的底色漸層做低調區分，不搶走狀態標籤的視覺重點。 */
+  .event-card.et-practice{ background: linear-gradient(180deg, rgba(159,179,200,0.10), var(--card)); }
+  .event-card.et-project{ background: linear-gradient(180deg, rgba(201,183,155,0.10), var(--card)); }
+  .event-card.et-match{ background: linear-gradient(180deg, rgba(242,196,85,0.12), var(--card)); }
   .event-date{
     width:52px; flex-shrink:0; text-align:center;
     padding: 8px 0; border-radius:14px;
@@ -392,6 +396,10 @@
     return FRIEND_CLUB_KEYWORDS.some(function(k){ return t.indexOf(k) !== -1; });
   }
 
+  function eventTypeClass(type){
+    return type === '賽事' ? 'et-match' : type === '企劃' ? 'et-project' : type === '練習' ? 'et-practice' : '';
+  }
+
   // 賽事標題關鍵字對應主辦人，卡片頭像用這份資料顯示。
   const HOST_MAP = [
     { keywords: ['WHONEXT'], name: '儒' },
@@ -594,7 +602,7 @@
       const dd = isoDate.slice(8,10);
       const wd = WEEKDAYS[new Date(isoDate + 'T00:00:00').getDay()];
       const statusMeta = eventStatusMeta(ev);
-      return '<div class="event-card glass" data-index="' + i + '">' +
+      return '<div class="event-card glass ' + eventTypeClass(ev.type) + '" data-index="' + i + '">' +
         '<div class="event-date">' +
           '<div class="ed-month">' + mm + '月</div>' +
           '<div class="ed-day">' + dd + '</div>' +
