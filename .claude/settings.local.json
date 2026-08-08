@@ -20,7 +20,9 @@
       "Bash(node test-profile-admin.js)",
       "Bash(node test-finance.js)",
       "Bash(node test-ranking.js)",
-      "Bash(node test-whoami-members.js)"
+      "Bash(node test-whoami-members.js)",
+      "Bash(node test-myactivities.js)",
+      "Bash(lsof -ti:8795 -sTCP:LISTEN)"
     ]
   }
 }

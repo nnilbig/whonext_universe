@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>個人 — WHONEXT UNIVERSE</title>
+<title>我的活動 — WHONEXT UNIVERSE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="theme.css">
@@ -80,13 +80,6 @@
   .identity-name{ font-size:14.5px; font-weight:800; }
   .identity-sub{ font-size:11px; color:var(--tertiary); margin-top:1px; }
   .identity-switch{ font-size:12px; font-weight:700; color:var(--secondary); padding:6px 4px; }
-
-  /* ---- 錢包摘要卡 ---- */
-  .wallet-card{ padding:20px 20px 18px; margin-bottom:8px; }
-  .wallet-card .label{ margin:0 0 4px; font-size:12px; color:var(--secondary); }
-  .wallet-card .amount{ margin:0; font-size:30px; font-weight:800; letter-spacing:-.01em; font-family: var(--sf-mono); }
-  .wallet-note{ margin:12px 0 0; font-size:12px; color:var(--tertiary); line-height:1.6; white-space:pre-line; }
-  .wallet-link{ display:block; text-align:right; font-size:12px; font-weight:700; color:var(--secondary); padding:10px 4px 0; }
 
   /* ---- 活動列表 ---- */
   .plist{ padding: 6px 6px; margin-bottom: 8px; }
@@ -180,7 +173,7 @@
 
     <div class="hero">
       <div class="hero-eyebrow">WHONEXT BADMINTON CLUB</div>
-      <div class="wordmark" id="profileTitle">個人</div>
+      <div class="wordmark" id="profileTitle">我的活動</div>
     </div>
 
     <!-- ---------- 管理員：總覽入口 ---------- -->
@@ -208,7 +201,7 @@
 
       <div class="whoami-card glass" id="whoamiCard" style="display:none">
         <div class="whoami-title">你是哪位球員？</div>
-        <div class="whoami-sub">選擇你的名字，之後才能看到自己的錢包、報名和排名紀錄。</div>
+        <div class="whoami-sub">選擇你的名字，之後才能看到自己的報名和排名紀錄。</div>
         <select class="whoami-input" id="whoamiSelect"><option value="">— 選擇姓名 —</option></select>
         <button type="button" class="whoami-btn" id="whoamiConfirm" disabled>確認</button>
       </div>
@@ -225,16 +218,6 @@
       </div>
 
       <div id="personalContent" style="display:none">
-
-        <div class="section-label-row">
-          <div class="section-label">錢包</div>
-        </div>
-        <div class="wallet-card glass">
-          <p class="label">目前餘額</p>
-          <p class="amount" id="pfWalletAmount">$0</p>
-          <p class="wallet-note" id="pfWalletNote">載入中…</p>
-        </div>
-        <a class="wallet-link" href="finance.html">查看完整紀錄 →</a>
 
         <div class="section-label-row">
           <div class="section-label">報名中活動</div>
@@ -487,19 +470,6 @@
   }
 
   // ---------------------------------------------------------------
-  // 錢包
-  // ---------------------------------------------------------------
-  async function renderWallet(name){
-    const amountEl = document.getElementById('pfWalletAmount');
-    const noteEl = document.getElementById('pfWalletNote');
-    const status = await getWalletStatus(WhonextAuth.getRole(), name);
-    amountEl.textContent = '$' + status.amount.toLocaleString();
-    noteEl.textContent = status.note;
-    noteEl.style.color = status.alert ? 'var(--warn)' : 'var(--tertiary)';
-    noteEl.style.fontWeight = status.alert ? '700' : '400';
-  }
-
-  // ---------------------------------------------------------------
   // 版面切換
   // ---------------------------------------------------------------
   function renderPersonalView(){
@@ -523,7 +493,6 @@
     document.getElementById('identityName').textContent = name;
 
     historyExpanded = false;
-    renderWallet(name);
     renderUpcomingList(name);
     renderHistoryList(name);
     renderTrophyList(name);
@@ -532,7 +501,7 @@
 
   function updateViewMode(){
     const isAdmin = document.body.classList.contains('is-admin');
-    document.getElementById('profileTitle').textContent = isAdmin ? '總覽' : '個人';
+    document.getElementById('profileTitle').textContent = isAdmin ? '總覽' : '我的活動';
     document.getElementById('adminOverviewView').style.display = isAdmin ? '' : 'none';
     document.getElementById('personalView').style.display = isAdmin ? 'none' : '';
     if(!isAdmin) renderPersonalView();

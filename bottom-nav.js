@@ -22,7 +22,7 @@
   // 其他人看自己的個人頁（錢包、報名、歷史、排名）。
   function profileLabel(){
     const role = window.WhonextAuth ? WhonextAuth.getRole() : 'player';
-    return role === 'admin' ? '總覽' : '個人';
+    return role === 'admin' ? '總覽' : '我的活動';
   }
 
   function buildNav(){
