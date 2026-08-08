@@ -24,5 +24,5 @@
 .bottom-nav a[data-accent="home"].active .bn-icon{ color: var(--gold); }
 .bottom-nav a[data-accent="rank"].active .bn-icon{ color: var(--e-accent); }
 .bottom-nav a[data-accent="finance"].active .bn-icon{ color: var(--n-accent); }
-.bottom-nav a[data-accent="member"].active .bn-icon{ color: var(--x-accent); }
+.bottom-nav a[data-accent="profile"].active .bn-icon{ color: var(--x-accent); }
 .bottom-nav a[data-accent="match"].active .bn-icon{ color: var(--t-accent); }

@@ -742,18 +742,6 @@ async function saveFinanceEdit(){
   }
 }
 
-// 「我的錢包」餘額暫定規則：月繳基準 840（可打 4 場次，每場次 210）。
-// 本月已繳費 -> 顯示 840；未繳費 -> 840 扣掉應繳的 monthly_total_fee，
-// 剩餘餘額換算成場次數，並提示要再繳 monthly_total_fee 才符合月繳資格。
-const MONTHLY_WALLET_BASE = 840;
-const MONTHLY_WALLET_SESSIONS = 4;
-const SESSION_RATE = MONTHLY_WALLET_BASE / MONTHLY_WALLET_SESSIONS;
-
-function walletCalendarMonth(){
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-}
-
 function setWalletNote(text, alert){
   const noteEl = document.getElementById('myWalletNote');
   noteEl.textContent = text;
@@ -761,46 +749,13 @@ function setWalletNote(text, alert){
   noteEl.style.fontWeight = alert ? '700' : '400';
 }
 
-// 月繳名單優先用登入當下就預先載好的快取（不分月份的 getMembers）
-// 篩本月出來，不用等進到這頁才重新打一次 API；快取沒有才回退成即時查詢。
-async function getMonthlyMembers(month){
-  const cached = getApiCache({ action:'getMembers' });
-  if(cached && cached.members) return cached.members.filter(function(m){ return String(m.month) === month; });
-  const result = await apiGet({ action:'getMembers', month: month });
-  return result.members || [];
-}
-
 async function updateMyWallet(){
   const amountEl = document.getElementById('myWalletAmount');
   const role = WhonextAuth.getRole();
   const name = localStorage.getItem('whonext_player_name');
-  if(role !== 'player' || !name){
-    amountEl.textContent = '$0';
-    setWalletNote('儲值功能開發中', false);
-    return;
-  }
-  try{
-    const members = await getMonthlyMembers(walletCalendarMonth());
-    const record = members.find(function(m){ return m.name === name; });
-    if(!record){
-      amountEl.textContent = '$' + MONTHLY_WALLET_BASE.toLocaleString();
-      setWalletNote('本月尚無月繳紀錄', false);
-      return;
-    }
-    const total = Number(record.monthly_total_fee) || 0;
-    if(record.paid){
-      amountEl.textContent = '$' + MONTHLY_WALLET_BASE.toLocaleString();
-      setWalletNote('本月已繳費，可打 ' + MONTHLY_WALLET_SESSIONS + ' 場次', false);
-    } else {
-      const balance = MONTHLY_WALLET_BASE - total;
-      const sessions = Math.max(0, Math.floor(balance / SESSION_RATE));
-      amountEl.textContent = '$' + balance.toLocaleString();
-      setWalletNote('可打 ' + sessions + ' 場次\n再繳 $' + total.toLocaleString() + ' 可符合月繳資格', true);
-    }
-  } catch(e){
-    amountEl.textContent = '$' + MONTHLY_WALLET_BASE.toLocaleString();
-    setWalletNote('讀取繳費狀態失敗，請稍後再試', false);
-  }
+  const status = await getWalletStatus(role, name);
+  amountEl.textContent = '$' + status.amount.toLocaleString();
+  setWalletNote(status.note, status.alert);
 }
 
 // 管理員看「球隊錢包」（完整每週收支），其他人看「我的錢包」（暫定餘額規則見上）。

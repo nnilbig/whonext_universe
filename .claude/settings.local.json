@@ -5,7 +5,21 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(npx --yes playwright@latest node \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-User-Desktop-WHONEXT-2026-whonext-universe\\\\0686c678-aee4-4c8b-9dd2-246e18f6a1f0\\\\scratchpad\\\\test-gauth.js\")",
+      "Bash(npm root *)",
+      "Bash(NODE_PATH=$\\(npm root -g\\) node -e \"console.log\\(require.resolve\\('playwright'\\)\\)\")",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(node test-gauth.js)",
+      "Bash(node test-logout.js)",
+      "Bash(lsof -ti:8791 -sTCP:LISTEN)",
+      "Bash(xargs -r kill)",
+      "Bash(curl -sL --max-time 15 \"https://script.google.com/macros/s/AKfycbxE88TxJgFSa7IZtsFMKDxfBaN5P8aaYSpFBUuJpYVjpaWTBzGFuJHJjXEpT6xoS0jD/exec?action=getEvents\")",
+      "Bash(node test-profile.js)",
+      "Bash(node test-profile-admin.js)",
+      "Bash(node test-finance.js)",
+      "Bash(node test-ranking.js)"
     ]
   }
 }

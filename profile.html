@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>個人 — WHONEXT UNIVERSE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="top-nav.css">
+<link rel="stylesheet" href="bottom-nav.css">
+<style>
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(ellipse at 15% -10%, rgba(228,201,122,0.08), transparent 45%),
+      radial-gradient(ellipse at 90% 105%, rgba(159,179,200,0.07), transparent 50%),
+      var(--bg);
+    color: var(--label);
+    font-family: var(--sf);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{ text-decoration:none; color:inherit; }
+  button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+
+  .glass{
+    background: var(--card);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+  }
+
+  .wrap{ max-width: 640px; margin:0 auto; padding: 20px 16px calc(96px + env(safe-area-inset-bottom)); }
+
+  .hero{ padding: 4px 4px 22px; }
+  .hero .hero-eyebrow{
+    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary);
+    text-transform:uppercase; margin-bottom:8px;
+  }
+  .hero .wordmark{
+    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
+    font-size: clamp(26px,7vw,34px); margin-bottom:8px;
+  }
+  .hero p{ margin:0; font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
+
+  .section-label-row{ display:flex; align-items:center; justify-content:space-between; margin: 26px 4px 12px; }
+  .section-label-row:first-of-type{ margin-top:0; }
+  .section-label{
+    font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--tertiary);
+    text-transform:uppercase; margin:0;
+  }
+
+  /* ---- 身分綁定卡 ---- */
+  .whoami-card{ padding:20px; margin-bottom:10px; }
+  .whoami-title{ font-size:14px; font-weight:800; margin-bottom:4px; }
+  .whoami-sub{ font-size:12px; color:var(--secondary); margin-bottom:14px; line-height:1.5; }
+  .whoami-input{
+    width:100%; box-sizing:border-box;
+    font-family: var(--sf); font-size:16px; color: var(--label);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 11px 14px; margin-bottom:12px;
+  }
+  select.whoami-input{ color: var(--label); }
+  select.whoami-input option{ color: var(--label); background:#1c1c1e; }
+  .whoami-btn{ width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px; background: var(--label); color:#000; }
+  .whoami-btn:disabled{ opacity:.5; }
+
+  .identity-row{ display:flex; align-items:center; justify-content:space-between; margin: 0 4px 20px; }
+  .identity-hi{ display:flex; align-items:center; gap:10px; }
+  .identity-avatar{
+    width:38px; height:38px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:14px; background: var(--gold-bg); border:1.5px solid var(--gold); color:var(--gold);
+  }
+  .identity-name{ font-size:14.5px; font-weight:800; }
+  .identity-sub{ font-size:11px; color:var(--tertiary); margin-top:1px; }
+  .identity-switch{ font-size:12px; font-weight:700; color:var(--secondary); padding:6px 4px; }
+
+  /* ---- 錢包摘要卡 ---- */
+  .wallet-card{ padding:20px 20px 18px; margin-bottom:8px; }
+  .wallet-card .label{ margin:0 0 4px; font-size:12px; color:var(--secondary); }
+  .wallet-card .amount{ margin:0; font-size:30px; font-weight:800; letter-spacing:-.01em; font-family: var(--sf-mono); }
+  .wallet-note{ margin:12px 0 0; font-size:12px; color:var(--tertiary); line-height:1.6; white-space:pre-line; }
+  .wallet-link{ display:block; text-align:right; font-size:12px; font-weight:700; color:var(--secondary); padding:10px 4px 0; }
+
+  /* ---- 活動列表 ---- */
+  .plist{ padding: 6px 6px; margin-bottom: 8px; }
+  .prow{
+    display:flex; align-items:center; gap:12px;
+    padding: 12px 8px;
+    border-top: 1px solid var(--line);
+  }
+  .prow:first-child{ border-top:none; }
+  .prow-date{
+    width:40px; flex-shrink:0; text-align:center;
+    font-family: var(--sf-mono); font-weight:700; line-height:1.15;
+  }
+  .prow-date .mm{ font-size:10px; color:var(--tertiary); }
+  .prow-date .dd{ font-size:17px; }
+  .prow-body{ flex:1; min-width:0; }
+  .prow-title{ font-size:13.5px; font-weight:700; line-height:1.3; }
+  .prow-meta{ margin-top:2px; font-size:11px; color:var(--tertiary); }
+  .prow-tag{
+    font-size:10.5px; font-weight:700; padding:4px 10px; border-radius:999px; flex-shrink:0;
+    color: var(--gold); border:1px solid rgba(242,196,85,0.4); background: var(--gold-bg);
+  }
+  .prow-tag.ended{ color: var(--secondary); border-color: var(--line); background: rgba(255,255,255,0.05); }
+  .empty-row{ padding: 20px 10px; font-size:12.5px; color:var(--tertiary); text-align:center; }
+  .more-row{
+    width:100%; text-align:center;
+    padding:12px 6px;
+    border-top:1px solid var(--line);
+    font-size:12.5px; font-weight:700; color:var(--tertiary);
+  }
+  .more-row:active{ color:var(--label); }
+
+  /* ---- 歷屆賽事排名 ---- */
+  .trow{
+    display:flex; align-items:center; gap:12px;
+    padding: 12px 8px;
+    border-top: 1px solid var(--line);
+  }
+  .trow:first-child{ border-top:none; }
+  .trow-badge{
+    width:34px; height:34px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; color: var(--gold);
+    border:1.5px solid var(--gold); background: var(--gold-bg);
+  }
+  .trow-badge.silver{ color: var(--silver); border-color: var(--silver); background: var(--silver-bg); }
+  .trow-badge.bronze{ color: var(--bronze); border-color: var(--bronze); background: var(--bronze-bg); }
+  .trow-badge.other{ color: var(--tertiary); border-color: var(--line); background: rgba(255,255,255,0.05); }
+  .trow-title{ font-size:13.5px; font-weight:700; }
+  .trow-sub{ margin-top:2px; font-size:11px; color:var(--tertiary); }
+
+  /* ---- 賽季排名卡 ---- */
+  .season-card{ display:flex; align-items:center; gap:16px; padding:20px; margin-bottom:8px; }
+  .season-rank{
+    font-family: var(--sf-mono); font-weight:800; font-size:26px; line-height:1;
+    color: var(--gold); flex-shrink:0;
+  }
+  .season-body .t{ font-size:13.5px; font-weight:700; margin-bottom:3px; }
+  .season-body .s{ font-size:11.5px; color:var(--tertiary); }
+
+  /* ---- 管理員總覽入口卡 ---- */
+  .ov-card{
+    display:flex; align-items:center; gap:14px; padding:18px 18px; margin-bottom:12px;
+  }
+  .ov-icon{
+    width:42px; height:42px; border-radius:14px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; font-weight:800; background: var(--card-strong); border:1px solid var(--line);
+  }
+  .ov-body{ flex:1; min-width:0; }
+  .ov-title{ font-size:14.5px; font-weight:800; margin-bottom:2px; }
+  .ov-sub{ font-size:11.5px; color:var(--tertiary); }
+  .ov-chev{ color:var(--tertiary); font-size:16px; flex-shrink:0; }
+
+  .toast{
+    position:fixed; bottom: calc(76px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(20px);
+    max-width: calc(100vw - 32px);
+    background: rgba(30,30,32,0.92);
+    backdrop-filter: blur(16px);
+    color: var(--label); font-size:13.5px; padding:11px 20px;
+    border: 1px solid var(--line);
+    border-radius: 999px; opacity:0; transition: all .3s ease; pointer-events:none; z-index:200;
+    text-align:center;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+  <div class="wrap">
+
+    <div class="hero">
+      <div class="hero-eyebrow">WHONEXT BADMINTON CLUB</div>
+      <div class="wordmark" id="profileTitle">個人</div>
+    </div>
+
+    <!-- ---------- 管理員：總覽入口 ---------- -->
+    <div id="adminOverviewView" style="display:none">
+      <a class="ov-card glass" href="finance.html">
+        <div class="ov-icon">$</div>
+        <div class="ov-body">
+          <div class="ov-title">球隊錢包</div>
+          <div class="ov-sub">每週收支、繳費狀態總覽</div>
+        </div>
+        <span class="ov-chev">›</span>
+      </a>
+      <a class="ov-card glass" href="member.html">
+        <div class="ov-icon">☺</div>
+        <div class="ov-body">
+          <div class="ov-title">球員總覽</div>
+          <div class="ov-sub">月繳成員、臨打名單管理</div>
+        </div>
+        <span class="ov-chev">›</span>
+      </a>
+    </div>
+
+    <!-- ---------- 球員：個人頁 ---------- -->
+    <div id="personalView" style="display:none">
+
+      <div class="whoami-card glass" id="whoamiCard" style="display:none">
+        <div class="whoami-title">你是哪位球員？</div>
+        <div class="whoami-sub">選擇你的名字，之後才能看到自己的錢包、報名和排名紀錄。</div>
+        <select class="whoami-input" id="whoamiSelect"><option value="">— 選擇姓名 —</option></select>
+        <button type="button" class="whoami-btn" id="whoamiConfirm" disabled>確認</button>
+      </div>
+
+      <div id="identityRow" class="identity-row" style="display:none">
+        <div class="identity-hi">
+          <div class="identity-avatar" id="identityAvatar"></div>
+          <div>
+            <div class="identity-name" id="identityName"></div>
+            <div class="identity-sub">歡迎回來</div>
+          </div>
+        </div>
+        <button type="button" class="identity-switch" id="identitySwitchBtn">更換身分</button>
+      </div>
+
+      <div id="personalContent" style="display:none">
+
+        <div class="section-label-row">
+          <div class="section-label">錢包</div>
+        </div>
+        <div class="wallet-card glass">
+          <p class="label">目前餘額</p>
+          <p class="amount" id="pfWalletAmount">$0</p>
+          <p class="wallet-note" id="pfWalletNote">載入中…</p>
+        </div>
+        <a class="wallet-link" href="finance.html">查看完整紀錄 →</a>
+
+        <div class="section-label-row">
+          <div class="section-label">報名中活動</div>
+        </div>
+        <div class="plist glass" id="upcomingList"></div>
+
+        <div class="section-label-row">
+          <div class="section-label">歷史活動</div>
+        </div>
+        <div class="plist glass" id="historyList"></div>
+
+        <div class="section-label-row">
+          <div class="section-label">排行榜（歷屆賽事排名）</div>
+        </div>
+        <div class="plist glass" id="trophyList"></div>
+
+        <div class="section-label-row">
+          <div class="section-label">賽季排名</div>
+        </div>
+        <div id="seasonRankBody"></div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script src="backend.js"></script>
+<script src="tournaments.js"></script>
+<script src="top-nav.js"></script>
+<script src="auth.js"></script>
+<script src="bottom-nav.js"></script>
+<script>
+  const PLAYER_NAME_KEY = 'whonext_player_name';
+  const HISTORY_PREVIEW_COUNT = 1;
+  let historyExpanded = false;
+
+  let EVENTS = [];
+  let ALL_WEEKS = [];
+  let ALL_MEMBERS = [];
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> t.classList.remove('show'), 2200);
+  }
+
+  function splitNames(val){
+    return String(val || '').split(',').map(s=>s.trim()).filter(Boolean);
+  }
+  function parseDropinEntry(entry){
+    const m = String(entry || '').match(/^(.*?)\(([^()]+)\)$/);
+    return m ? { name: m[1].trim(), referrer: m[2].trim() } : { name: String(entry || '').trim(), referrer: '' };
+  }
+  function isPlaceholderName(name){
+    return /^友\d*$/.test(name);
+  }
+  function monthOfWeek(w){ return String(w.week_date || '').slice(0,7); }
+
+  function parseTimeRange(str){
+    const parts = String(str || '').split(/[-–]/).map(function(s){ return s.trim(); });
+    return { start: parts[0] || '', end: parts[1] || '' };
+  }
+  function isEventEnded(ev){
+    const isoDate = String(ev.date || '').slice(0, 10);
+    const range = parseTimeRange(ev.time);
+    if(!isoDate || !range.end) return false;
+    const end = new Date(isoDate + 'T' + range.end);
+    return !isNaN(end) && new Date() >= end;
+  }
+
+  // ---------------------------------------------------------------
+  // 身分綁定：正式站目前沒有帳號系統，先用選單讓球員自己挑名字，
+  // 存進 whonext_player_name，跟「我的錢包」讀的是同一個 key。
+  // ---------------------------------------------------------------
+  function getPlayerName(){ return localStorage.getItem(PLAYER_NAME_KEY) || ''; }
+  function setPlayerName(name){
+    if(name) localStorage.setItem(PLAYER_NAME_KEY, name);
+    else localStorage.removeItem(PLAYER_NAME_KEY);
+  }
+
+  function knownPlayerNames(){
+    const fromMembers = ALL_MEMBERS.map(m=> m.name);
+    const fromDropins = [];
+    ALL_WEEKS.forEach(w=>{
+      splitNames(w.dropin_names).forEach(entry=>{
+        const name = parseDropinEntry(entry).name;
+        if(!isPlaceholderName(name)) fromDropins.push(name);
+      });
+    });
+    return [...new Set(fromMembers.concat(fromDropins))].sort((a,b)=> a.localeCompare(b));
+  }
+
+  function renderWhoami(){
+    const select = document.getElementById('whoamiSelect');
+    const names = knownPlayerNames();
+    select.innerHTML = '<option value="">— 選擇姓名 —</option>' + names.map(function(n){
+      return '<option value="' + n + '">' + n + '</option>';
+    }).join('');
+  }
+
+  document.getElementById('whoamiSelect').addEventListener('change', function(){
+    document.getElementById('whoamiConfirm').disabled = !this.value;
+  });
+  document.getElementById('whoamiConfirm').addEventListener('click', function(){
+    const name = document.getElementById('whoamiSelect').value;
+    if(!name) return;
+    setPlayerName(name);
+    renderPersonalView();
+  });
+  document.getElementById('identitySwitchBtn').addEventListener('click', function(){
+    setPlayerName('');
+    renderPersonalView();
+  });
+
+  // ---------------------------------------------------------------
+  // 報名中／歷史活動
+  // ---------------------------------------------------------------
+  function eventsForPlayer(name){
+    return EVENTS.filter(function(ev){
+      return Array.isArray(ev.signup_names) && ev.signup_names.indexOf(name) !== -1;
+    });
+  }
+
+  function eventRowHTML(ev, ended){
+    const isoDate = String(ev.date).slice(0, 10);
+    const mm = isoDate.slice(5,7);
+    const dd = isoDate.slice(8,10);
+    return '<div class="prow">' +
+      '<div class="prow-date"><div class="mm">' + mm + '月</div><div class="dd">' + dd + '</div></div>' +
+      '<div class="prow-body">' +
+        '<div class="prow-title">' + ev.title + '</div>' +
+        '<div class="prow-meta">' + (ev.type ? ev.type + '・' : '') + ev.time + '・' + ev.location + '</div>' +
+      '</div>' +
+      '<span class="prow-tag' + (ended ? ' ended' : '') + '">' + (ended ? '已結束' : '報名中') + '</span>' +
+    '</div>';
+  }
+
+  function renderUpcomingList(name){
+    const list = eventsForPlayer(name).filter(function(ev){ return !isEventEnded(ev); })
+      .sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
+    const el = document.getElementById('upcomingList');
+    el.innerHTML = list.length
+      ? list.map(function(ev){ return eventRowHTML(ev, false); }).join('')
+      : '<div class="empty-row">目前沒有報名中的活動</div>';
+  }
+
+  function renderHistoryList(name){
+    const list = eventsForPlayer(name).filter(isEventEnded)
+      .sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
+    const el = document.getElementById('historyList');
+    if(!list.length){
+      el.innerHTML = '<div class="empty-row">尚無歷史活動紀錄</div>';
+      return;
+    }
+    const visible = historyExpanded ? list : list.slice(0, HISTORY_PREVIEW_COUNT);
+    const moreBtn = list.length > HISTORY_PREVIEW_COUNT
+      ? '<button type="button" class="more-row" id="historyMoreBtn">' + (historyExpanded ? '收合 ↑' : '查看更多 ↓（還有 ' + (list.length - HISTORY_PREVIEW_COUNT) + ' 項）') + '</button>'
+      : '';
+    el.innerHTML = visible.map(function(ev){ return eventRowHTML(ev, true); }).join('') + moreBtn;
+    const btn = document.getElementById('historyMoreBtn');
+    if(btn) btn.addEventListener('click', function(){ historyExpanded = !historyExpanded; renderHistoryList(name); });
+  }
+
+  // ---------------------------------------------------------------
+  // 歷屆賽事排名（球員個人得名紀錄，資料跟 ranking.html 共用 tournaments.js）
+  // ---------------------------------------------------------------
+  function medalCls(rank){
+    return rank === 1 ? '' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'other';
+  }
+  function medalLabel(rank){
+    return rank === 1 ? '冠' : rank === 2 ? '亞' : rank === 3 ? '季' : ('NO.' + rank);
+  }
+
+  function renderTrophyList(name){
+    const rows = [];
+    TOURNAMENT_EVENTS.forEach(function(ev){
+      ev.results.forEach(function(r){
+        if(r.members.indexOf(name) !== -1) rows.push({ event: ev.label, rank: r.rank });
+      });
+    });
+    const el = document.getElementById('trophyList');
+    el.innerHTML = rows.length ? rows.map(function(r){
+      return '<div class="trow">' +
+        '<div class="trow-badge ' + medalCls(r.rank) + '">' + medalLabel(r.rank) + '</div>' +
+        '<div>' +
+          '<div class="trow-title">NO.' + r.rank + '</div>' +
+          '<div class="trow-sub">' + r.event + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('') : '<div class="empty-row">尚未有得名紀錄</div>';
+  }
+
+  // ---------------------------------------------------------------
+  // 賽季排名（呼朋引伴榜，跟 ranking.html 的 BOARDS.friend 算法一致）
+  // ---------------------------------------------------------------
+  function tally(names){
+    const counts = {};
+    names.forEach(n=>{ counts[n] = (counts[n] || 0) + 1; });
+    return Object.keys(counts)
+      .map(name=>({ name, value: counts[name] }))
+      .sort((a,b)=> b.value - a.value || a.name.localeCompare(b.name));
+  }
+  function computeFriendBoard(weeks){
+    const referrers = [];
+    weeks.forEach(w=>{
+      splitNames(w.dropin_names).forEach(entry=>{
+        const referrer = parseDropinEntry(entry).referrer;
+        if(referrer && !isPlaceholderName(referrer)) referrers.push(referrer);
+      });
+    });
+    return tally(referrers);
+  }
+  function computeRanks(list){
+    const ranks = [];
+    let rank = 0;
+    let prevValue = null;
+    list.forEach(function(p, i){
+      if(p.value !== prevValue){ rank = i + 1; prevValue = p.value; }
+      ranks.push(rank);
+    });
+    return ranks;
+  }
+
+  function renderSeasonRank(name){
+    const el = document.getElementById('seasonRankBody');
+    const monthsSet = [...new Set(ALL_WEEKS.map(monthOfWeek))].sort();
+    if(!monthsSet.length){
+      el.innerHTML = '<div class="empty-row glass" style="border:1px solid var(--line); border-radius:22px;">尚無賽季資料</div>';
+      return;
+    }
+    const year = monthsSet[monthsSet.length - 1].slice(0,4);
+    const yearWeeks = ALL_WEEKS.filter(w=> monthOfWeek(w).slice(0,4) === year);
+    const list = computeFriendBoard(yearWeeks).filter(p=> p.value >= 3);
+    const ranks = computeRanks(list);
+    const idx = list.findIndex(p=> p.name === name);
+
+    if(idx < 0){
+      el.innerHTML = '<div class="season-card glass">' +
+        '<div class="season-body">' +
+          '<div class="t">' + year + ' 呼朋引伴</div>' +
+          '<div class="s">尚未上榜，累積揪團／帶新人次數即可上榜</div>' +
+        '</div>' +
+      '</div>';
+      return;
+    }
+    el.innerHTML = '<div class="season-card glass">' +
+      '<div class="season-rank">NO.' + ranks[idx] + '</div>' +
+      '<div class="season-body">' +
+        '<div class="t">' + year + ' 呼朋引伴</div>' +
+        '<div class="s">揪團／帶新人次數 ' + list[idx].value + ' 次</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // ---------------------------------------------------------------
+  // 錢包
+  // ---------------------------------------------------------------
+  async function renderWallet(name){
+    const amountEl = document.getElementById('pfWalletAmount');
+    const noteEl = document.getElementById('pfWalletNote');
+    const status = await getWalletStatus(WhonextAuth.getRole(), name);
+    amountEl.textContent = '$' + status.amount.toLocaleString();
+    noteEl.textContent = status.note;
+    noteEl.style.color = status.alert ? 'var(--warn)' : 'var(--tertiary)';
+    noteEl.style.fontWeight = status.alert ? '700' : '400';
+  }
+
+  // ---------------------------------------------------------------
+  // 版面切換
+  // ---------------------------------------------------------------
+  function renderPersonalView(){
+    const name = getPlayerName();
+    const whoamiCard = document.getElementById('whoamiCard');
+    const identityRow = document.getElementById('identityRow');
+    const content = document.getElementById('personalContent');
+
+    if(!name){
+      renderWhoami();
+      whoamiCard.style.display = '';
+      identityRow.style.display = 'none';
+      content.style.display = 'none';
+      return;
+    }
+
+    whoamiCard.style.display = 'none';
+    identityRow.style.display = 'flex';
+    content.style.display = '';
+    document.getElementById('identityAvatar').textContent = name.slice(0,1);
+    document.getElementById('identityName').textContent = name;
+
+    historyExpanded = false;
+    renderWallet(name);
+    renderUpcomingList(name);
+    renderHistoryList(name);
+    renderTrophyList(name);
+    renderSeasonRank(name);
+  }
+
+  function updateViewMode(){
+    const isAdmin = document.body.classList.contains('is-admin');
+    document.getElementById('profileTitle').textContent = isAdmin ? '總覽' : '個人';
+    document.getElementById('adminOverviewView').style.display = isAdmin ? '' : 'none';
+    document.getElementById('personalView').style.display = isAdmin ? 'none' : '';
+    if(!isAdmin) renderPersonalView();
+  }
+  document.addEventListener('DOMContentLoaded', updateViewMode);
+  new MutationObserver(updateViewMode).observe(document.body, { attributes:true, attributeFilter:['class'] });
+
+  // ---------------------------------------------------------------
+  // 資料載入
+  // ---------------------------------------------------------------
+  function loadCached(){
+    const events = getApiCache({ action:'getEvents' });
+    if(events) EVENTS = events.events || [];
+    const weeks = getApiCache({ action:'getWeeks' });
+    if(weeks) ALL_WEEKS = weeks.weeks || [];
+    const members = getApiCache({ action:'getMembers' });
+    if(members) ALL_MEMBERS = members.members || [];
+  }
+
+  async function refreshAll(){
+    try{
+      const [eventsRes, weeksRes, membersRes] = await Promise.all([
+        apiGet({ action:'getEvents' }),
+        apiGet({ action:'getWeeks' }),
+        apiGet({ action:'getMembers' })
+      ]);
+      setApiCache({ action:'getEvents' }, eventsRes);
+      setApiCache({ action:'getWeeks' }, weeksRes);
+      setApiCache({ action:'getMembers' }, membersRes);
+      EVENTS = eventsRes.events || [];
+      ALL_WEEKS = weeksRes.weeks || [];
+      ALL_MEMBERS = membersRes.members || [];
+      if(!document.body.classList.contains('is-admin')) renderPersonalView();
+    } catch(e){
+      // 讀取失敗就沿用快取（可能是空陣列）
+    }
+  }
+
+  (async function init(){
+    loadCached();
+    updateViewMode();
+    await refreshAll();
+  })();
+</script>
+
+</body>
+</html>

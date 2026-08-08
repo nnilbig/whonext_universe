@@ -161,6 +161,75 @@
   .trophy-card.bronze .trophy-member-avatar{ border-color:var(--bronze); color:var(--bronze); }
   .trophy-member-name{ font-size:12.5px; font-weight:700; line-height:1.3; }
   .trophy-name{ font-size:12px; color:var(--secondary); line-height:1.4; }
+
+  /* ---------- GOOGLE 登入／註冊 MOCK ---------- */
+  .gauth-overlay{
+    position:fixed; inset:0; z-index:250; display:none;
+    align-items:flex-end; justify-content:center;
+    background:rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  }
+  .gauth-overlay.open{ display:flex; }
+  @media (min-width:480px){ .gauth-overlay{ align-items:center; } }
+  .gauth-sheet{
+    width:100%; max-width:400px; box-sizing:border-box;
+    background:#0b0b0c; border:1px solid var(--line);
+    border-radius:24px 24px 0 0;
+    padding:24px 20px calc(24px + env(safe-area-inset-bottom));
+  }
+  @media (min-width:480px){ .gauth-sheet{ border-radius:24px; } }
+
+  .gauth-title{ font-size:16px; font-weight:800; margin-bottom:4px; }
+  .gauth-sub{ font-size:12.5px; color:var(--secondary); margin-bottom:20px; line-height:1.5; }
+
+  .gbtn{
+    width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
+    background:#fff; color:#1f1f1f; font-size:14px; font-weight:600;
+    padding:12px; border-radius:10px; border:1px solid #dadce0;
+  }
+  .gbtn:active{ background:#f7f7f7; }
+
+  .gauth-account-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+  .gauth-account{
+    display:flex; align-items:center; gap:12px; padding:12px; text-align:left; width:100%;
+    border:1px solid var(--line); border-radius:14px; background: rgba(255,255,255,0.03);
+  }
+  .gauth-account:active{ background: rgba(255,255,255,0.07); }
+  .gauth-account-avatar{
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:14px; background:var(--card-strong); border:1.5px solid var(--line);
+  }
+  .gauth-account-name{ font-size:13.5px; font-weight:700; }
+  .gauth-account-email{ font-size:11.5px; color:var(--tertiary); }
+
+  .gauth-spinner-wrap{ display:flex; flex-direction:column; align-items:center; gap:14px; padding: 26px 0 10px; }
+  .gauth-spinner{
+    width:28px; height:28px; border-radius:50%;
+    border:3px solid var(--line); border-top-color: var(--gold);
+    animation: gauth-spin .8s linear infinite;
+  }
+  @keyframes gauth-spin{ to{ transform:rotate(360deg); } }
+  .gauth-spinner-text{ font-size:12.5px; color:var(--secondary); }
+
+  .gauth-field-label{ font-size:11px; color:var(--tertiary); margin:0 2px 6px; }
+  .gauth-input{
+    width:100%; box-sizing:border-box; font-size:16px; color:var(--label);
+    background: rgba(255,255,255,0.05); border:1px solid var(--line); border-radius:12px;
+    padding:11px 14px; margin-bottom:14px;
+  }
+  .gauth-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
+
+  .gauth-primary-btn{ width:100%; font-size:13.5px; font-weight:700; padding:12px 0; border-radius:12px; background: var(--label); color:#000; }
+  .gauth-cancel-btn{ width:100%; font-size:12.5px; font-weight:700; padding:10px 0; color:var(--secondary); margin-top:8px; text-align:center; }
+
+  .gauth-success-avatar{
+    width:56px; height:56px; border-radius:50%; margin:6px auto 14px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:20px; background: var(--gold-bg); border:1.5px solid var(--gold); color:var(--gold);
+  }
+  .gauth-success-title{ text-align:center; font-size:15px; font-weight:800; margin-bottom:4px; }
+  .gauth-success-sub{ text-align:center; font-size:12.5px; color:var(--secondary); margin-bottom:20px; }
+  .gauth-logout-btn{ background: rgba(233,90,90,0.14); color:#E95A5A; }
 </style>
 </head>
 <body>
@@ -176,8 +245,12 @@
         <div class="eyebrow">WHONEXT</div>
         <h1>UNIVERSE</h1>
       </a>
-      <button type="button" class="role-pill">球員</button>
+      <button type="button" class="role-pill" id="rolePillBtn">球員</button>
     </div>
+  </div>
+
+  <div class="gauth-overlay" id="gauthOverlay">
+    <div class="gauth-sheet" id="gauthSheet"></div>
   </div>
 
   <div class="wrap">
@@ -239,6 +312,143 @@
     setTimeout(function(){
       document.getElementById('brandMask').classList.add('hide');
     }, 500);
+  });
+</script>
+
+<script>
+  // ---------- Google 登入／註冊流程 MOCK（demo 專用，不打真的 Google API）----------
+  // 「球員」按鈕點下去先跳 Google 帳號選擇，選到的帳號如果已經是球員名單裡的
+  // email 就直接登入，不是的話就走一個簡單的暱稱綁定表單，模擬「登入或註冊」。
+  var MOCK_MEMBERS = [
+    { email: 'shaoen@gmail.com', name: '韶恩' },
+    { email: 'chengcheng@gmail.com', name: '學承' }
+  ];
+  var MOCK_ACCOUNTS = [
+    { email: 'shaoen@gmail.com', name: '韶恩' },
+    { email: 'new.player88@gmail.com', name: '新朋友' }
+  ];
+
+  var gauthOverlay = document.getElementById('gauthOverlay');
+  var gauthSheet = document.getElementById('gauthSheet');
+  var loggedInName = null;
+
+  function closeGauth(){
+    gauthOverlay.classList.remove('open');
+  }
+  gauthOverlay.addEventListener('click', function(e){
+    if(e.target === gauthOverlay) closeGauth();
+  });
+
+  function renderGauthStart(){
+    gauthSheet.innerHTML =
+      '<div class="gauth-title">球員登入</div>' +
+      '<div class="gauth-sub">用 Google 帳號登入，還沒綁定過的帳號會直接帶你完成註冊。</div>' +
+      '<button type="button" class="gbtn" id="gauthGoogleBtn">' +
+        '<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.98v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.66 9c0-.59.1-1.17.29-1.7V4.97H.98A9 9 0 0 0 0 9c0 1.45.35 2.83.98 4.03l2.97-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .98 4.97l2.97 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>' +
+        '<span>使用 Google 繼續</span>' +
+      '</button>' +
+      '<button type="button" class="gauth-cancel-btn" id="gauthCancelBtn">取消</button>';
+    document.getElementById('gauthGoogleBtn').addEventListener('click', renderGauthPicker);
+    document.getElementById('gauthCancelBtn').addEventListener('click', closeGauth);
+  }
+
+  function renderGauthPicker(){
+    var accountsHTML = MOCK_ACCOUNTS.map(function(acc, i){
+      return '<button type="button" class="gauth-account" data-i="' + i + '">' +
+        '<div class="gauth-account-avatar">' + acc.name.slice(0,1) + '</div>' +
+        '<div><div class="gauth-account-name">' + acc.name + '</div><div class="gauth-account-email">' + acc.email + '</div></div>' +
+      '</button>';
+    }).join('');
+    gauthSheet.innerHTML =
+      '<div class="gauth-title">選擇帳戶</div>' +
+      '<div class="gauth-sub">繼續前往 WHONEXT UNIVERSE（demo 測試帳號）</div>' +
+      '<div class="gauth-account-list">' + accountsHTML + '</div>' +
+      '<button type="button" class="gauth-cancel-btn" id="gauthCancelBtn">取消</button>';
+    gauthSheet.querySelectorAll('.gauth-account').forEach(function(btn){
+      btn.addEventListener('click', function(){ chooseGauthAccount(Number(btn.dataset.i)); });
+    });
+    document.getElementById('gauthCancelBtn').addEventListener('click', closeGauth);
+  }
+
+  function chooseGauthAccount(i){
+    var account = MOCK_ACCOUNTS[i];
+    gauthSheet.innerHTML =
+      '<div class="gauth-spinner-wrap">' +
+        '<div class="gauth-spinner"></div>' +
+        '<div class="gauth-spinner-text">驗證 Google 帳號中…</div>' +
+      '</div>';
+    setTimeout(function(){
+      var member = MOCK_MEMBERS.find(function(m){ return m.email === account.email; });
+      if(member) renderGauthWelcomeBack(member);
+      else renderGauthRegister(account);
+    }, 700);
+  }
+
+  function renderGauthWelcomeBack(member){
+    gauthSheet.innerHTML =
+      '<div class="gauth-success-avatar">' + member.name.slice(0,1) + '</div>' +
+      '<div class="gauth-success-title">歡迎回來，' + member.name + '</div>' +
+      '<div class="gauth-success-sub">已使用 Google 帳號登入</div>' +
+      '<button type="button" class="gauth-primary-btn" id="gauthDoneBtn">完成</button>';
+    document.getElementById('gauthDoneBtn').addEventListener('click', function(){
+      finishGauth(member.name);
+    });
+  }
+
+  function renderGauthRegister(account){
+    gauthSheet.innerHTML =
+      '<div class="gauth-title">建立球員帳號</div>' +
+      '<div class="gauth-sub">這個 Google 帳號（' + account.email + '）還沒綁定球員資料，輸入暱稱完成註冊。</div>' +
+      '<div class="gauth-field-label">暱稱</div>' +
+      '<input type="text" class="gauth-input" id="gauthNameInput" placeholder="怎麼稱呼你">' +
+      '<button type="button" class="gauth-primary-btn" id="gauthRegisterBtn">完成註冊</button>' +
+      '<button type="button" class="gauth-cancel-btn" id="gauthCancelBtn">取消</button>';
+    document.getElementById('gauthCancelBtn').addEventListener('click', closeGauth);
+    document.getElementById('gauthRegisterBtn').addEventListener('click', function(){
+      var name = document.getElementById('gauthNameInput').value.trim();
+      if(!name) return;
+      renderGauthWelcomeNew(name);
+    });
+  }
+
+  function renderGauthWelcomeNew(name){
+    gauthSheet.innerHTML =
+      '<div class="gauth-success-avatar">' + name.slice(0,1) + '</div>' +
+      '<div class="gauth-success-title">註冊完成！</div>' +
+      '<div class="gauth-success-sub">帳號已綁定，歡迎加入 WHONEXT，' + name + '</div>' +
+      '<button type="button" class="gauth-primary-btn" id="gauthDoneBtn">完成</button>';
+    document.getElementById('gauthDoneBtn').addEventListener('click', function(){
+      finishGauth(name);
+    });
+  }
+
+  function finishGauth(name){
+    loggedInName = name;
+    document.getElementById('rolePillBtn').textContent = name;
+    closeGauth();
+  }
+
+  function renderGauthMenu(name){
+    gauthSheet.innerHTML =
+      '<div class="gauth-success-avatar">' + name.slice(0,1) + '</div>' +
+      '<div class="gauth-success-title">' + name + '</div>' +
+      '<div class="gauth-success-sub">已使用 Google 帳號登入</div>' +
+      '<button type="button" class="gauth-primary-btn gauth-logout-btn" id="gauthLogoutBtn">登出</button>' +
+      '<button type="button" class="gauth-cancel-btn" id="gauthCancelBtn">取消</button>';
+    document.getElementById('gauthLogoutBtn').addEventListener('click', logoutGauth);
+    document.getElementById('gauthCancelBtn').addEventListener('click', closeGauth);
+  }
+
+  function logoutGauth(){
+    loggedInName = null;
+    document.getElementById('rolePillBtn').textContent = '球員';
+    closeGauth();
+  }
+
+  document.getElementById('rolePillBtn').addEventListener('click', function(){
+    gauthOverlay.classList.add('open');
+    if(loggedInName) renderGauthMenu(loggedInName);
+    else renderGauthStart();
   });
 </script>
 </body>

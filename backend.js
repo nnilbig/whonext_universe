@@ -35,3 +35,48 @@ function setApiCache(params, result){
 function apiPrefetch(params){
   apiGet(params).then(function(result){ setApiCache(params, result); }).catch(function(){});
 }
+
+// ---------------------------------------------------------------
+// 「我的錢包」餘額規則，finance.html 跟 profile.html 共用同一份邏輯。
+// 月繳基準 840（可打 4 場次，每場次 210）。本月已繳費 -> 顯示 840；
+// 未繳費 -> 840 扣掉應繳的 monthly_total_fee，剩餘餘額換算成場次數。
+// ---------------------------------------------------------------
+const MONTHLY_WALLET_BASE = 840;
+const MONTHLY_WALLET_SESSIONS = 4;
+const WALLET_SESSION_RATE = MONTHLY_WALLET_BASE / MONTHLY_WALLET_SESSIONS;
+
+function walletCalendarMonth(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+// 月繳名單優先用快取（不分月份的 getMembers）篩本月出來，快取沒有才即時查詢。
+async function getMonthlyMembersCached(month){
+  const cached = getApiCache({ action:'getMembers' });
+  if(cached && cached.members) return cached.members.filter(function(m){ return String(m.month) === month; });
+  const result = await apiGet({ action:'getMembers', month: month });
+  return result.members || [];
+}
+
+// 回傳 { amount, note, alert }，只有 player 身分且已知姓名才算真實餘額。
+async function getWalletStatus(role, name){
+  if(role !== 'player' || !name){
+    return { amount: 0, note: '儲值功能開發中', alert: false };
+  }
+  try{
+    const members = await getMonthlyMembersCached(walletCalendarMonth());
+    const record = members.find(function(m){ return m.name === name; });
+    if(!record){
+      return { amount: MONTHLY_WALLET_BASE, note: '本月尚無月繳紀錄', alert: false };
+    }
+    const total = Number(record.monthly_total_fee) || 0;
+    if(record.paid){
+      return { amount: MONTHLY_WALLET_BASE, note: '本月已繳費，可打 ' + MONTHLY_WALLET_SESSIONS + ' 場次', alert: false };
+    }
+    const balance = MONTHLY_WALLET_BASE - total;
+    const sessions = Math.max(0, Math.floor(balance / WALLET_SESSION_RATE));
+    return { amount: balance, note: '可打 ' + sessions + ' 場次\n再繳 $' + total.toLocaleString() + ' 可符合月繳資格', alert: true };
+  } catch(e){
+    return { amount: MONTHLY_WALLET_BASE, note: '讀取繳費狀態失敗，請稍後再試', alert: false };
+  }
+}
