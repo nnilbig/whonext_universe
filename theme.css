@@ -1,0 +1,30 @@
+:root{
+  /* N-E-X-T team accents */
+  --n-accent:#9FB3C8; --n-glow:rgba(159,179,200,0.5);
+  --e-accent:#C9B79B; --e-glow:rgba(201,183,155,0.5);
+  --x-accent:#B9B9BD; --x-glow:rgba(185,185,189,0.5);
+  --t-accent:#E9E9E4; --t-glow:rgba(233,233,228,0.5);
+
+  /* status colors */
+  --good:#7FD79A; --good-bg:rgba(127,215,154,0.14);
+  --warn:#E7A15A; --warn-bg:rgba(231,161,90,0.14);
+  --info:#7FA8D9; --info-bg:rgba(127,168,217,0.14);
+
+  /* medal colors */
+  --gold:#F2C455;   --gold-bg:rgba(242,196,85,0.16);
+  --silver:#DCE3EA; --silver-bg:rgba(220,227,234,0.14);
+  --bronze:#D3803F; --bronze-bg:rgba(211,128,63,0.16);
+
+  /* surface / text */
+  --bg:#000000;
+  --card:rgba(255,255,255,0.07);
+  --card-strong:rgba(255,255,255,0.13);
+  --line:rgba(255,255,255,0.14);
+  --label:#F5F5F7;
+  --secondary:rgba(235,235,245,0.62);
+  --tertiary:rgba(235,235,245,0.5);
+
+  /* type */
+  --sf: -apple-system, BlinkMacSystemFont, "PingFang TC", "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+  --sf-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+}

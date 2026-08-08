@@ -145,15 +145,18 @@ function getEvents() {
 
   const counts = getSignupCounts();
   events.forEach(ev => {
-    const c = counts[ev.id] || { confirmed: 0, waitlist: 0 };
+    const c = counts[ev.id] || { confirmed: 0, waitlist: 0, names: [] };
     ev.signup_count = c.confirmed;
     ev.waitlist_count = c.waitlist;
+    ev.signup_names = c.names;
   });
 
   return { events };
 }
 
-// 依 event_id 聚合每個賽事目前 confirmed / waitlist 的人數
+// 依 event_id 聚合每個賽事目前 confirmed / waitlist 的人數，
+// 同時收集 confirmed 名單（member_name 或 guest_name），
+// 給首頁賽事卡片的頭像疊圖用，不用另外多打一次 API。
 function getSignupCounts() {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SIGNUPS_SHEET);
   if (!sheet) return {};
@@ -161,6 +164,9 @@ function getSignupCounts() {
   const headers = rows.shift();
   const eventIdCol = headers.indexOf('event_id');
   const statusCol = headers.indexOf('status');
+  const typeCol = headers.indexOf('type');
+  const memberNameCol = headers.indexOf('member_name');
+  const guestNameCol = headers.indexOf('guest_name');
   if (eventIdCol < 0 || statusCol < 0) return {};
 
   const counts = {};
@@ -168,8 +174,12 @@ function getSignupCounts() {
     const eventId = r[eventIdCol];
     const status = r[statusCol];
     if (!eventId || (status !== 'confirmed' && status !== 'waitlist')) return;
-    if (!counts[eventId]) counts[eventId] = { confirmed: 0, waitlist: 0 };
+    if (!counts[eventId]) counts[eventId] = { confirmed: 0, waitlist: 0, names: [] };
     counts[eventId][status]++;
+    if (status === 'confirmed') {
+      const name = r[typeCol] === 'guest' ? r[guestNameCol] : r[memberNameCol];
+      if (name) counts[eventId].names.push(String(name));
+    }
   });
   return counts;
 }

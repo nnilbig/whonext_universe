@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WHONEXT UNIVERSE — Ranking Dashboard Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; height:100%; }
+  body{
+    background:
+      radial-gradient(ellipse at 15% -10%, rgba(228,201,122,0.08), transparent 45%),
+      radial-gradient(ellipse at 90% 105%, rgba(159,179,200,0.07), transparent 50%),
+      var(--bg);
+    color: var(--label);
+    font-family: var(--sf);
+    min-height:100dvh;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{ text-decoration:none; color:inherit; }
+  button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+
+  .glass{
+    background: var(--card);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+  }
+
+  /* ---------- BRAND MASK ---------- */
+  .brand-mask{
+    position:fixed; inset:0; z-index:200;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:
+      radial-gradient(ellipse at 15% -10%, rgba(228,201,122,0.08), transparent 45%),
+      radial-gradient(ellipse at 90% 105%, rgba(159,179,200,0.07), transparent 50%),
+      var(--bg);
+    transition: opacity .4s ease;
+  }
+  .brand-mask.hide{ opacity:0; pointer-events:none; }
+  .brand-mask-eyebrow{
+    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--gold);
+    text-transform:uppercase; margin-bottom:10px;
+  }
+  .brand-mask-title{
+    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
+    font-size: clamp(30px,8vw,40px);
+  }
+
+  /* ---------- NAV ---------- */
+  .navbar{
+    position:sticky; top:0; z-index:30;
+    padding-top: max(10px, env(safe-area-inset-top));
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner{
+    max-width: 640px; margin:0 auto;
+    display:flex; align-items:center; gap:12px; justify-content:space-between;
+    padding: 10px 16px 12px;
+  }
+  .nav-title{ flex:1; min-width:0; }
+  .nav-title .eyebrow{ font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary); text-transform:uppercase; }
+  .nav-title h1{ margin:1px 0 0; font-size:20px; font-weight:800; letter-spacing:-.01em; }
+  .role-pill{
+    font-size:13px; font-weight:700; padding:8px 16px; border-radius:999px;
+    background: var(--label); color:#000;
+  }
+
+  .wrap{
+    max-width: 640px; margin:0 auto; width:100%;
+    padding: 20px 16px calc(96px + env(safe-area-inset-bottom));
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{ padding: 2px 4px 18px; }
+  .hero .hero-eyebrow{
+    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--gold);
+    text-transform:uppercase; margin-bottom:10px;
+  }
+  .hero .wordmark{
+    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.08em;
+    font-size: clamp(24px,9vw,38px);
+  }
+
+  /* ---------- RANKING DASHBOARD ---------- */
+  .section-label{
+    font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--tertiary);
+    text-transform:uppercase; margin: 0 4px 12px;
+  }
+  .section-label-row{ display:flex; align-items:center; justify-content:space-between; margin: 26px 4px 12px; }
+  .section-label-row .section-label{ margin:0; }
+
+  .board-period{ font-size:11px; color:var(--tertiary); margin: 0 4px 14px; }
+
+  .podium{ display:flex; align-items:stretch; gap:10px; margin: 0 0 12px; padding: 0 2px; }
+  .podium-slot{
+    flex:1; display:flex; flex-direction:column; justify-content:flex-end;
+    text-align:center; padding: 16px 8px 14px;
+    border:1px solid var(--line); border-radius:18px;
+    background: rgba(255,255,255,0.04);
+  }
+  .podium-slot.p1{ padding-top:26px; border-color: rgba(228,201,122,0.4); background: var(--gold-bg); order:2; }
+  .podium-slot.p2{ order:1; }
+  .podium-slot.p3{ order:3; }
+  .podium-rank{
+    font-family: var(--sf-mono); font-weight:700; font-size:11px; line-height:1; color:var(--tertiary);
+    margin-bottom:8px;
+  }
+  .podium-slot.p1 .podium-rank{ color: var(--gold); font-size:12px; }
+  .podium-slot.p2 .podium-rank{ color: var(--silver); }
+  .podium-slot.p3 .podium-rank{ color: var(--bronze); }
+  .podium-avatar{
+    width:44px; height:44px; border-radius:50%; margin:0 auto 8px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:15px; line-height:1;
+    background: var(--card-strong); border:1.5px solid var(--line);
+  }
+  .podium-slot.p1 .podium-avatar{ width:56px; height:56px; font-size:18px; border-color: var(--gold); color: var(--gold); }
+  .podium-slot.p2 .podium-avatar{ width:46px; height:46px; font-size:15.5px; border-color: var(--silver); color: var(--silver); }
+  .podium-slot.p3 .podium-avatar{ width:38px; height:38px; font-size:13px; border-color: var(--bronze); color: var(--bronze); }
+  .podium-name{ font-size:12.5px; font-weight:700; line-height:1.3; margin-bottom:2px; }
+  .podium-value{ font-size:11px; line-height:1.3; color:var(--secondary); font-family: var(--sf-mono); }
+
+  .board-more{
+    display:block; text-align:center; font-size:12.5px; font-weight:700; color:var(--secondary);
+    padding: 12px 0 4px;
+  }
+
+  /* 歷屆賽事得名：歷史紀錄，不是即時計算的排名，用獎盃卡片橫向陳列，
+     跟上面「即時排行」在視覺上明確分開，不會被誤解成同一種數據。 */
+  .trophy-row{ display:flex; gap:10px; overflow-x:auto; padding: 2px 2px 6px; margin: 0 -2px; }
+  .trophy-card{
+    flex-shrink:0; width:158px; padding:16px 14px; scroll-snap-align:start;
+  }
+  .trophy-row{ scroll-snap-type: x proximity; }
+  .trophy-badge{
+    width:34px; height:34px; border-radius:50%; margin-bottom:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:800; color: var(--gold);
+    border:1.5px solid var(--gold); background: var(--gold-bg);
+  }
+  .trophy-badge.silver{ color: var(--silver); border-color: var(--silver); background: var(--silver-bg); }
+  .trophy-badge.bronze{ color: var(--bronze); border-color: var(--bronze); background: var(--bronze-bg); }
+  .trophy-event{ font-size:11px; color:var(--tertiary); margin-bottom:4px; }
+  .trophy-members{ display:flex; flex-direction:column; gap:6px; margin-bottom:8px; min-height:35px; justify-content:center; }
+  .trophy-member{ display:flex; align-items:center; gap:6px; }
+  .trophy-member-avatar{
+    width:20px; height:20px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; font-weight:800; line-height:1;
+    background: var(--card-strong); border:1px solid var(--gold); color:var(--gold);
+  }
+  .trophy-card.silver .trophy-member-avatar{ border-color:var(--silver); color:var(--silver); }
+  .trophy-card.bronze .trophy-member-avatar{ border-color:var(--bronze); color:var(--bronze); }
+  .trophy-member-name{ font-size:12.5px; font-weight:700; line-height:1.3; }
+  .trophy-name{ font-size:12px; color:var(--secondary); line-height:1.4; }
+</style>
+</head>
+<body>
+
+  <div class="brand-mask" id="brandMask">
+    <div class="brand-mask-eyebrow">WHONEXT</div>
+    <div class="brand-mask-title">UNIVERSE</div>
+  </div>
+
+  <div class="navbar">
+    <div class="nav-inner">
+      <a class="nav-title" href="demo.html">
+        <div class="eyebrow">WHONEXT</div>
+        <h1>UNIVERSE</h1>
+      </a>
+      <button type="button" class="role-pill">球員</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <div class="hero">
+      <div class="hero-eyebrow">WHONEXT BADMINTON CLUB</div>
+      <div class="wordmark">排行榜</div>
+    </div>
+
+    <div class="section-label-row" style="margin-top:0">
+      <div class="section-label">歷屆賽事得名</div>
+    </div>
+    <div class="trophy-row">
+      <div class="trophy-card glass">
+        <div class="trophy-badge">冠</div>
+        <div class="trophy-event">2026・卡牌賽</div>
+        <div class="trophy-title">喬 / TonyH / 韶恩</div>
+        <div class="trophy-name">冠軍</div>
+      </div>
+      <div class="trophy-card glass">
+        <div class="trophy-badge silver">亞</div>
+        <div class="trophy-event">2026・卡牌賽</div>
+        <div class="trophy-title">Batman / 祈翰 / 俞民</div>
+        <div class="trophy-name">亞軍</div>
+      </div>
+    </div>
+
+    <div class="section-label-row">
+      <div class="section-label">年度 WHO朋引伴排行</div>
+    </div>
+    <div class="board-period">年度累計・單位：人次</div>
+
+    <div class="podium" id="podium">
+      <div class="podium-slot p2">
+        <div class="podium-rank">NO.2</div>
+        <div class="podium-avatar">王</div>
+        <div class="podium-name">王柏皓</div>
+        <div class="podium-value">9 人次</div>
+      </div>
+      <div class="podium-slot p1">
+        <div class="podium-rank">NO.1</div>
+        <div class="podium-avatar">陳</div>
+        <div class="podium-name">陳語彤</div>
+        <div class="podium-value">12 人次</div>
+      </div>
+      <div class="podium-slot p3">
+        <div class="podium-rank">NO.3</div>
+        <div class="podium-avatar">李</div>
+        <div class="podium-name">李冠廷</div>
+        <div class="podium-value">7 人次</div>
+      </div>
+    </div>
+    <a class="board-more" href="ranking.html">查看完整排行 →</a>
+
+  </div>
+
+<script>
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      document.getElementById('brandMask').classList.add('hide');
+    }, 500);
+  });
+</script>
+</body>
+</html>

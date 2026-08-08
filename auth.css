@@ -5,8 +5,23 @@ body.is-admin .admin-only.flex{ display:flex; }
 
 /* ---------- NAV IDENTITY (shared across pages) ---------- */
 .nav-role{ margin-left:auto; display:flex; align-items:center; gap:8px; }
-.nav-welcome{ display:flex; align-items:center; gap:10px; font-size:12px; color:var(--secondary); }
-.nav-welcome #navLogoutBtn{ font-size:11px; font-weight:700; color:var(--tertiary); padding:4px 2px; }
+
+/* ---------- ADMIN LOGIN MODAL (shared, injected by top-nav.js) ---------- */
+.nav-login-title{ font-size:16px; font-weight:800; margin-bottom:16px; color:var(--label); }
+.nav-login-field-label{ font-size:11px; color:var(--tertiary); margin: 0 2px 6px; }
+.nav-login-input{
+  width:100%; box-sizing:border-box;
+  font-family: var(--sf-mono, monospace); font-size:16px; color: var(--label);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--line); border-radius: 12px;
+  padding: 11px 14px; margin-bottom:14px;
+}
+.nav-login-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
+.nav-login-actions{ display:flex; gap:8px; margin-top:2px; }
+.nav-login-actions button{ flex:1; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px; }
+.nav-login-cancel{ background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--secondary); }
+.nav-login-submit{ background: var(--label); color:#000; }
+.nav-login-submit:disabled{ opacity:.5; }
 
 /* ---------- SHARED MODAL/OVERLAY SHELL (event edit, detail, member edit, login...) ---------- */
 .auth-overlay{

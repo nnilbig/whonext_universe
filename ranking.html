@@ -6,32 +6,11 @@
 <title>排名 — WHONEXT UNIVERSE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="auth.css">
 <link rel="stylesheet" href="top-nav.css">
 <link rel="stylesheet" href="bottom-nav.css">
 <style>
-  :root{
-    --n-accent:#9FB3C8; --n-glow:rgba(159,179,200,0.5);
-    --e-accent:#C9B79B; --e-glow:rgba(201,183,155,0.5);
-    --x-accent:#B9B9BD; --x-glow:rgba(185,185,189,0.5);
-    --t-accent:#E9E9E4; --t-glow:rgba(233,233,228,0.5);
-    --good:#7FD79A;
-    --warn:#E7A15A;
-    --gold:#E4C97A;   --gold-bg:rgba(228,201,122,0.14);
-    --silver:#C9CDD3; --silver-bg:rgba(201,205,211,0.12);
-    --bronze:#C98A55; --bronze-bg:rgba(201,138,85,0.14);
-
-    --bg:#000000;
-    --card:rgba(255,255,255,0.07);
-    --card-strong:rgba(255,255,255,0.13);
-    --line:rgba(255,255,255,0.14);
-    --label:#F5F5F7;
-    --secondary:rgba(235,235,245,0.62);
-    --tertiary:rgba(235,235,245,0.32);
-
-    --sf: -apple-system, BlinkMacSystemFont, "PingFang TC", "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
-    --sf-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
-  }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; padding:0; }
   body{
@@ -68,84 +47,95 @@
   }
   .hero p{ margin:0; font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
 
+  .section-label{
+    font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--tertiary);
+    text-transform:uppercase; margin: 0 4px 12px;
+  }
+  .section-label-row{ display:flex; align-items:center; justify-content:space-between; margin: 0 4px 12px; }
+  .section-label-row .section-label{ margin:0; }
+
+  .trophy-row{ display:flex; flex-direction:column; gap:10px; margin: 0 0 10px; }
+  .trophy-card{
+    width:100%; box-sizing:border-box;
+    padding:26px 20px; text-align:center;
+  }
+  .trophy-card.n{ border-color: rgba(159,179,200,0.45); background: linear-gradient(180deg, rgba(159,179,200,0.12), rgba(159,179,200,0.03)); box-shadow: 0 8px 20px rgba(159,179,200,0.14); }
+  .trophy-card.e{ border-color: rgba(201,183,155,0.45); background: linear-gradient(180deg, rgba(201,183,155,0.12), rgba(201,183,155,0.03)); box-shadow: 0 8px 20px rgba(201,183,155,0.14); }
+  .trophy-card.x{ border-color: rgba(185,185,189,0.45); background: linear-gradient(180deg, rgba(185,185,189,0.12), rgba(185,185,189,0.03)); box-shadow: 0 8px 20px rgba(185,185,189,0.14); }
+  .trophy-rank{
+    font-family: var(--sf-mono); font-weight:700; font-size:12px; line-height:1;
+    color: var(--tertiary); margin-bottom:18px;
+  }
+  .trophy-card.n .trophy-rank{ color: var(--n-accent); }
+  .trophy-card.e .trophy-rank{ color: var(--e-accent); }
+  .trophy-card.x .trophy-rank{ color: var(--x-accent); }
+  .trophy-members{ display:flex; flex-wrap:wrap; justify-content:center; gap:18px 22px; }
+  .trophy-member{ display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .trophy-member-avatar{
+    width:44px; height:44px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:800; line-height:1;
+    background: var(--card-strong); border:1.5px solid var(--line); color:var(--label);
+  }
+  .trophy-card.n .trophy-member-avatar{ border-color: var(--n-accent); color: var(--n-accent); }
+  .trophy-card.e .trophy-member-avatar{ border-color: var(--e-accent); color: var(--e-accent); }
+  .trophy-card.x .trophy-member-avatar{ border-color: var(--x-accent); color: var(--x-accent); }
+  .trophy-member-name{ font-size:13px; font-weight:700; line-height:1.3; }
+  .trophy-empty{ font-size:12.5px; color:var(--tertiary); padding: 20px 4px; }
+
   .controls-row{ display:flex; align-items:center; gap:10px; margin: 0 0 18px; }
 
-  .period-toggle{
-    display:flex; background: var(--card); border:1px solid var(--line);
-    border-radius:999px; padding:2px; flex-shrink:0;
+  .board-year-btn{
+    display:inline-flex; align-items:center; font-size:12.5px; font-weight:700;
+    padding:9px 18px; border-radius:999px;
+    background: var(--card-strong); border:1px solid var(--line); color: var(--label);
   }
-  .period-btn{
-    font-size:12px; font-weight:700; padding:7px 16px; border-radius:999px; color:var(--tertiary);
-  }
-  .period-btn.active{ background: var(--card-strong); color: var(--label); }
 
-  .board-nav{
-    display:flex; align-items:center; justify-content:space-between;
-    margin: 0 4px 16px;
+  .event-toggle{
+    display:flex; gap:8px; overflow-x:auto; scrollbar-width:none;
+    padding: 2px 2px 4px; margin: 0 0 16px;
   }
-  .board-nav-btn{
-    width:36px; height:36px; border-radius:50%; flex-shrink:0;
-    background: var(--card); border:1px solid var(--line);
-    display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--gold);
+  .event-toggle::-webkit-scrollbar{ display:none; }
+  .event-btn{
+    flex-shrink:0; font-size:12.5px; font-weight:700; padding:9px 16px;
+    border-radius:999px; background: var(--card); border:1px solid var(--line); color:var(--tertiary);
   }
-  .board-nav-btn:active{ background: var(--card-strong); }
+  .event-btn.active{ background: var(--card-strong); color: var(--label); border-color: var(--line); }
 
-  .board-title{ text-align:center; }
-  .board-title .t{ display:block; font-size:16px; font-weight:800; }
-  .board-title .n{ display:block; margin-top:2px; font-size:10.5px; color:var(--tertiary); }
+  .board-unit{ font-size:11px; color:var(--tertiary); margin: -6px 4px 16px; }
 
-  .podium{
-    display:flex; align-items:stretch; gap:10px;
-    margin-bottom:16px; padding: 0 2px;
+  .rank-row{ display:flex; flex-direction:column; gap:10px; margin: 0 0 10px; }
+  .rank-page{ display:flex; gap:10px; }
+  .rank-card{
+    flex:1; min-width:0; box-sizing:border-box;
+    padding:20px 8px 18px; text-align:center;
   }
-  .podium-slot{
-    flex:1; display:flex; flex-direction:column; justify-content:flex-end;
-    text-align:center; padding: 16px 8px 14px;
-    border:1px solid var(--line); border-radius:18px;
-    background: rgba(255,255,255,0.04);
-    position:relative;
+  .rank-card.n{ border-color: rgba(159,179,200,0.45); background: linear-gradient(180deg, rgba(159,179,200,0.12), rgba(159,179,200,0.03)); box-shadow: 0 8px 20px rgba(159,179,200,0.14); }
+  .rank-card.e{ border-color: rgba(201,183,155,0.45); background: linear-gradient(180deg, rgba(201,183,155,0.12), rgba(201,183,155,0.03)); box-shadow: 0 8px 20px rgba(201,183,155,0.14); }
+  .rank-card.x{ border-color: rgba(185,185,189,0.45); background: linear-gradient(180deg, rgba(185,185,189,0.12), rgba(185,185,189,0.03)); box-shadow: 0 8px 20px rgba(185,185,189,0.14); }
+  .rank-no{
+    font-family: var(--sf-mono); font-weight:700; font-size:11px; line-height:1;
+    color: var(--tertiary); margin-bottom:10px;
   }
-  .podium-slot.p1{ padding-top:26px; border-color: rgba(228,201,122,0.4); background: var(--gold-bg); order:2; }
-  .podium-slot.p2{ order:1; }
-  .podium-slot.p3{ order:3; }
-  .podium-rank{
-    font-family: var(--sf-mono); font-weight:700; font-size:11px; line-height:1; color:var(--tertiary);
-    margin-bottom:8px;
-  }
-  .podium-slot.p1 .podium-rank{ color: var(--gold); font-size:12px; }
-  .podium-slot.p2 .podium-rank{ color: var(--silver); }
-  .podium-slot.p3 .podium-rank{ color: var(--bronze); }
-  .podium-avatar{
+  .rank-card.n .rank-no{ color: var(--n-accent); }
+  .rank-card.e .rank-no{ color: var(--e-accent); }
+  .rank-card.x .rank-no{ color: var(--x-accent); }
+  .rank-avatar{
     width:44px; height:44px; border-radius:50%; margin:0 auto 8px;
     display:flex; align-items:center; justify-content:center;
     font-weight:800; font-size:15px; line-height:1;
     background: var(--card-strong); border:1.5px solid var(--line);
   }
-  .podium-slot.p1 .podium-avatar{ width:56px; height:56px; font-size:18px; border-color: var(--gold); color: var(--gold); }
-  .podium-slot.p2 .podium-avatar{ width:46px; height:46px; font-size:15.5px; border-color: var(--silver); color: var(--silver); }
-  .podium-slot.p3 .podium-avatar{ width:38px; height:38px; font-size:13px; border-color: var(--bronze); color: var(--bronze); }
-  .podium-name{ font-size:12.5px; font-weight:700; line-height:1.3; margin-bottom:2px; }
-  .podium-value{ font-size:11px; line-height:1.3; color:var(--secondary); font-family: var(--sf-mono); }
-
-  .board-list{ padding: 6px 6px; margin-bottom: 22px; }
-  .row{
-    display:flex; align-items:center; gap:12px;
-    padding: 11px 6px;
-    border-top: 1px solid var(--line);
+  .rank-card.n .rank-avatar{ border-color: var(--n-accent); color: var(--n-accent); }
+  .rank-card.e .rank-avatar{ border-color: var(--e-accent); color: var(--e-accent); }
+  .rank-card.x .rank-avatar{ border-color: var(--x-accent); color: var(--x-accent); }
+  .rank-person-name{ font-size:12.5px; font-weight:700; line-height:1.3; margin-bottom:2px; }
+  .rank-value{ font-size:11px; line-height:1.3; color:var(--secondary); font-family: var(--sf-mono); }
+  .rank-empty{ font-size:12.5px; color:var(--tertiary); padding: 28px 4px; }
+  .more-btn{
+    display:block; width:100%; text-align:center; font-size:12.5px; font-weight:700;
+    color:var(--secondary); padding: 4px 0 22px;
   }
-  .row:first-child{ border-top:none; }
-  .row-rank{
-    width:22px; flex-shrink:0; text-align:center;
-    font-family: var(--sf-mono); font-weight:700; font-size:12.5px; line-height:1; color:var(--tertiary);
-  }
-  .row-avatar{
-    width:30px; height:30px; border-radius:50%; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-    font-size:12px; font-weight:700; line-height:1;
-    background: rgba(255,255,255,0.05); border:1px solid var(--line);
-  }
-  .row-name{ flex:1; font-size:13.5px; font-weight:600; line-height:1.3; min-width:0; }
-  .row-value{ font-size:12.5px; line-height:1.3; color:var(--secondary); font-family: var(--sf-mono); flex-shrink:0; }
 
 </style>
 </head>
@@ -158,23 +148,20 @@
       <div class="wordmark">排行榜</div>
     </div>
 
+    <div class="section-label-row">
+      <div class="section-label">歷屆賽事得名</div>
+    </div>
+    <div class="event-toggle" id="eventToggle"></div>
+    <div class="trophy-row" id="trophyRow"></div>
+    <button type="button" class="more-btn" id="trophyMore">查看更多 ↓</button>
+
     <div class="controls-row">
-      <div class="period-toggle" id="periodToggle">
-        <button class="period-btn active" data-p="year" onclick="setPeriod('year')">年</button>
-        <button class="period-btn" data-p="month" onclick="setPeriod('month')">月</button>
-      </div>
+      <button type="button" class="board-year-btn" id="boardYearBtn"></button>
     </div>
 
-    <div class="board-nav">
-      <button class="board-nav-btn" onclick="stepBoard(-1)" aria-label="上一個排行榜">‹</button>
-      <div class="board-title">
-        <span class="t" id="boardTitleText"></span>
-        <span class="n" id="boardUnitText"></span>
-      </div>
-      <button class="board-nav-btn" onclick="stepBoard(1)" aria-label="下一個排行榜">›</button>
-    </div>
-    <div class="podium" id="podium"></div>
-    <div class="board-list glass" id="boardList"></div>
+    <div class="board-unit" id="boardUnitText"></div>
+    <div class="rank-row" id="rankRow"></div>
+    <button type="button" class="more-btn" id="rankMore">查看更多 ↓</button>
 
   </div>
 
@@ -183,30 +170,90 @@
 <script src="auth.js"></script>
 <script src="bottom-nav.js"></script>
 <script>
-  const PERIOD_LABEL = { year: '年度', month: '當月' };
-
   const BOARDS = {
     friend: {
-      title: '最常WHO朋引伴', unit: '單位：人次', valueSuffix: '',
+      title: 'WHO朋引伴MVP', unit: '單位：人次', valueSuffix: '',
       month: [],
       year: []
     },
     attend: {
-      title: '最常出勤', unit: '單位：場次', valueSuffix: '',
+      title: '出勤MVP', unit: '單位：場次', valueSuffix: '',
       month: [],
       year: []
     },
     dropin: {
-      title: '最常臨打', unit: '單位：場次', valueSuffix: '',
+      title: '臨打MVP', unit: '單位：場次', valueSuffix: '',
       month: [],
       year: []
     }
   };
 
-  const BOARD_KEYS = ['friend', 'attend', 'dropin'];
+  const EVENTS = [
+    { label: '2026・卡牌賽', results: [
+      { rank: 1, cls: 'n', members: ['喬', 'TonyH', '韶恩'] },
+      { rank: 2, cls: 'e', members: ['Batman', '祈翰', '俞民'] },
+      { rank: 3, cls: 'x', members: ['扯翔', '學承', 'Eden'] },
+      { rank: 4, cls: '', members: ['儒', '承', '容'] }
+    ]},
+    { label: '2025・夏季賽', results: [
+      { rank: 1, cls: 'n', members: ['Ting', '喬', '儒', '扯翔'] },
+      { rank: 2, cls: 'e', members: ['霞', '孟', '小健', 'Jason'] },
+      { rank: 3, cls: 'x', members: ['嘉偉', 'Eden', '承', '雞佛'] },
+      { rank: 4, cls: '', members: ['安', '容', '博', '祈翰'] }
+    ]},
+    { label: '2024・年終賽', results: [
+      { rank: 1, cls: 'n', members: ['博', '承', '安'] },
+      { rank: 2, cls: 'e', members: ['嘉偉', '扯翔', '咖咖'] },
+      { rank: 3, cls: 'x', members: ['Eden', '祈翰', '儒'] },
+      { rank: 4, cls: '', members: ['孟翰', '嘉偉', '雞佛'] }
+    ]}
+  ];
 
-  let currentKey = 'friend';
-  let currentPeriod = 'year';
+  const TROPHY_PAGE_SIZE = 1;
+
+  let currentEventIdx = 0;
+  let trophyExpanded = false;
+
+  function renderEvent(){
+    const ev = EVENTS[currentEventIdx];
+    document.getElementById('eventToggle').innerHTML = EVENTS.map(function(e, i){
+      return '<button type="button" class="event-btn' + (i === currentEventIdx ? ' active' : '') + '" data-i="' + i + '">' + e.label + '</button>';
+    }).join('');
+    const row = document.getElementById('trophyRow');
+    const moreBtn = document.getElementById('trophyMore');
+    if(!ev.results.length){
+      row.innerHTML = '<div class="trophy-card glass"><div class="trophy-empty">賽事資料尚未建立</div></div>';
+      moreBtn.style.display = 'none';
+      return;
+    }
+    const visibleResults = trophyExpanded ? ev.results : ev.results.slice(0, TROPHY_PAGE_SIZE);
+    row.innerHTML = visibleResults.map(function(r){
+      const membersHtml = r.members.map(function(name){
+        return '<div class="trophy-member"><div class="trophy-member-avatar">' + name.slice(0,1) + '</div><div class="trophy-member-name">' + name + '</div></div>';
+      }).join('');
+      return '<div class="trophy-card ' + r.cls + ' glass">' +
+        '<div class="trophy-rank">NO.' + r.rank + '</div>' +
+        '<div class="trophy-members">' + membersHtml + '</div>' +
+      '</div>';
+    }).join('');
+    moreBtn.style.display = ev.results.length > TROPHY_PAGE_SIZE ? '' : 'none';
+    moreBtn.textContent = trophyExpanded ? '收合 ↑' : '查看更多 ↓';
+  }
+
+  document.getElementById('trophyMore').addEventListener('click', function(){
+    trophyExpanded = !trophyExpanded;
+    renderEvent();
+  });
+
+  document.getElementById('eventToggle').addEventListener('click', function(e){
+    const btn = e.target.closest('.event-btn');
+    if(!btn) return;
+    currentEventIdx = Number(btn.dataset.i);
+    trophyExpanded = false;
+    renderEvent();
+  });
+
+  let currentYear = '2026';
 
   function computeRanks(list){
     const ranks = [];
@@ -222,59 +269,60 @@
     return ranks;
   }
 
-  function renderBoard(){
-    const data = BOARDS[currentKey];
-    const list = data[currentPeriod];
-    const rankNums = computeRanks(list);
-    const top3 = list.slice(0, 3);
-    const top3Ranks = rankNums.slice(0, 3);
-    const rest = list.slice(3, 6);
-    const restRanks = rankNums.slice(3, 6);
+  const RANK_CLS = ['n', 'e', 'x'];
+  const PAGE_SIZE = 3;
 
-    document.getElementById('boardTitleText').textContent = PERIOD_LABEL[currentPeriod] + ' ' + data.title;
+  function chunk(arr, size){
+    const out = [];
+    for(let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
+  let rankExpanded = false;
+
+  function renderBoard(){
+    const data = BOARDS.friend;
+    const list = data.year;
+    const rankNums = computeRanks(list);
+    const top6 = list.slice(0, 6);
+    const top6Ranks = rankNums.slice(0, 6);
+
+    document.getElementById('boardYearBtn').textContent = currentYear + ' ' + data.title;
     document.getElementById('boardUnitText').textContent = data.unit;
 
-    const podiumOrder = [top3[1], top3[0], top3[2]];
-    const podiumRanks = [top3Ranks[1], top3Ranks[0], top3Ranks[2]];
-    const slots = ['p2', 'p1', 'p3'];
-    document.getElementById('podium').innerHTML = podiumOrder.map(function(p, i){
-      if(!p) return '';
-      return '<div class="podium-slot ' + slots[i] + '">' +
-        '<div class="podium-rank">NO.' + podiumRanks[i] + '</div>' +
-        '<div class="podium-avatar">' + p.name.slice(0,1) + '</div>' +
-        '<div class="podium-name">' + p.name + '</div>' +
-        '<div class="podium-value">' + p.value + data.valueSuffix + '</div>' +
-      '</div>';
+    const row = document.getElementById('rankRow');
+    const moreBtn = document.getElementById('rankMore');
+    if(!top6.length){
+      row.innerHTML = '<div class="rank-page"><div class="rank-card glass"><div class="rank-empty">尚無資料</div></div></div>';
+      moreBtn.style.display = 'none';
+      return;
+    }
+    const items = top6.map(function(p, i){ return { p: p, rank: top6Ranks[i], cls: RANK_CLS[i] || '' }; });
+    const pages = chunk(items, PAGE_SIZE);
+    if(pages[0] && pages[0].length === 3){
+      pages[0] = [pages[0][1], pages[0][0], pages[0][2]];
+    }
+    const visiblePages = rankExpanded ? pages : pages.slice(0, 1);
+    row.innerHTML = visiblePages.map(function(page){
+      const cardsHtml = page.map(function(item){
+        return '<div class="rank-card ' + item.cls + ' glass">' +
+          '<div class="rank-no">NO.' + item.rank + '</div>' +
+          '<div class="rank-avatar">' + item.p.name.slice(0,1) + '</div>' +
+          '<div class="rank-person-name">' + item.p.name + '</div>' +
+          '<div class="rank-value">' + item.p.value + data.valueSuffix + '</div>' +
+        '</div>';
+      }).join('');
+      return '<div class="rank-page">' + cardsHtml + '</div>';
     }).join('');
-
-    document.getElementById('boardList').innerHTML = rest.map(function(p, i){
-      return '<div class="row">' +
-        '<div class="row-rank">' + restRanks[i] + '</div>' +
-        '<div class="row-avatar">' + p.name.slice(0,1) + '</div>' +
-        '<div class="row-name">' + p.name + '</div>' +
-        '<div class="row-value">' + p.value + data.valueSuffix + '</div>' +
-      '</div>';
-    }).join('');
+    moreBtn.style.display = pages.length > 1 ? '' : 'none';
+    moreBtn.textContent = rankExpanded ? '收合 ↑' : '查看更多 ↓';
   }
 
-  function setBoard(key){
-    currentKey = key;
+  document.getElementById('rankMore').addEventListener('click', function(){
+    rankExpanded = !rankExpanded;
     renderBoard();
-  }
+  });
 
-  function stepBoard(delta){
-    const idx = BOARD_KEYS.indexOf(currentKey);
-    const nextIdx = (idx + delta + BOARD_KEYS.length) % BOARD_KEYS.length;
-    setBoard(BOARD_KEYS[nextIdx]);
-  }
-
-  function setPeriod(p){
-    currentPeriod = p;
-    document.querySelectorAll('#periodToggle .period-btn').forEach(function(btn){
-      btn.classList.toggle('active', btn.dataset.p === p);
-    });
-    renderBoard();
-  }
 
   function splitNames(val){
     return String(val || '').split(',').map(s=>s.trim()).filter(Boolean);
@@ -323,6 +371,7 @@
     if(!monthsSet.length) return;
     const latestMonth = monthsSet[monthsSet.length - 1];
     const year = latestMonth.slice(0,4);
+    currentYear = year;
     const monthWeeks = weeks.filter(w=> monthOfWeek(w) === latestMonth);
     const yearWeeks = weeks.filter(w=> monthOfWeek(w).slice(0,4) === year);
 
@@ -348,6 +397,7 @@
     }
   }
 
+  renderEvent();
   renderBoard();
   loadBoards();
 </script>

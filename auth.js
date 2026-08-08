@@ -9,7 +9,7 @@
   function setRole(role){
     localStorage.setItem(ROLE_KEY, role);
     applyAdminClass();
-    updateNavWelcome();
+    updateNavRoleToggle();
     if(role === 'admin') resetIdleTimer();
     else clearIdleTimer();
   }
@@ -52,32 +52,94 @@
     document.body.classList.toggle('is-admin', getRole() === 'admin');
   }
 
-  // 每一頁 navbar 右上角的「歡迎 X / 登出」，取代舊的球員/管理員切換鈕。
-  // 登入身分只在首頁的登入遮罩選，這裡只負責顯示目前是誰、以及登出。
-  function updateNavWelcome(){
-    var textEl = document.getElementById('navWelcomeText');
-    if(!textEl) return;
-    var role = getRole();
-    var name = role === 'admin' ? '管理員'
-      : role === 'guest' ? '訪客'
-      : (localStorage.getItem(PLAYER_NAME_KEY) || (role === 'dropin' ? '臨打' : '球員'));
-    textEl.textContent = '歡迎，' + name;
+  // Top nav 的「球員／管理員」切換鈕，反映目前角色的 active 狀態。
+  function updateNavRoleToggle(){
+    var isAdmin = getRole() === 'admin';
+    document.querySelectorAll('#navRoleToggle .role-toggle-btn').forEach(function(btn){
+      btn.classList.toggle('active', (btn.dataset.role === 'admin') === isAdmin);
+    });
   }
 
-  function wireLogout(){
-    var btn = document.getElementById('navLogoutBtn');
-    if(!btn) return;
-    btn.addEventListener('click', function(){
-      localStorage.removeItem(ROLE_KEY);
-      localStorage.removeItem(PLAYER_NAME_KEY);
-      location.href = 'index.html';
+  function openAdminLogin(){
+    var overlay = document.getElementById('adminLoginOverlay');
+    if(!overlay) return;
+    document.getElementById('adminLoginUser').value = '';
+    document.getElementById('adminLoginPass').value = '';
+    document.getElementById('adminLoginError').style.display = 'none';
+    overlay.classList.add('open');
+  }
+
+  function closeAdminLogin(){
+    var overlay = document.getElementById('adminLoginOverlay');
+    if(overlay) overlay.classList.remove('open');
+  }
+
+  async function submitAdminLogin(){
+    var user = document.getElementById('adminLoginUser').value.trim();
+    var pass = document.getElementById('adminLoginPass').value;
+    var errorEl = document.getElementById('adminLoginError');
+    errorEl.style.display = 'none';
+    if(!user || !pass){
+      errorEl.textContent = '請輸入帳號密碼';
+      errorEl.style.display = 'block';
+      return;
+    }
+    var btn = document.getElementById('adminLoginSubmit');
+    btn.disabled = true;
+    btn.textContent = '登入中…';
+    try{
+      var result = await apiPost('login', { username: user, password: pass });
+      if(result && result.success){
+        setRole('admin');
+        closeAdminLogin();
+      } else {
+        errorEl.textContent = '帳號或密碼錯誤';
+        errorEl.style.display = 'block';
+      }
+    } catch(e){
+      errorEl.textContent = '無法連線後台，請稍後再試';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '登入';
+    }
+  }
+
+  // 點「球員」直接切回去（等同登出管理員）；點「管理員」跳帳密驗證，
+  // 通過才切換，取消或失敗都留在原本身分。
+  function wireNavRoleToggle(){
+    var toggle = document.getElementById('navRoleToggle');
+    if(!toggle) return;
+    toggle.addEventListener('click', function(e){
+      var btn = e.target.closest('.role-toggle-btn');
+      if(!btn) return;
+      var role = btn.dataset.role;
+      if(role === 'admin'){
+        if(getRole() === 'admin') return;
+        openAdminLogin();
+      } else {
+        if(getRole() === 'player') return;
+        localStorage.removeItem(PLAYER_NAME_KEY);
+        setRole('player');
+      }
     });
+
+    var cancelBtn = document.getElementById('adminLoginCancel');
+    if(cancelBtn) cancelBtn.addEventListener('click', closeAdminLogin);
+    var submitBtn = document.getElementById('adminLoginSubmit');
+    if(submitBtn) submitBtn.addEventListener('click', submitAdminLogin);
+    var overlay = document.getElementById('adminLoginOverlay');
+    if(overlay){
+      overlay.addEventListener('click', function(e){ if(e.target === overlay) closeAdminLogin(); });
+      var passInput = document.getElementById('adminLoginPass');
+      if(passInput) passInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') submitAdminLogin(); });
+    }
   }
 
   document.addEventListener('DOMContentLoaded', function(){
     applyAdminClass();
-    updateNavWelcome();
-    wireLogout();
+    updateNavRoleToggle();
+    wireNavRoleToggle();
     if(getRole() === 'admin') resetIdleTimer();
   });
 
