@@ -319,16 +319,9 @@
     else localStorage.removeItem(PLAYER_NAME_KEY);
   }
 
+  // 先只放月繳成員進選單，臨打／訪客的身分綁定之後再開放。
   function knownPlayerNames(){
-    const fromMembers = ALL_MEMBERS.map(m=> m.name);
-    const fromDropins = [];
-    ALL_WEEKS.forEach(w=>{
-      splitNames(w.dropin_names).forEach(entry=>{
-        const name = parseDropinEntry(entry).name;
-        if(!isPlaceholderName(name)) fromDropins.push(name);
-      });
-    });
-    return [...new Set(fromMembers.concat(fromDropins))].sort((a,b)=> a.localeCompare(b));
+    return [...new Set(ALL_MEMBERS.map(m=> m.name))].sort((a,b)=> a.localeCompare(b));
   }
 
   function renderWhoami(){

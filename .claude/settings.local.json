@@ -19,7 +19,8 @@
       "Bash(node test-profile.js)",
       "Bash(node test-profile-admin.js)",
       "Bash(node test-finance.js)",
-      "Bash(node test-ranking.js)"
+      "Bash(node test-ranking.js)",
+      "Bash(node test-whoami-members.js)"
     ]
   }
 }
