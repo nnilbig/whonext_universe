@@ -7,6 +7,11 @@
 // events 分頁需要有 id / type / capacity / overflow_mode 欄位(手動加標題即可,id 會自動補值)
 // 另外需要新增一個 signups 分頁,欄位標題:
 //   id, event_id, type, member_name, guest_name, referrer, status, created_at
+// 還需要一個 profiles 分頁(一人一列的球員身分主檔,跟 members 那種每月覆寫的
+// 月繳名單分開),欄位標題:
+//   name, email, google_id, photo_url, referrer, registered_at, status, can_create_events
+// status: legacy(舊名冊、還沒綁 Google 帳號) / active(已綁定)
+// 既有球員名字可以用 gas/migrate_members_to_profiles.gs 批次匯入成 legacy 列
 // ============================================
 
 const SHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
@@ -15,6 +20,7 @@ const MEMBERS_SHEET = 'members';
 const AUTH_SHEET = 'auth';
 const EVENTS_SHEET = 'events';
 const SIGNUPS_SHEET = 'signups';
+const PROFILES_SHEET = 'profiles';
 
 function doGet(e) {
   const action = e.parameter.action;
@@ -28,6 +34,8 @@ function doGet(e) {
     result = getEvents();
   } else if (action === 'getEventSignups') {
     result = getEventSignups(e.parameter.event_id);
+  } else if (action === 'getProfiles') {
+    result = getProfiles();
   } else {
     result = { error: '未知的 action: ' + action };
   }
@@ -201,6 +209,27 @@ function getEventSignups(eventId) {
     .filter(s => s.status !== 'cancelled');
 
   return { signups };
+}
+
+// 球員身分主檔(一人一列),跟 members 那種每月覆寫的月繳名單分開存放，
+// 才不會每次存月繳都要記得把 email/google_id 這些身分欄位一起帶回去。
+function getProfiles() {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PROFILES_SHEET);
+  if (!sheet) return { profiles: [] };
+  const rows = sheet.getDataRange().getValues();
+  const headers = rows.shift();
+
+  const profiles = rows
+    .filter(r => r[0])
+    .map(r => {
+      const obj = {};
+      headers.forEach((h, i) => {
+        obj[h] = normalizeDateValue(r[i]);
+      });
+      return obj;
+    });
+
+  return { profiles };
 }
 
 // -------- 寫入 --------
@@ -536,6 +565,12 @@ function testGetWeeks() {
 
 function testGetEvents() {
   const fakeEvent = { parameter: { action: 'getEvents' } };
+  const result = doGet(fakeEvent);
+  Logger.log(result.getContent());
+}
+
+function testGetProfiles() {
+  const fakeEvent = { parameter: { action: 'getProfiles' } };
   const result = doGet(fakeEvent);
   Logger.log(result.getContent());
 }

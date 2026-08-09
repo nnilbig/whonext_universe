@@ -82,6 +82,7 @@
   }
 
   .event-tabs{ display:flex; gap:6px; }
+  .event-add-group{ display:flex; gap:6px; }
   .event-tab{
     font-size:12px; font-weight:700; padding:6px 13px; border-radius:999px;
     border:1px solid var(--line); color: var(--tertiary); background: rgba(255,255,255,0.03);
@@ -338,9 +339,11 @@
       <div class="event-tabs" id="eventTabs">
         <button type="button" class="event-tab active" data-filter="own">本月活動</button>
         <button type="button" class="event-tab" data-filter="friend">友團活動</button>
-        <button type="button" class="event-add-btn" id="friendEventAddBtn" style="display:none">＋ 發起活動</button>
       </div>
-      <button type="button" class="event-add-btn admin-only" id="eventAddBtn">＋ 新增賽事</button>
+      <div class="event-add-group">
+        <button type="button" class="event-add-btn" id="friendEventAddBtn" style="display:none">＋ 發起活動</button>
+        <button type="button" class="event-add-btn admin-only" id="eventAddBtn">＋ 新增賽事</button>
+      </div>
     </div>
     <div class="event-list" id="eventList"></div>
 
@@ -475,14 +478,32 @@
     return FRIEND_CLUB_KEYWORDS.some(function(k){ return t.indexOf(k) !== -1; });
   }
 
-  // 「發起活動」目前限定這幾位球員身分才能用，跟管理員權限分開判斷，
-  // 純看目前綁定的球員姓名是否在名單內，之後要開放更多人就加名字進來。
-  const FRIEND_EVENT_ORGANIZERS = ['Eden', '儒', 'Jessica', '安', '孟翰', '韶恩'];
-  function updateFriendEventAddBtn(){
+  // 「發起活動」的權限存在 profiles 分頁的 can_create_events 欄位，跟管理員
+  // 權限分開判斷，純看目前綁定的球員姓名對應的身分主檔有沒有這個權限。
+  // profiles 分頁的勾選格在 Sheets 讀出來可能是布林 true 也可能是文字
+  // 'TRUE'，兩種都要認得。
+  async function getProfiles(){
+    const cached = getApiCache({ action:'getProfiles' });
+    if(cached) return cached.profiles || [];
+    try{
+      const result = await apiGet({ action:'getProfiles' });
+      setApiCache({ action:'getProfiles' }, result);
+      return result.profiles || [];
+    } catch(e){
+      return [];
+    }
+  }
+  function canCreateEvents(profiles, name){
+    const profile = profiles.find(function(p){ return p.name === name; });
+    return !!profile && (profile.can_create_events === true || profile.can_create_events === 'TRUE');
+  }
+  async function updateFriendEventAddBtn(){
     const btn = document.getElementById('friendEventAddBtn');
     if(!btn) return;
     const name = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
-    btn.style.display = FRIEND_EVENT_ORGANIZERS.indexOf(name) !== -1 ? '' : 'none';
+    if(!name){ btn.style.display = 'none'; return; }
+    const profiles = await getProfiles();
+    btn.style.display = canCreateEvents(profiles, name) ? '' : 'none';
   }
 
   // type 存英文代碼（practice/project/match），但資料庫裡舊資料還是中文字串，
@@ -1397,6 +1418,7 @@
   // getWeeks 額外拿來算「進行中／已結束」賽事卡片的實際出席人數，所以讀完要重繪一次。
   refreshWeeksForEvents();
   apiPrefetch({ action:'getMembers' });
+  apiPrefetch({ action:'getProfiles' });
 </script>
 </body>
 </html>
