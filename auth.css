@@ -41,6 +41,19 @@ body.is-admin .admin-only.flex{ display:flex; }
   padding:12px 0 2px;
 }
 
+.whoami-google-btn-wrap{ display:flex; justify-content:center; min-height:44px; }
+
+.whoami-primary-btn{
+  width:100%; font-size:13.5px; font-weight:700; padding:12px 0; border-radius:12px;
+  background: var(--label); color:#000; margin-top:4px;
+}
+
+.whoami-account-avatar-lg{
+  width:64px; height:64px; border-radius:50%; margin:0 auto 14px;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:22px; background: var(--gold-bg); border:2px solid var(--gold); color:var(--gold);
+}
+
 .whoami-account-list{
   display:flex; gap:14px; overflow-x:auto; scrollbar-width:none;
   padding: 2px 2px 4px; margin-bottom:12px;

@@ -1,36 +1,41 @@
 (function(){
   // 「球員登入」身分綁定流程，我的活動／我的錢包共用同一份畫面跟邏輯，
-  // 避免兩邊各刻一份之後跑掉。畫面照 demo.html 那套 Google 登入流程的
-  // 樣式（按鈕 → 選擇身份 → 登入中 → 完成），但「使用 Google 繼續」目前
-  // 還是假的，選的對象是 profiles 分頁(球員身分主檔)裡的名字，之後要換成
-  // 真的 Google 帳號時，這裡的選單流程直接被 email／既有名稱比對邏輯
-  // 取代即可，不用重做畫面。
-  // 選完球員名字呼叫 WhonextAuth.setPlayerName()，會觸發
-  // whonext:playername-change，呼叫方監聽這個事件重繪自己的頁面即可。
-  // 「管理員」入口也放在這裡，因為 top nav 已經拿掉管理員按鈕了。
-  // 先只放 profiles 裡有的成員進選單，臨打／訪客的身分綁定之後再開放。
+  // 避免兩邊各刻一份之後跑掉。真的 Google 登入（Google Identity Services）
+  // 接在這裡：按鈕 → 驗證中 → (a) email 對到已綁定的 profiles 列直接登入
+  // (b) 沒對到 email 但顯示名稱疑似舊名冊裡還沒綁定的人 → 讓使用者手動
+  // 確認要不要綁定 (c) 兩邊都沒對到 → 用 Google 資料自動建檔。跟
+  // demo.html 的 gauth mock 是同一套邏輯，只是這裡真的打 GAS 後端驗證
+  // token、寫回 profiles 分頁。
+  // 選完/建完身份呼叫 WhonextAuth.setPlayerName()，會觸發
+  // whonext:playername-change，呼叫方監聽這個事件重繪自己的頁面即可
+  // （這個 identity picker 的容器通常也會因此被換掉，不用自己關窗）。
+  // 「管理員」入口也放在這裡，因為 top nav 已經拿掉管理員按鈕了，那邊
+  // 還是原本帳密登入的假 Google 驗證流程，不在這次真登入的範圍內。
 
-  var GOOGLE_ICON =
-    '<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.98v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.66 9c0-.59.1-1.17.29-1.7V4.97H.98A9 9 0 0 0 0 9c0 1.45.35 2.83.98 4.03l2.97-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .98 4.97l2.97 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>';
+  var GOOGLE_CLIENT_ID = '702772011583-5g00roumo9mgruijtn3jhg525bot1cja.apps.googleusercontent.com';
 
-  // 選單來源改成 profiles(一人一列的身分主檔)，不再只挑「這個月有繳費」
-  // 的人 —— 舊名冊裡的人只要在 profiles 有留一列(不管有沒有綁過 Google
-  // 帳號)都算可以被選。之後接上真的 Google 登入配對邏輯時，這份名單
-  // 會拿來跟 Google 顯示名稱比對，先讓假流程也讀同一份資料練習。
-  async function getBindableMemberNames(){
-    const cached = getApiCache({ action:'getProfiles' });
-    let profiles = cached ? (cached.profiles || []) : null;
-    if(!profiles){
-      try{
-        const result = await apiGet({ action:'getProfiles' });
-        setApiCache({ action:'getProfiles' }, result);
-        profiles = result.profiles || [];
-      } catch(e){
-        profiles = [];
-      }
-    }
-    return [...new Set(profiles.map(function(p){ return p.name; }).filter(Boolean))].sort(function(a,b){ return a.localeCompare(b); });
+  // GIS 的 script 是非同步載入，用一個小型 ready callback queue 讓任何時候
+  // 呼叫 renderGoogleButton() 都能等到腳本真的可用再初始化，不用在每個
+  // 呼叫端各自處理載入時序。
+  var gisReady = false;
+  var gisReadyCallbacks = [];
+  function onGisReady(cb){
+    if(gisReady){ cb(); return; }
+    gisReadyCallbacks.push(cb);
   }
+  (function loadGis(){
+    if(document.getElementById('google-identity-services')) return;
+    var s = document.createElement('script');
+    s.id = 'google-identity-services';
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = function(){
+      gisReady = true;
+      gisReadyCallbacks.forEach(function(cb){ cb(); });
+      gisReadyCallbacks = [];
+    };
+    document.head.appendChild(s);
+  })();
 
   function render(container){
     renderStart(container);
@@ -40,54 +45,127 @@
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-title">球員登入</div>' +
-        '<div class="whoami-sub">用 Google 帳號登入，選擇你的球員身份。</div>' +
-        '<button type="button" class="gbtn" id="wiGoogleBtn">' + GOOGLE_ICON + '<span>使用 Google 繼續</span></button>' +
+        '<div class="whoami-sub">用 Google 帳號登入，還沒綁定過的帳號會帶你完成綁定或註冊。</div>' +
+        '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
         '<button type="button" class="whoami-secondary-btn" id="wiAdminBtn">我是管理員</button>' +
       '</div>';
-    container.querySelector('#wiGoogleBtn').addEventListener('click', function(){ renderPicker(container); });
     container.querySelector('#wiAdminBtn').addEventListener('click', function(){ WhonextAuth.openAdminLogin(); });
+    renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'));
   }
 
-  function renderPicker(container){
-    container.innerHTML =
-      '<div class="whoami-card glass">' +
-        '<div class="whoami-title">選擇你的身份</div>' +
-        '<div class="whoami-sub">從球員名單挑選你自己，之後才能看到自己的資料。</div>' +
-        '<div class="whoami-account-list" id="wiAccountList"><div class="whoami-loading">載入名單中…</div></div>' +
-        '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>' +
-      '</div>';
-    container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
-
-    getBindableMemberNames().then(function(names){
-      const listEl = container.querySelector('#wiAccountList');
-      if(!listEl) return; // 使用者已經切回上一畫面
-      if(!names.length){
-        listEl.innerHTML = '<div class="whoami-loading">目前沒有可選的球員名單</div>';
-        return;
-      }
-      listEl.innerHTML = names.map(function(n){
-        return '<button type="button" class="whoami-account" data-name="' + n + '">' +
-          '<div class="whoami-account-avatar">' + avatarInitial(n) + '</div>' +
-          '<div class="whoami-account-name">' + n + '</div>' +
-        '</button>';
-      }).join('');
-      listEl.querySelectorAll('.whoami-account').forEach(function(btn){
-        btn.addEventListener('click', function(){ chooseIdentity(container, btn.dataset.name); });
+  function renderGoogleButton(container, btnWrap){
+    onGisReady(function(){
+      if(!document.body.contains(btnWrap)) return; // 使用者已經切到別的畫面
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: function(response){ handleGoogleCredential(container, response.credential); }
       });
+      btnWrap.innerHTML = '';
+      google.accounts.id.renderButton(btnWrap, { theme:'filled_black', shape:'pill', size:'large', text:'continue_with', width:240 });
     });
   }
 
-  function chooseIdentity(container, name){
+  function renderVerifying(container, text){
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-spinner-wrap">' +
           '<div class="whoami-spinner"></div>' +
-          '<div class="whoami-spinner-text">登入中…</div>' +
+          '<div class="whoami-spinner-text">' + (text || '驗證 Google 帳號中…') + '</div>' +
         '</div>' +
       '</div>';
-    setTimeout(function(){
-      WhonextAuth.setPlayerName(name);
-    }, 500);
+  }
+
+  function renderError(container, msg){
+    container.innerHTML =
+      '<div class="whoami-card glass">' +
+        '<div class="auth-error" style="margin:0 0 14px;">' + msg + '</div>' +
+        '<button type="button" class="whoami-secondary-btn" id="wiRetryBtn">‹ 返回</button>' +
+      '</div>';
+    container.querySelector('#wiRetryBtn').addEventListener('click', function(){ renderStart(container); });
+  }
+
+  function handleGoogleCredential(container, credential){
+    renderVerifying(container);
+    apiPost('googleLogin', { credential: credential }).then(function(result){
+      if(!document.body.contains(container)) return;
+      if(!result || !result.success){ renderError(container, '登入驗證失敗，請稍後再試'); return; }
+      if(result.matched === 'active'){
+        finishLogin(container, result.profile.name);
+      } else if(result.matched === 'legacy_candidates'){
+        renderLegacyMatch(container, credential, result.account, result.candidates);
+      } else {
+        renderAutoCreate(container, credential, result.account);
+      }
+    }).catch(function(){
+      if(document.body.contains(container)) renderError(container, '無法連線後台，請稍後再試');
+    });
+  }
+
+  // 既有名稱配對：Google 顯示名稱疑似舊名冊裡的人，請使用者手動確認
+  // 是不是同一個人，選到就把這個 Google 帳號併進那筆既有 profiles 資料；
+  // 「都不是」則走自動建檔，用 Google 資料開一筆全新的。
+  function renderLegacyMatch(container, credential, account, candidates){
+    var candidatesHTML = candidates.map(function(n){
+      return '<button type="button" class="whoami-account" data-name="' + n + '">' +
+        '<div class="whoami-account-avatar">' + avatarInitial(n) + '</div>' +
+        '<div class="whoami-account-name">' + n + '</div>' +
+      '</button>';
+    }).join('');
+    container.innerHTML =
+      '<div class="whoami-card glass">' +
+        '<div class="whoami-title">是否綁定既有球員身份？</div>' +
+        '<div class="whoami-sub">Google 帳號「' + account.name + '」（' + account.email + '）還沒綁定過，我們在舊名冊找到可能是你的資料，選一個綁定，或建立全新帳號。</div>' +
+        '<div class="whoami-account-list">' + candidatesHTML + '</div>' +
+        '<button type="button" class="whoami-secondary-btn" id="wiNotMeBtn">都不是，建立新帳號</button>' +
+      '</div>';
+    container.querySelectorAll('.whoami-account').forEach(function(btn){
+      btn.addEventListener('click', function(){ bindLegacyProfile(container, credential, btn.dataset.name); });
+    });
+    container.querySelector('#wiNotMeBtn').addEventListener('click', function(){ renderAutoCreate(container, credential, account); });
+  }
+
+  function bindLegacyProfile(container, credential, legacyName){
+    renderVerifying(container, '綁定帳號中…');
+    apiPost('bindGoogleProfile', { credential: credential, name: legacyName }).then(function(result){
+      if(!document.body.contains(container)) return;
+      if(!result || !result.success){ renderError(container, '綁定失敗，請稍後再試'); return; }
+      finishLogin(container, legacyName);
+    }).catch(function(){
+      if(document.body.contains(container)) renderError(container, '無法連線後台，請稍後再試');
+    });
+  }
+
+  // 自動建檔：email 跟顯示名稱都沒對到，用 Google 提供的 name/email/photo
+  // 開一筆新的 profiles，不用再手動輸入暱稱。
+  function renderAutoCreate(container, credential, account){
+    container.innerHTML =
+      '<div class="whoami-card glass">' +
+        '<div class="whoami-account-avatar-lg">' + avatarInitial(account.name) + '</div>' +
+        '<div class="whoami-title" style="text-align:center;">建立球員帳號</div>' +
+        '<div class="whoami-sub" style="text-align:center;">用 Google 資料自動建檔：' + account.name + '（' + account.email + '）</div>' +
+        '<button type="button" class="whoami-primary-btn" id="wiCreateBtn">確認建立</button>' +
+        '<button type="button" class="whoami-secondary-btn" id="wiCreateCancelBtn">取消</button>' +
+      '</div>';
+    container.querySelector('#wiCreateCancelBtn').addEventListener('click', function(){ renderStart(container); });
+    container.querySelector('#wiCreateBtn').addEventListener('click', function(){ createProfile(container, credential); });
+  }
+
+  function createProfile(container, credential){
+    renderVerifying(container, '建立帳號中…');
+    apiPost('createGoogleProfile', { credential: credential }).then(function(result){
+      if(!document.body.contains(container)) return;
+      if(!result || !result.success){
+        renderError(container, result && result.reason === 'name_taken' ? '這個名字已經有人在用了，請聯絡管理員協助處理' : '建立帳號失敗，請稍後再試');
+        return;
+      }
+      finishLogin(container, result.profile.name);
+    }).catch(function(){
+      if(document.body.contains(container)) renderError(container, '無法連線後台，請稍後再試');
+    });
+  }
+
+  function finishLogin(container, name){
+    WhonextAuth.setPlayerName(name);
   }
 
   window.WhonextIdentityPicker = { render: render };
