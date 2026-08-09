@@ -620,10 +620,9 @@
 
   const AVATAR_COLORS = ['n', 'e', 'x', 't'];
 
-  // 友團活動不走我們的報名系統，人數/名單沒有真實資料可抓，先寫死顯示。
-  const FRIEND_ATTENDEE_OVERRIDE = [
-    { keywords: ['黑狗'], count: 15, names: ['韶恩', '學承', '安', '育誠'] }
-  ];
+  // 友團活動如果還沒接上我們的報名系統、抓不到真實人數/名單，可以在這裡
+  // 暫時寫死顯示；黑狗隊已經開放走真實報名流程，所以目前這份是空的。
+  const FRIEND_ATTENDEE_OVERRIDE = [];
   function friendAttendeeOverride(title){
     const t = String(title || '');
     return FRIEND_ATTENDEE_OVERRIDE.find(function(h){ return h.keywords.some(function(k){ return t.indexOf(k) !== -1; }); }) || null;
