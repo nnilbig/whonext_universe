@@ -1076,11 +1076,18 @@
     if(e.target.id === 'eventDetailOverlay') closeEventDetail();
   });
 
+  // 遮罩至少停留 1 秒再淡出，快取秒開時也不會一閃而過。
+  const BRAND_MASK_MIN_MS = 1000;
+  const brandMaskShownAt = Date.now();
   function hideBrandMask(){
     const mask = document.getElementById('brandMask');
-    if(!mask || mask.classList.contains('hide')) return;
-    mask.classList.add('hide');
-    setTimeout(function(){ mask.remove(); }, 400);
+    if(!mask || mask.classList.contains('hide') || mask.dataset.hiding) return;
+    mask.dataset.hiding = '1';
+    const wait = Math.max(0, BRAND_MASK_MIN_MS - (Date.now() - brandMaskShownAt));
+    setTimeout(function(){
+      mask.classList.add('hide');
+      setTimeout(function(){ mask.remove(); }, 400);
+    }, wait);
   }
 
   (async function initialLoad(){
