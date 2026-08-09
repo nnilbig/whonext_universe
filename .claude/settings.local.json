@@ -37,7 +37,9 @@
       "Bash(lsof -ti:8818 -sTCP:LISTEN)",
       "Bash(lsof -ti:8819 -sTCP:LISTEN)",
       "Bash(lsof -ti:8821 -sTCP:LISTEN)",
-      "Bash(lsof -ti:8822 -sTCP:LISTEN)"
+      "Bash(lsof -ti:8822 -sTCP:LISTEN)",
+      "Bash(lsof -ti:8823 -sTCP:LISTEN)",
+      "Bash(lsof -ti:8824 -sTCP:LISTEN)"
     ]
   }
 }

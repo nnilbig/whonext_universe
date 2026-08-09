@@ -215,18 +215,16 @@
   .detail-meta{ font-size:12.5px; color:var(--secondary); line-height:1.6; font-family: var(--sf-mono); margin-bottom:14px; }
   #eventSignupSection{ display:flex; flex-direction:column; flex:1; }
 
-  .detail-attendees{ margin-top:12px; }
+  .detail-attendees{ margin-top:20px; }
   .detail-attendees-empty{ font-size:12px; color:var(--tertiary); }
-  .detail-attendees-list{
-    display:flex; flex-direction:column;
-    max-height:180px; overflow-y:auto;
+  .detail-attendees-grid{
+    display:grid; grid-template-columns: repeat(8, 1fr); gap:8px;
+    max-height:220px; overflow-y:auto;
   }
-  .detail-attendee-row{
-    display:flex; align-items:center; gap:10px;
-    font-size:12.5px; color:var(--secondary); padding:7px 2px; border-top:1px solid var(--line);
+  .detail-attendees-grid .avatar{
+    margin-left:0; cursor:default;
+    width:100%; height:auto; aspect-ratio:1; font-size: clamp(9px, 2.6vw, 12px);
   }
-  .detail-attendee-row:first-child{ border-top:none; }
-  .detail-attendee-row .avatar{ margin-left:0; width:22px; height:22px; font-size:9.5px; }
 
   .self-signed-note{
     font-size:12.5px; font-weight:700; color:var(--gold); text-align:center; margin-bottom:10px;
@@ -398,10 +396,9 @@
         </div>
         <div id="signupGuestFields" style="display:none">
           <input type="text" id="signupGuestName" class="edit-input" placeholder="輸入姓名">
-          <div class="edit-field-label">推薦人（選填）</div>
-          <select id="signupReferrer" class="edit-input">
-            <option value="">— 無 —</option>
-          </select>
+          <div class="edit-field-label">推薦人（選填，可從清單選或自己輸入）</div>
+          <input type="text" id="signupReferrer" class="edit-input" list="signupReferrerList" placeholder="輸入或選擇推薦人">
+          <datalist id="signupReferrerList"></datalist>
         </div>
 
         <button type="button" class="signup-submit" id="signupSubmit">送出報名</button>
@@ -981,11 +978,8 @@
   function detailAttendeesHTML(ev){
     const names = Array.isArray(ev.signup_names) ? ev.signup_names : [];
     if(!names.length) return '<div class="detail-attendees-empty">尚無人報名</div>';
-    return '<div class="detail-attendees-list">' + names.map(function(n, idx){
-      return '<div class="detail-attendee-row">' +
-        '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '">' + String(n).trim().slice(0, 1) + '</div>' +
-        '<span>' + n + '</span>' +
-      '</div>';
+    return '<div class="detail-attendees-grid">' + names.map(function(n, idx){
+      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '" title="' + n + '">' + String(n).trim().slice(0, 1) + '</div>';
     }).join('') + '</div>';
   }
 
@@ -1043,11 +1037,13 @@
 
     document.getElementById('signupAsSelf').innerHTML = signupAsSelfHTML(currentName);
 
-    // 推薦人（訪客模式）從目前的會員名單選，登入的人預設推薦人是自己
-    // （畢竟通常是自己拉朋友來），還是可以改選別人。
-    const nameOptions = currentMemberNames().map(function(n){ return '<option value="' + n + '">' + n + '</option>'; }).join('');
-    document.getElementById('signupReferrer').innerHTML = '<option value="">— 無 —</option>' + nameOptions;
-    if(currentName) document.getElementById('signupReferrer').value = currentName;
+    // 推薦人（訪客模式）預設可以從目前的會員名單挑，但清單裡沒有的人
+    // 也能直接輸入（用 input+datalist，不是只能選的下拉選單）。登入的人
+    // 預設推薦人是自己（畢竟通常是自己拉朋友來），還是可以改。
+    document.getElementById('signupReferrerList').innerHTML = currentMemberNames().map(function(n){
+      return '<option value="' + n + '">';
+    }).join('');
+    document.getElementById('signupReferrer').value = currentName || '';
 
     const selfSigned = currentPlayerSignedUp(ev);
     document.getElementById('selfSignedSection').style.display = selfSigned ? '' : 'none';
