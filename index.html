@@ -141,11 +141,11 @@
   body.is-admin .event-status{ cursor:pointer; box-shadow: inset 0 0 0 1px currentColor; }
   body.is-admin .event-status:active{ opacity:.7; }
 
-  /* 「我要報名」是主要 CTA，要搶視覺焦點：高對比金底深字 + 微光。 */
+  /* 「我要報名」是主要 CTA，要搶視覺焦點，但不用高對比實色底那麼刺眼：
+     半透明金底 + 金字 + 細邊框，仍比「已報名」顯眼一點點就好。 */
   .event-cta-tag{
     font-size:10px; font-weight:800; padding:4px 10px; border-radius:999px; flex-shrink:0; white-space:nowrap;
-    color:#1a1400; background: var(--gold);
-    box-shadow: 0 0 0 1px rgba(242,196,85,0.5), 0 0 10px rgba(242,196,85,0.5);
+    color: var(--gold); background: var(--gold-bg); border:1px solid rgba(242,196,85,0.4);
   }
   /* 「已報名」是狀態告知，不用搶眼：半透明綠底 + 細邊框 + 勾選符號。 */
   .event-confirmed-tag{
@@ -1084,8 +1084,12 @@
 
   // 未登入時直接在報名表單裡放登入流程，選完身份留在原本這個賽事的
   // 詳情彈窗繼續報名，不用跳去 profile.html 再繞回來。
+  // 卡片列表的「已報名／我要報名」也是靠目前綁定身分算出來的，nav 那邊
+  // 登出/切換身分（不重新整理頁面）時同樣要重繪整個列表，不然會沿用
+  // 切換前那個身分算出來的標籤，變成別人登出/登入都不會更新。
   document.addEventListener('whonext:playername-change', function(){
     if(detailIndex !== null) openEventDetail(detailIndex);
+    if(eventsLoaded) renderEvents();
   });
 
   // 報名按鈕的狀態跟賽事開放狀態綁定，不要等使用者填完資料送出才用 toast

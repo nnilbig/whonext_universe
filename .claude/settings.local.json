@@ -51,7 +51,14 @@
       "Bash(where.exe msedge.exe)",
       "Bash(where.exe chrome.exe)",
       "Bash(node --check _check_tmp.js)",
-      "Bash(rm -f _check_tmp.js)"
+      "Bash(rm -f _check_tmp.js)",
+      "Bash(curl -s -w \"\\\\nHTTP_CODE:%{http_code}\\\\n\" \"https://script.google.com/macros/s/AKfycbxE88TxJgFSa7IZtsFMKDxfBaN5P8aaYSpFBUuJpYVjpaWTBzGFuJHJjXEpT6xoS0jD/exec?action=getEvents\")",
+      "Bash(curl -sL \"https://script.google.com/macros/s/AKfycbxE88TxJgFSa7IZtsFMKDxfBaN5P8aaYSpFBUuJpYVjpaWTBzGFuJHJjXEpT6xoS0jD/exec?action=getEvents\" -o events.json -w \"HTTP_CODE:%{http_code}\\\\n\")",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -sL \"https://script.google.com/macros/s/AKfycbxE88TxJgFSa7IZtsFMKDxfBaN5P8aaYSpFBUuJpYVjpaWTBzGFuJHJjXEpT6xoS0jD/exec?action=getEvents\" -o events.json)",
+      "Bash(curl -sL \"https://nnilbig.github.io/whonext_universe/index.html\" -o live_index.html -w \"HTTP_CODE:%{http_code}\\\\n\")",
+      "Bash(curl -sL \"https://script.google.com/macros/s/AKfycbxE88TxJgFSa7IZtsFMKDxfBaN5P8aaYSpFBUuJpYVjpaWTBzGFuJHJjXEpT6xoS0jD/exec?action=getMembers\" -o members.json)",
+      "Bash(rm -f _check_tmp.js events.json members.json)"
     ]
   }
 }
