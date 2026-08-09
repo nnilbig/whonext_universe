@@ -333,6 +333,7 @@
       <div class="event-tabs" id="eventTabs">
         <button type="button" class="event-tab active" data-filter="own">本月活動</button>
         <button type="button" class="event-tab" data-filter="friend">友團活動</button>
+        <button type="button" class="event-add-btn" id="friendEventAddBtn" style="display:none">＋ 發起活動</button>
       </div>
       <button type="button" class="event-add-btn admin-only" id="eventAddBtn">＋ 新增賽事</button>
     </div>
@@ -357,9 +358,9 @@
 
       <div class="edit-field-label">類型</div>
       <select id="eventEditType" class="edit-input">
-        <option value="練習">練習</option>
-        <option value="企劃">企劃</option>
-        <option value="賽事">賽事</option>
+        <option value="practice">練習</option>
+        <option value="project">企劃</option>
+        <option value="match">賽事</option>
       </select>
 
       <div class="edit-field-label">日期</div>
@@ -468,8 +469,33 @@
     return FRIEND_CLUB_KEYWORDS.some(function(k){ return t.indexOf(k) !== -1; });
   }
 
+  // 「發起活動」目前限定這幾位球員身分才能用，跟管理員權限分開判斷，
+  // 純看目前綁定的球員姓名是否在名單內，之後要開放更多人就加名字進來。
+  const FRIEND_EVENT_ORGANIZERS = ['Eden', '儒', 'Jessica', '安', '孟翰', '韶恩'];
+  function updateFriendEventAddBtn(){
+    const btn = document.getElementById('friendEventAddBtn');
+    if(!btn) return;
+    const name = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+    btn.style.display = FRIEND_EVENT_ORGANIZERS.indexOf(name) !== -1 ? '' : 'none';
+  }
+
+  // type 存英文代碼（practice/project/match），但資料庫裡舊資料還是中文字串，
+  // 所以用 legacy 對照兩種都認得，畫面上一律顯示中文 label。
+  const EVENT_TYPES = [
+    { code: 'practice', label: '練習', legacy: '練習', cls: 'et-practice' },
+    { code: 'project', label: '企劃', legacy: '企劃', cls: 'et-project' },
+    { code: 'match', label: '賽事', legacy: '賽事', cls: 'et-match' }
+  ];
+  function eventTypeMeta(type){
+    return EVENT_TYPES.find(function(t){ return t.code === type || t.legacy === type; }) || null;
+  }
   function eventTypeClass(type){
-    return type === '賽事' ? 'et-match' : type === '企劃' ? 'et-project' : type === '練習' ? 'et-practice' : '';
+    const meta = eventTypeMeta(type);
+    return meta ? meta.cls : '';
+  }
+  function eventTypeLabel(type){
+    const meta = eventTypeMeta(type);
+    return meta ? meta.label : (type || '');
   }
 
   // 判斷目前綁定的球員身分是否已經報名這場賽事，卡片狀態標籤旁邊顯示
@@ -710,7 +736,7 @@
               '<button type="button" class="event-edit-btn admin-only" data-index="' + i + '">編輯</button>' +
             '</div>' +
           '</div>' +
-          '<div class="event-meta">' + (ev.type ? ev.type + '<span class="sep">・</span>' : '') + ev.time + '<span class="sep">・</span>' + ev.location + '</div>' +
+          '<div class="event-meta">' + (ev.type ? eventTypeLabel(ev.type) + '<span class="sep">・</span>' : '') + ev.time + '<span class="sep">・</span>' + ev.location + '</div>' +
           attendeesHTML(ev, statusMeta) +
         '</div>' +
       '</div>';
@@ -788,7 +814,7 @@
     document.getElementById('eventEditRecurringWrap').style.display = 'none';
     document.getElementById('eventEditRecurring').checked = false;
     document.getElementById('eventEditTitle').value = ev.title;
-    document.getElementById('eventEditType').value = ev.type || '練習';
+    document.getElementById('eventEditType').value = (eventTypeMeta(ev.type) || EVENT_TYPES[0]).code;
     document.getElementById('eventEditDate').value = String(ev.date).slice(0, 10);
     const parsedTime = parseTimeRange(ev.time);
     setTimeSelects(parsedTime.start, parsedTime.end);
@@ -804,7 +830,7 @@
     document.getElementById('eventEditTemplateWrap').style.display = '';
     document.getElementById('eventEditTemplate').value = 'manual';
     document.getElementById('eventEditTitle').value = '';
-    document.getElementById('eventEditType').value = '練習';
+    document.getElementById('eventEditType').value = 'practice';
     document.getElementById('eventEditDate').value = '';
     setTimeSelects('20:00', '22:00');
     document.getElementById('eventEditLocation').value = '';
@@ -847,7 +873,7 @@
   const EVENT_TEMPLATES = {
     whonext_badminton: {
       title: 'WHONEXT 羽球',
-      type: '練習',
+      type: 'practice',
       location: '大墩大慶羽球館',
       time: '20:00-22:00',
       capacity: 16,
@@ -1089,6 +1115,7 @@
   document.addEventListener('whonext:playername-change', function(){
     if(detailIndex !== null) openEventDetail(detailIndex);
     if(eventsLoaded) renderEvents();
+    updateFriendEventAddBtn();
   });
 
   // 報名按鈕的狀態跟賽事開放狀態綁定，不要等使用者填完資料送出才用 toast
@@ -1108,7 +1135,7 @@
     const ev = EVENTS[index];
     const statusMeta = eventStatusMeta(ev);
     document.getElementById('detailTitle').textContent = ev.title;
-    document.getElementById('detailMeta').textContent = (ev.type ? ev.type + '　' : '') + String(ev.date).slice(0, 10) + '　' + ev.time + '　' + ev.location;
+    document.getElementById('detailMeta').textContent = (ev.type ? eventTypeLabel(ev.type) + '　' : '') + String(ev.date).slice(0, 10) + '　' + ev.time + '　' + ev.location;
     document.getElementById('detailProgress').innerHTML = progressHTML(ev, statusMeta);
     document.getElementById('detailAttendees').innerHTML = detailAttendeesHTML(ev);
 
@@ -1279,6 +1306,8 @@
   }
 
   document.getElementById('eventAddBtn').addEventListener('click', openEventCreate);
+  document.getElementById('friendEventAddBtn').addEventListener('click', openEventCreate);
+  updateFriendEventAddBtn();
 
   document.querySelectorAll('#eventTabs .event-tab').forEach(function(tab){
     tab.addEventListener('click', function(){

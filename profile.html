@@ -76,6 +76,9 @@
     color: var(--gold); border:1px solid rgba(242,196,85,0.4); background: var(--gold-bg);
   }
   .prow-tag.ended{ color: var(--secondary); border-color: var(--line); background: rgba(255,255,255,0.05); }
+  .prow.et-practice{ background: rgba(159,179,200,0.08); }
+  .prow.et-project{ background: rgba(201,183,155,0.08); }
+  .prow.et-match{ background: rgba(242,196,85,0.10); }
   .row-chevron{ flex-shrink:0; font-size:12px; color:var(--tertiary); }
   .prow-toggle{ cursor:pointer; }
   .prow-toggle:active{ background: rgba(255,255,255,0.03); }
@@ -378,17 +381,29 @@
     });
   }
 
+  // 跟首頁卡片同一套 type 上色邏輯，讓「我的活動」的列表也看得出練習／
+  // 企劃／賽事的差別，不用另外開賽事詳情才知道類型。type 存英文代碼
+  // （practice/project/match），但舊資料還是中文字串，兩種都要認得。
+  const EVENT_TYPE_CLASSES = { practice: 'et-practice', project: 'et-project', match: 'et-match', 練習: 'et-practice', 企劃: 'et-project', 賽事: 'et-match' };
+  const EVENT_TYPE_LABELS = { practice: '練習', project: '企劃', match: '賽事' };
+  function eventTypeClass(type){
+    return EVENT_TYPE_CLASSES[type] || '';
+  }
+  function eventTypeLabel(type){
+    return EVENT_TYPE_LABELS[type] || type || '';
+  }
+
   // toggle（若有）= { id, expanded }：整張卡片變成可點擊的收合／展開列，
   // 「已結束」標籤左邊留位置放一顆小箭頭（跟年度總覽的箭頭同一種風格）。
   function eventRowHTML(ev, ended, toggle){
     const isoDate = String(ev.date).slice(0, 10);
     const mm = isoDate.slice(5,7);
     const dd = isoDate.slice(8,10);
-    return '<div class="prow' + (toggle ? ' prow-toggle' : '') + '"' + (toggle ? ' id="' + toggle.id + '"' : '') + '>' +
+    return '<div class="prow ' + eventTypeClass(ev.type) + (toggle ? ' prow-toggle' : '') + '"' + (toggle ? ' id="' + toggle.id + '"' : '') + '>' +
       '<div class="prow-date"><div class="mm">' + mm + '月</div><div class="dd">' + dd + '</div></div>' +
       '<div class="prow-body">' +
         '<div class="prow-title">' + ev.title + '</div>' +
-        '<div class="prow-meta">' + (ev.type ? ev.type + '・' : '') + ev.time + '・' + ev.location + '</div>' +
+        '<div class="prow-meta">' + (ev.type ? eventTypeLabel(ev.type) + '・' : '') + ev.time + '・' + ev.location + '</div>' +
       '</div>' +
       (toggle ? '<span class="row-chevron">' + (toggle.expanded ? '↑' : '↓') + '</span>' : '') +
       '<span class="prow-tag' + (ended ? ' ended' : '') + '">' + (ended ? '已結束' : '報名中') + '</span>' +
@@ -428,7 +443,7 @@
   // 賽事／企劃優先排在前面，同優先度內再依日期新到舊排序；舊制的每週
   // 出席紀錄跟一般練習活動同一個優先度，一起照日期排序。
   function historyPriority(ev){
-    return (ev.type === '賽事' || ev.type === '企劃') ? 0 : 1;
+    return (ev.type === 'match' || ev.type === 'project' || ev.type === '賽事' || ev.type === '企劃') ? 0 : 1;
   }
 
   // 舊制出席紀錄沒有標題／時段／地點，只有 week_date 跟出席名單，
