@@ -329,16 +329,23 @@
 </script>
 
 <script>
-  // ---------- Google 登入／註冊流程 MOCK（demo 專用，不打真的 Google API）----------
-  // 「球員」按鈕點下去先跳 Google 帳號選擇，選到的帳號如果已經是球員名單裡的
-  // email 就直接登入，不是的話就走一個簡單的暱稱綁定表單，模擬「登入或註冊」。
+  // ---------- Google 登入／註冊／配對流程 MOCK（demo 專用，不打真的 Google API）----------
+  // 對齊邏輯：
+  //   1. Email 優先對齊：OAuth email 已經綁在某個球員身上 -> 直接登入。
+  //   2. 既有名稱配對：email 沒對到，但 Google 顯示名稱疑似是舊名冊（純文字、
+  //      沒綁過帳號）裡的人 -> 跳「是否綁定既有球員身份？」讓使用者手動確認。
+  //   3. 自動建檔：兩者都沒對到 -> 直接用 Google 的 name 建新的球員 Profile，
+  //      不用再手動輸入暱稱。
   var MOCK_MEMBERS = [
     { email: 'shaoen@gmail.com', name: '韶恩' },
     { email: 'chengcheng@gmail.com', name: '學承' }
   ];
+  // 舊名冊留下來的純文字球員，還沒綁定任何 Google 帳號。
+  var MOCK_LEGACY_MEMBERS = ['儒', '安', 'Eden'];
   var MOCK_ACCOUNTS = [
-    { email: 'shaoen@gmail.com', name: '韶恩' },
-    { email: 'new.player88@gmail.com', name: '新朋友' }
+    { email: 'shaoen@gmail.com', name: '韶恩' },              // email 已綁定 -> 直接登入
+    { email: 'eden.badminton@gmail.com', name: 'Eden' },      // 名稱疑似舊資料「Eden」-> 跳配對選單
+    { email: 'new.player88@gmail.com', name: '新朋友' }       // 兩邊都沒對到 -> 自動建檔
   ];
 
   var gauthOverlay = document.getElementById('gauthOverlay');
@@ -391,9 +398,14 @@
         '<div class="gauth-spinner-text">驗證 Google 帳號中…</div>' +
       '</div>';
     setTimeout(function(){
+      // 1. email 優先對齊
       var member = MOCK_MEMBERS.find(function(m){ return m.email === account.email; });
-      if(member) renderGauthWelcomeBack(member);
-      else renderGauthRegister(account);
+      if(member){ renderGauthWelcomeBack(member); return; }
+      // 2. 既有名稱配對（舊名冊裡有純文字建的同名紀錄，且還沒綁過帳號）
+      var legacyMatch = MOCK_LEGACY_MEMBERS.find(function(n){ return n === account.name; });
+      if(legacyMatch){ renderGauthMatchModal(account); return; }
+      // 3. 都沒對到，自動建檔
+      renderGauthAutoCreate(account);
     }, 700);
   }
 
@@ -408,19 +420,52 @@
     });
   }
 
-  function renderGauthRegister(account){
+  // 既有名稱配對：Google 顯示名稱疑似舊名冊裡的人，請使用者手動確認
+  // 是不是同一個人，選到就把這個 Google 帳號併進那筆既有球員資料；
+  // 「都不是」則走自動建檔，用 Google 資料開一筆全新的。
+  function renderGauthMatchModal(account){
+    var candidatesHTML = MOCK_LEGACY_MEMBERS.map(function(n){
+      return '<button type="button" class="gauth-account" data-name="' + n + '">' +
+        '<div class="gauth-account-avatar">' + n.slice(0,1) + '</div>' +
+        '<div><div class="gauth-account-name">' + n + '</div><div class="gauth-account-email">舊名冊球員・尚未綁定帳號</div></div>' +
+      '</button>';
+    }).join('');
     gauthSheet.innerHTML =
-      '<div class="gauth-title">建立球員帳號</div>' +
-      '<div class="gauth-sub">這個 Google 帳號（' + account.email + '）還沒綁定球員資料，輸入暱稱完成註冊。</div>' +
-      '<div class="gauth-field-label">暱稱</div>' +
-      '<input type="text" class="gauth-input" id="gauthNameInput" placeholder="怎麼稱呼你">' +
-      '<button type="button" class="gauth-primary-btn" id="gauthRegisterBtn">完成註冊</button>' +
+      '<div class="gauth-title">是否綁定既有球員身份？</div>' +
+      '<div class="gauth-sub">Google 帳號「' + account.name + '」（' + account.email + '）還沒綁定過，我們在舊名冊找到可能是你的資料，選一個綁定，或建立全新帳號。</div>' +
+      '<div class="gauth-account-list">' + candidatesHTML + '</div>' +
+      '<button type="button" class="gauth-cancel-btn" id="gauthNotMeBtn">都不是，建立新帳號</button>';
+    gauthSheet.querySelectorAll('.gauth-account').forEach(function(btn){
+      btn.addEventListener('click', function(){ bindLegacyMember(account, btn.dataset.name); });
+    });
+    document.getElementById('gauthNotMeBtn').addEventListener('click', function(){
+      renderGauthAutoCreate(account);
+    });
+  }
+
+  function bindLegacyMember(account, legacyName){
+    gauthSheet.innerHTML =
+      '<div class="gauth-success-avatar">' + legacyName.slice(0,1) + '</div>' +
+      '<div class="gauth-success-title">身份已綁定，' + legacyName + '</div>' +
+      '<div class="gauth-success-sub">Google 帳號（' + account.email + '）已併入既有球員資料</div>' +
+      '<button type="button" class="gauth-primary-btn" id="gauthDoneBtn">完成</button>';
+    document.getElementById('gauthDoneBtn').addEventListener('click', function(){
+      finishGauth(legacyName);
+    });
+  }
+
+  // 自動建檔：兩邊都沒對到，直接用 Google 提供的 name／photoURL 開一筆新的，
+  // 不用再手動輸入暱稱。
+  function renderGauthAutoCreate(account){
+    gauthSheet.innerHTML =
+      '<div class="gauth-success-avatar">' + account.name.slice(0,1) + '</div>' +
+      '<div class="gauth-title" style="text-align:center; margin-bottom:4px;">建立球員帳號</div>' +
+      '<div class="gauth-sub" style="text-align:center;">用 Google 資料自動建檔：' + account.name + '（' + account.email + '）</div>' +
+      '<button type="button" class="gauth-primary-btn" id="gauthCreateBtn">確認建立</button>' +
       '<button type="button" class="gauth-cancel-btn" id="gauthCancelBtn">取消</button>';
     document.getElementById('gauthCancelBtn').addEventListener('click', closeGauth);
-    document.getElementById('gauthRegisterBtn').addEventListener('click', function(){
-      var name = document.getElementById('gauthNameInput').value.trim();
-      if(!name) return;
-      renderGauthWelcomeNew(name);
+    document.getElementById('gauthCreateBtn').addEventListener('click', function(){
+      renderGauthWelcomeNew(account.name);
     });
   }
 
@@ -428,7 +473,7 @@
     gauthSheet.innerHTML =
       '<div class="gauth-success-avatar">' + name.slice(0,1) + '</div>' +
       '<div class="gauth-success-title">註冊完成！</div>' +
-      '<div class="gauth-success-sub">帳號已綁定，歡迎加入 WHONEXT，' + name + '</div>' +
+      '<div class="gauth-success-sub">帳號已建立，歡迎加入 WHONEXT，' + name + '</div>' +
       '<button type="button" class="gauth-primary-btn" id="gauthDoneBtn">完成</button>';
     document.getElementById('gauthDoneBtn').addEventListener('click', function(){
       finishGauth(name);
