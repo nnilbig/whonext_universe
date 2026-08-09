@@ -89,7 +89,10 @@
     font-size:10.5px; font-weight:600; color:var(--secondary);
     border:1px solid var(--line); border-radius:999px; padding:3px 10px; flex-shrink:0;
   }
-  .row-stat{ font-size:11px; color:var(--tertiary); flex-shrink:0; }
+  .row-tag.good{ color: var(--good); border-color: rgba(127,215,154,0.4); background: var(--good-bg); }
+  .row-tag.warn{ color: var(--warn); border-color: rgba(231,161,90,0.4); background: var(--warn-bg); }
+  .row-tag.info{ color: var(--info); border-color: rgba(127,168,217,0.4); background: var(--info-bg); }
+  .row-stat{ font-size:11px; color:var(--tertiary); flex-shrink:0; margin-top:3px; }
 
   @keyframes skeletonPulse{
     0%,100%{ opacity:.35; }
@@ -102,15 +105,9 @@
   .skel-stat{ width:70px; }
 
   .row-admin{
-    flex-direction:row; align-items:center; justify-content:space-between; gap:10px;
+    flex-direction:row; align-items:center; justify-content:flex-end; gap:8px;
     margin-top:9px; padding-top:9px; border-top:1px dashed var(--line);
   }
-  .row-fee{
-    font-size:11.5px; color:var(--secondary); font-family: var(--sf-mono);
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
-  }
-  .row-fee .fee-sep{ color:var(--tertiary); margin:0 6px; }
-  .row-admin-actions{ display:flex; gap:8px; flex-shrink:0; }
   .row-btn{
     font-size:11px; font-weight:700; padding:6px 12px; border-radius:999px;
     border:1px solid var(--line); color: var(--label); background: rgba(255,255,255,0.05);
@@ -156,11 +153,6 @@
   }
   .edit-cancel{ background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--secondary); }
   .edit-save{ background: var(--label); color:#000; }
-  .edit-checkbox-row{
-    display:flex; align-items:center; gap:8px;
-    font-size:13px; color:var(--label); margin-bottom:16px; cursor:pointer;
-  }
-  .edit-checkbox-row input{ width:16px; height:16px; }
 
   .toast{
     position:fixed; bottom: calc(76px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(20px);
@@ -210,12 +202,8 @@
 
       <div class="edit-field-label">單週費用（$）</div>
       <input type="number" id="editWeekly" class="edit-input" inputmode="numeric">
-      <div class="edit-field-label">本月應繳金額（$）</div>
+      <div class="edit-field-label">錢包餘額（$）</div>
       <input type="number" id="editTotal" class="edit-input" inputmode="numeric">
-      <label class="edit-checkbox-row">
-        <input type="checkbox" id="editPaid">
-        <span>已繳費</span>
-      </label>
 
       <div class="edit-actions">
         <button type="button" class="edit-cancel" id="editCancel">取消</button>
@@ -305,13 +293,6 @@
     }
   }
 
-  function attendCountsFor(m){
-    const counts = {};
-    weeksOfMonth(m).forEach(w=>{
-      splitNames(w.present_names).forEach(n=>{ counts[n] = (counts[n] || 0) + 1; });
-    });
-    return counts;
-  }
   function dropinCountsFor(m){
     const counts = {};
     weeksOfMonth(m).forEach(w=>{
@@ -371,9 +352,18 @@
     }
   }
 
+  // 「目前狀態」是最近一週的出席／請假紀錄，跟餘額一樣只反映當下，
+  // 不是整月彙總（整月次數還是靠下面的「本月出席」邏輯，只是不再顯示於此列）。
+  function attendanceStatus(name, week){
+    if(!week) return null;
+    if(splitNames(week.present_names).indexOf(name) !== -1) return 'present';
+    if(splitNames(week.leave_names).indexOf(name) !== -1) return 'leave';
+    return null;
+  }
+
   function renderMonthlyMembers(){
     document.getElementById('monthlyCount').textContent = '共 ' + currentMembers.length + ' 位';
-    const attend = attendCountsFor(currentMonth);
+    const latestWeek = latestWeekOfMonth(currentMonth);
     const list = document.getElementById('monthlyList');
     const visible = monthlyExpanded ? currentMembers : currentMembers.slice(0, PREVIEW_COUNT);
     const moreBtnHtml = currentMembers.length > PREVIEW_COUNT
@@ -381,22 +371,22 @@
       : '';
 
     const rowsHtml = visible.map(m=>{
-      const total = Number(m.monthly_total_fee) || 0;
-      const paid = !!m.paid;
+      const balance = Number(m.monthly_total_fee) || 0;
+      const status = attendanceStatus(m.name, latestWeek);
+      const statusLabel = status === 'present' ? '月繳出席' : status === 'leave' ? '月繳請假' : '月繳';
+      const statusCls = status === 'present' ? 'good' : status === 'leave' ? 'warn' : '';
       return `
       <div class="row">
         <div class="row-avatar">${m.name.slice(0,1)}</div>
         <div class="row-main">
           <div class="row-top">
             <div class="row-name">${m.name}</div>
-            <div class="row-stat">本月出席 ${attend[m.name] || 0} 次</div>
+            <div class="row-tag ${statusCls}">${statusLabel}</div>
           </div>
+          <div class="row-stat">錢包餘額 $${balance.toLocaleString()}</div>
           <div class="row-admin admin-only flex">
-            <div class="row-fee">應繳 $${total.toLocaleString()}<span class="fee-sep">・</span><span style="color:${paid ? 'var(--secondary)' : 'var(--warn,#E7A15A)'}">${paid ? '已繳費' : '未繳費'}</span></div>
-            <div class="row-admin-actions">
-              <button type="button" class="row-btn row-btn-ghost" data-action="edit" data-name="${m.name}">修改</button>
-              <button type="button" class="row-btn row-btn-danger" data-action="remove" data-name="${m.name}">移除</button>
-            </div>
+            <button type="button" class="row-btn row-btn-ghost" data-action="edit" data-name="${m.name}">修改</button>
+            <button type="button" class="row-btn row-btn-danger" data-action="remove" data-name="${m.name}">移除</button>
           </div>
         </div>
       </div>`;
@@ -424,7 +414,6 @@
     document.getElementById('editName').value = m.name;
     document.getElementById('editWeekly').value = m.weekly_fee != null ? m.weekly_fee : DEFAULT_WEEKLY;
     document.getElementById('editTotal').value = m.monthly_total_fee != null ? m.monthly_total_fee : 0;
-    document.getElementById('editPaid').checked = !!m.paid;
     document.getElementById('editSave').textContent = '儲存';
     document.getElementById('editOverlay').classList.add('open');
   }
@@ -435,7 +424,6 @@
     document.getElementById('editName').value = '';
     document.getElementById('editWeekly').value = DEFAULT_WEEKLY;
     document.getElementById('editTotal').value = 0;
-    document.getElementById('editPaid').checked = false;
     document.getElementById('editSave').textContent = '新增';
     document.getElementById('editOverlay').classList.add('open');
     setTimeout(()=> document.getElementById('editName').focus(), 50);
@@ -452,8 +440,7 @@
     }
     const weekly = Math.max(0, Number(document.getElementById('editWeekly').value) || 0);
     const total = Math.max(0, Number(document.getElementById('editTotal').value) || 0);
-    const paid = document.getElementById('editPaid').checked;
-    const record = { month: currentMonth, name, weekly_fee: weekly, monthly_total_fee: total, paid };
+    const record = { month: currentMonth, name, weekly_fee: weekly, monthly_total_fee: total };
 
     const updated = sheetMode === 'new'
       ? currentMembers.concat([record])
@@ -507,8 +494,9 @@
         <div class="row-main">
           <div class="row-top">
             <div class="row-name">${n}</div>
-            <div class="row-stat">本月出席 ${counts[n]} 次${referrers[n] ? '・由 ' + referrers[n] + ' 邀請' : ''}</div>
+            <div class="row-tag info">臨打</div>
           </div>
+          <div class="row-stat">本月出席 ${counts[n]} 次${referrers[n] ? '・由 ' + referrers[n] + ' 邀請' : ''}</div>
         </div>
       </div>
     `).join('') : '<div class="row"><div class="row-stat">本月尚無臨打紀錄</div></div>';

@@ -113,19 +113,11 @@
   .season-body .t{ font-size:13.5px; font-weight:700; margin-bottom:3px; }
   .season-body .s{ font-size:11.5px; color:var(--tertiary); }
 
-  /* ---- 管理員總覽入口卡 ---- */
-  .ov-card{
-    display:flex; align-items:center; gap:14px; padding:18px 18px; margin-bottom:12px;
+  /* ---- 管理員：球員名冊預覽 ---- */
+  .roster-manage-link{
+    display:block; text-align:center; font-size:12.5px; font-weight:700; color:var(--secondary);
+    padding: 14px 0 4px;
   }
-  .ov-icon{
-    width:42px; height:42px; border-radius:14px; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-    font-size:18px; font-weight:800; background: var(--card-strong); border:1px solid var(--line);
-  }
-  .ov-body{ flex:1; min-width:0; }
-  .ov-title{ font-size:14.5px; font-weight:800; margin-bottom:2px; }
-  .ov-sub{ font-size:11.5px; color:var(--tertiary); }
-  .ov-chev{ color:var(--tertiary); font-size:16px; flex-shrink:0; }
 
   .toast{
     position:fixed; bottom: calc(76px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(20px);
@@ -149,18 +141,22 @@
       <div class="wordmark" id="profileTitle">我的活動</div>
     </div>
 
-    <!-- ---------- 管理員：總覽入口 ---------- -->
+    <!-- ---------- 管理員：球員名冊預覽 ---------- -->
     <!-- 球隊錢包已經是底部導覽自己的分頁（管理員身分會顯示成「球隊錢包」），
-         這裡不用重複放一次入口，只留球員名冊管理。 -->
+         這裡不用重複放入口；直接嵌入當月名單預覽，滿三筆收合。 -->
     <div id="adminOverviewView" style="display:none">
-      <a class="ov-card glass" href="member.html">
-        <div class="ov-icon">☺</div>
-        <div class="ov-body">
-          <div class="ov-title">球員名冊</div>
-          <div class="ov-sub">月繳成員、臨打名單管理</div>
-        </div>
-        <span class="ov-chev">›</span>
-      </a>
+
+      <div class="section-label-row" style="margin-top:0">
+        <div class="section-label">月繳成員</div>
+      </div>
+      <div class="plist glass" id="adminMonthlyList"></div>
+
+      <div class="section-label-row">
+        <div class="section-label">臨打球員</div>
+      </div>
+      <div class="plist glass" id="adminDropinList"></div>
+
+      <a class="roster-manage-link" href="member.html">管理球員名冊 →</a>
     </div>
 
     <!-- ---------- 球員：個人頁 ---------- -->
@@ -209,6 +205,7 @@
 
   let EVENTS = [];
   let ALL_WEEKS = [];
+  let ALL_MEMBERS = [];
 
   function showToast(msg){
     const t = document.getElementById('toast');
@@ -402,6 +399,61 @@
   }
 
   // ---------------------------------------------------------------
+  // 管理員：球員名冊預覽（月繳／臨打各先顯示 3 位，超過收合）
+  // ---------------------------------------------------------------
+  const ADMIN_ROSTER_PREVIEW_COUNT = 3;
+  let adminMonthlyExpanded = false;
+  let adminDropinExpanded = false;
+
+  function currentCalendarMonth(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  function weeksOfCurrentMonth(){
+    const month = currentCalendarMonth();
+    return ALL_WEEKS.filter(function(w){ return monthOfWeek(w) === month; });
+  }
+  function adminMonthlyNames(){
+    const month = currentCalendarMonth();
+    return ALL_MEMBERS.filter(function(m){ return String(m.month) === month; }).map(function(m){ return m.name; });
+  }
+  function adminDropinNames(){
+    const names = [];
+    weeksOfCurrentMonth().forEach(function(w){
+      splitNames(w.dropin_names).forEach(function(entry){
+        const name = parseDropinEntry(entry).name;
+        if(!isPlaceholderName(name) && names.indexOf(name) === -1) names.push(name);
+      });
+    });
+    return names;
+  }
+  function rosterRowHTML(name){
+    return '<div class="trow"><div class="trow-badge other">' + name.slice(0,1) + '</div><div class="trow-title">' + name + '</div></div>';
+  }
+  function renderRosterPreview(elId, names, expanded, onToggle){
+    const el = document.getElementById(elId);
+    if(!names.length){ el.innerHTML = '<div class="empty-row">本月尚無資料</div>'; return; }
+    const visible = expanded ? names : names.slice(0, ADMIN_ROSTER_PREVIEW_COUNT);
+    const moreBtnId = elId + 'MoreBtn';
+    const moreBtn = names.length > ADMIN_ROSTER_PREVIEW_COUNT
+      ? '<button type="button" class="more-row" id="' + moreBtnId + '">' + (expanded ? '收合 ↑' : '顯示更多 ↓（還有 ' + (names.length - ADMIN_ROSTER_PREVIEW_COUNT) + ' 位）') + '</button>'
+      : '';
+    el.innerHTML = visible.map(rosterRowHTML).join('') + moreBtn;
+    const btn = document.getElementById(moreBtnId);
+    if(btn) btn.addEventListener('click', onToggle);
+  }
+  function renderAdminRoster(){
+    renderRosterPreview('adminMonthlyList', adminMonthlyNames(), adminMonthlyExpanded, function(){
+      adminMonthlyExpanded = !adminMonthlyExpanded;
+      renderAdminRoster();
+    });
+    renderRosterPreview('adminDropinList', adminDropinNames(), adminDropinExpanded, function(){
+      adminDropinExpanded = !adminDropinExpanded;
+      renderAdminRoster();
+    });
+  }
+
+  // ---------------------------------------------------------------
   // 版面切換
   // ---------------------------------------------------------------
   function renderPersonalView(){
@@ -428,10 +480,11 @@
 
   function updateViewMode(){
     const isAdmin = document.body.classList.contains('is-admin');
-    document.getElementById('profileTitle').textContent = isAdmin ? '總覽' : '我的活動';
+    document.getElementById('profileTitle').textContent = isAdmin ? '球員名冊' : '我的活動';
     document.getElementById('adminOverviewView').style.display = isAdmin ? '' : 'none';
     document.getElementById('personalView').style.display = isAdmin ? 'none' : '';
-    if(!isAdmin) renderPersonalView();
+    if(isAdmin) renderAdminRoster();
+    else renderPersonalView();
   }
   document.addEventListener('DOMContentLoaded', updateViewMode);
   new MutationObserver(updateViewMode).observe(document.body, { attributes:true, attributeFilter:['class'] });
@@ -444,19 +497,25 @@
     if(events) EVENTS = events.events || [];
     const weeks = getApiCache({ action:'getWeeks' });
     if(weeks) ALL_WEEKS = weeks.weeks || [];
+    const members = getApiCache({ action:'getMembers' });
+    if(members) ALL_MEMBERS = members.members || [];
   }
 
   async function refreshAll(){
     try{
-      const [eventsRes, weeksRes] = await Promise.all([
+      const [eventsRes, weeksRes, membersRes] = await Promise.all([
         apiGet({ action:'getEvents' }),
-        apiGet({ action:'getWeeks' })
+        apiGet({ action:'getWeeks' }),
+        apiGet({ action:'getMembers' })
       ]);
       setApiCache({ action:'getEvents' }, eventsRes);
       setApiCache({ action:'getWeeks' }, weeksRes);
+      setApiCache({ action:'getMembers' }, membersRes);
       EVENTS = eventsRes.events || [];
       ALL_WEEKS = weeksRes.weeks || [];
-      if(!document.body.classList.contains('is-admin')) renderPersonalView();
+      ALL_MEMBERS = membersRes.members || [];
+      if(document.body.classList.contains('is-admin')) renderAdminRoster();
+      else renderPersonalView();
     } catch(e){
       // 讀取失敗就沿用快取（可能是空陣列）
     }
