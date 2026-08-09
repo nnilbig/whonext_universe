@@ -27,17 +27,42 @@ body.is-admin .admin-only.flex{ display:flex; }
 .whoami-card{ padding:20px; margin-bottom:10px; }
 .whoami-title{ font-size:14px; font-weight:800; margin-bottom:4px; }
 .whoami-sub{ font-size:12px; color:var(--secondary); margin-bottom:14px; line-height:1.5; }
-.whoami-input{
-  width:100%; box-sizing:border-box;
-  font-family: var(--sf); font-size:16px; color: var(--label);
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--line); border-radius: 12px;
-  padding: 11px 14px; margin-bottom:12px;
+
+.gbtn{
+  width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
+  background:#fff; color:#1f1f1f; font-size:14px; font-weight:600;
+  padding:12px; border-radius:10px; border:1px solid #dadce0;
 }
-select.whoami-input{ color: var(--label); }
-select.whoami-input option{ color: var(--label); background:#1c1c1e; }
-.whoami-btn{ width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px; background: var(--label); color:#000; }
-.whoami-btn:disabled{ opacity:.5; }
+.gbtn:active{ background:#f7f7f7; }
+
+.whoami-secondary-btn{
+  display:block; width:100%; text-align:center;
+  font-size:12.5px; font-weight:700; color:var(--secondary);
+  padding:12px 0 2px;
+}
+
+.whoami-account-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.whoami-account{
+  display:flex; align-items:center; gap:12px; padding:12px; text-align:left; width:100%;
+  border:1px solid var(--line); border-radius:14px; background: rgba(255,255,255,0.03);
+}
+.whoami-account:active{ background: rgba(255,255,255,0.07); }
+.whoami-account-avatar{
+  width:36px; height:36px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:14px; background: var(--gold-bg); border:1.5px solid var(--gold); color:var(--gold);
+}
+.whoami-account-name{ font-size:13.5px; font-weight:700; }
+.whoami-loading{ font-size:12.5px; color:var(--tertiary); padding:10px 2px; }
+
+.whoami-spinner-wrap{ display:flex; flex-direction:column; align-items:center; gap:14px; padding:22px 0 6px; }
+.whoami-spinner{
+  width:26px; height:26px; border-radius:50%;
+  border:3px solid var(--line); border-top-color: var(--gold);
+  animation: whoami-spin .8s linear infinite;
+}
+@keyframes whoami-spin{ to{ transform:rotate(360deg); } }
+.whoami-spinner-text{ font-size:12.5px; color:var(--secondary); }
 
 /* ---------- SHARED MODAL/OVERLAY SHELL (event edit, detail, member edit, login...) ---------- */
 .auth-overlay{

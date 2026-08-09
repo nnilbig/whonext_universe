@@ -113,6 +113,31 @@
   .season-body .t{ font-size:13.5px; font-weight:700; margin-bottom:3px; }
   .season-body .s{ font-size:11.5px; color:var(--tertiary); }
 
+  /* ---- 年度總覽（展開看所有勳章）---- */
+  .yo-card{ padding:20px; margin-bottom:8px; }
+  .yo-stats{ display:flex; align-items:center; }
+  .yo-stat{ flex:1; text-align:center; min-width:0; }
+  .yo-stat-value{ font-family: var(--sf-mono); font-size:24px; font-weight:800; line-height:1; margin-bottom:4px; }
+  .yo-stat-value.yo-stat-text{ font-size:15px; font-family: var(--sf); color: var(--gold); }
+  .yo-stat-label{ font-size:11px; color:var(--tertiary); }
+  .yo-stat-sep{ width:1px; height:32px; background:var(--line); flex-shrink:0; }
+  .tc-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:18px 8px; margin-top:18px; }
+  .tc-item{ display:flex; flex-direction:column; align-items:center; gap:7px; }
+  .tc-badge{
+    width:44px; height:44px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--sf-mono); font-weight:800; font-size:13px;
+    border:2px solid var(--gold); background: var(--gold-bg); color: var(--gold);
+  }
+  .tc-badge.locked{ border-color: var(--line); background: rgba(255,255,255,0.04); color: var(--tertiary); }
+  .tc-label{ font-size:10.5px; color:var(--secondary); text-align:center; line-height:1.3; }
+  .tc-item.locked .tc-label{ color: var(--tertiary); }
+  .tc-toggle-btn{
+    display:block; width:100%; text-align:center; font-size:12.5px; font-weight:700; color:var(--secondary);
+    margin-top:18px; padding-top:14px; border-top:1px solid var(--line);
+  }
+  .tc-toggle-btn:active{ color:var(--label); }
+
   /* ---- 管理員：球員名冊預覽 ---- */
   .roster-manage-link{
     display:block; text-align:center; font-size:12.5px; font-weight:700; color:var(--secondary);
@@ -165,6 +190,21 @@
       <div id="whoamiContainer" style="display:none"></div>
 
       <div id="personalContent" style="display:none">
+
+        <div class="section-label-row">
+          <div class="section-label">年度總覽</div>
+        </div>
+        <div class="yo-card glass">
+          <div class="yo-stats">
+            <div class="yo-stat"><div class="yo-stat-value" id="yoAttended">0</div><div class="yo-stat-label">參加場數</div></div>
+            <div class="yo-stat-sep"></div>
+            <div class="yo-stat"><div class="yo-stat-value" id="yoBadgeCount">0</div><div class="yo-stat-label">勳章數目</div></div>
+            <div class="yo-stat-sep"></div>
+            <div class="yo-stat"><div class="yo-stat-value yo-stat-text" id="yoChallenge">—</div><div class="yo-stat-label">挑戰中</div></div>
+          </div>
+          <div class="tc-grid" id="tcGrid" style="display:none"></div>
+          <button type="button" class="tc-toggle-btn" id="yoToggleBtn">展開看所有勳章 ↓</button>
+        </div>
 
         <div class="section-label-row">
           <div class="section-label">報名中活動</div>
@@ -249,7 +289,62 @@
   // ---------------------------------------------------------------
   function getPlayerName(){ return WhonextAuth.getPlayerName(); }
 
-  document.addEventListener('whonext:playername-change', renderPersonalView);
+  // top nav 清空身分（切換/登出）時，把登入流程重置回第一步，
+  // 不要停在上一次登入流程跑到一半的畫面。
+  document.addEventListener('whonext:playername-change', function(){
+    if(!getPlayerName()) document.getElementById('whoamiContainer').innerHTML = '';
+    renderPersonalView();
+  });
+
+  // ---------------------------------------------------------------
+  // 年度總覽：參加場數／勳章數目／挑戰中，展開看所有里程碑勳章。
+  // 場次判定：這一年（取 ALL_WEEKS 裡最新的年份）出現在 present_names
+  // 或 dropin_names 就算一場，跟月繳/臨打身分無關。
+  // ---------------------------------------------------------------
+  const MILESTONES = [
+    { threshold: 1, label: '初登場' },
+    { threshold: 5, label: '常客' },
+    { threshold: 10, label: '熟面孔' },
+    { threshold: 20, label: '核心成員' },
+    { threshold: 30, label: 'WHO朋引伴' },
+    { threshold: 50, label: '傳奇球員' }
+  ];
+  let yoExpanded = false;
+
+  function yearAttendedCount(name){
+    const monthsSet = [...new Set(ALL_WEEKS.map(monthOfWeek))].sort();
+    if(!monthsSet.length) return 0;
+    const year = monthsSet[monthsSet.length - 1].slice(0,4);
+    return ALL_WEEKS.filter(function(w){ return monthOfWeek(w).slice(0,4) === year; })
+      .filter(function(w){
+        return splitNames(w.present_names).indexOf(name) !== -1 ||
+          splitNames(w.dropin_names).some(function(entry){ return parseDropinEntry(entry).name === name; });
+      }).length;
+  }
+
+  function renderYearOverview(name){
+    const attended = yearAttendedCount(name);
+    const earned = MILESTONES.filter(function(m){ return attended >= m.threshold; });
+    const next = MILESTONES.find(function(m){ return attended < m.threshold; });
+
+    document.getElementById('yoAttended').textContent = attended;
+    document.getElementById('yoBadgeCount').textContent = earned.length;
+    document.getElementById('yoChallenge').textContent = next ? next.label : '全部達成';
+
+    document.getElementById('tcGrid').innerHTML = MILESTONES.map(function(m){
+      const got = attended >= m.threshold;
+      return '<div class="tc-item' + (got ? '' : ' locked') + '">' +
+        '<div class="tc-badge' + (got ? '' : ' locked') + '">' + m.threshold + '</div>' +
+        '<div class="tc-label">' + m.label + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  document.getElementById('yoToggleBtn').addEventListener('click', function(){
+    yoExpanded = !yoExpanded;
+    document.getElementById('tcGrid').style.display = yoExpanded ? '' : 'none';
+    this.textContent = yoExpanded ? '收合 ↑' : '展開看所有勳章 ↓';
+  });
 
   // ---------------------------------------------------------------
   // 報名中／歷史活動
@@ -464,7 +559,9 @@
     const content = document.getElementById('personalContent');
 
     if(!name){
-      WhonextIdentityPicker.render(whoamiContainer);
+      // 只在第一次（容器還是空的）才渲染，避免資料重新整理時把使用者
+      // 正在操作的 Google 登入流程（選擇身份中）整個重繪回第一步。
+      if(!whoamiContainer.childElementCount) WhonextIdentityPicker.render(whoamiContainer);
       whoamiContainer.style.display = '';
       content.style.display = 'none';
       return;
@@ -474,6 +571,7 @@
     content.style.display = '';
 
     historyExpanded = false;
+    renderYearOverview(name);
     renderUpcomingList(name);
     renderHistoryList(name);
     renderTrophyList(name);
