@@ -78,14 +78,19 @@
         playerBtn.innerHTML = '<span class="nav-id-avatar">' + name.slice(0,1) + '</span><span class="nav-id-name">' + name + '</span>';
       } else {
         playerBtn.classList.remove('has-identity');
-        playerBtn.textContent = '球員';
+        playerBtn.textContent = '登入';
       }
     }
   }
 
+  // 管理員登入永遠從「Google 驗證」這步開始，帳密表單只是第二步，
+  // 每次重開都要重置，不然會停在上次登入到一半的畫面。
   function openAdminLogin(){
     var overlay = document.getElementById('adminLoginOverlay');
     if(!overlay) return;
+    document.getElementById('adminLoginStart').style.display = '';
+    document.getElementById('adminLoginVerifying').style.display = 'none';
+    document.getElementById('adminLoginForm').style.display = 'none';
     document.getElementById('adminLoginUser').value = '';
     document.getElementById('adminLoginPass').value = '';
     document.getElementById('adminLoginError').style.display = 'none';
@@ -95,6 +100,19 @@
   function closeAdminLogin(){
     var overlay = document.getElementById('adminLoginOverlay');
     if(overlay) overlay.classList.remove('open');
+  }
+
+  // 「使用 Google 繼續」目前還是假的（沒有真的 OAuth），驗證中轉場後
+  // 直接進到真正會打後端 login API 的帳密表單，實際登入判斷還是靠那步。
+  function startAdminGoogleVerify(){
+    document.getElementById('adminLoginStart').style.display = 'none';
+    document.getElementById('adminLoginVerifying').style.display = '';
+    setTimeout(function(){
+      document.getElementById('adminLoginVerifying').style.display = 'none';
+      document.getElementById('adminLoginForm').style.display = '';
+      var userInput = document.getElementById('adminLoginUser');
+      if(userInput) userInput.focus();
+    }, 500);
   }
 
   async function submitAdminLogin(){
@@ -128,32 +146,30 @@
     }
   }
 
-  // 點「球員／頭像」：如果目前是管理員，直接切回球員（等同登出管理員，
-  // 並清空球員身分要求重新選）；如果已經是球員身分，點下去是去
-  // 「我的活動」重新挑選／更換身分。點「管理員」跳帳密驗證，通過才
-  // 切換，取消或失敗都留在原本身分。
+  // nav 上只剩「登入／頭像」這顆按鈕（管理員登入從我的錢包／我的活動
+  // 的登入選單「我是管理員」進去，見 identity-picker.js）。點這顆按鈕：
+  // 如果目前正在看管理員視角，只是切回球員視角，已經綁定的球員身分
+  // 保留，不用重選；如果本來就是球員身分，點一下代表想更換身分，
+  // 才會清空重選。
   function wireNavRoleToggle(){
     var toggle = document.getElementById('navRoleToggle');
     if(!toggle) return;
     toggle.addEventListener('click', function(e){
       var btn = e.target.closest('.role-toggle-btn');
       if(!btn) return;
-      var role = btn.dataset.role;
-      if(role === 'admin'){
-        if(getRole() === 'admin') return;
-        openAdminLogin();
-      } else {
-        if(getRole() === 'admin'){
-          setPlayerName('');
-          setRole('player');
-          return;
-        }
-        setPlayerName('');
-        var page = location.pathname.split('/').pop();
-        if(page !== 'profile.html') location.href = 'profile.html';
+      if(getRole() === 'admin'){
+        setRole('player');
+        return;
       }
+      setPlayerName('');
+      var page = location.pathname.split('/').pop();
+      if(page !== 'profile.html') location.href = 'profile.html';
     });
 
+    var googleBtn = document.getElementById('adminGoogleBtn');
+    if(googleBtn) googleBtn.addEventListener('click', startAdminGoogleVerify);
+    var cancelStartBtn = document.getElementById('adminLoginCancelStart');
+    if(cancelStartBtn) cancelStartBtn.addEventListener('click', closeAdminLogin);
     var cancelBtn = document.getElementById('adminLoginCancel');
     if(cancelBtn) cancelBtn.addEventListener('click', closeAdminLogin);
     var submitBtn = document.getElementById('adminLoginSubmit');

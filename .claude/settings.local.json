@@ -30,7 +30,10 @@
       "Bash(node test-new-picker.js)",
       "Bash(lsof -ti:8811 -sTCP:LISTEN)",
       "Bash(lsof -ti:8814 -sTCP:LISTEN)",
-      "Bash(lsof -ti:8815 -sTCP:LISTEN)"
+      "Bash(lsof -ti:8815 -sTCP:LISTEN)",
+      "Bash(node test-dual-nav.js)",
+      "Bash(lsof -ti:8816 -sTCP:LISTEN)",
+      "Bash(lsof -ti:8817 -sTCP:LISTEN)"
     ]
   }
 }
