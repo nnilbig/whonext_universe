@@ -218,12 +218,12 @@
   .detail-attendees{ margin-top:20px; }
   .detail-attendees-empty{ font-size:12px; color:var(--tertiary); }
   .detail-attendees-grid{
-    display:grid; grid-template-columns: repeat(8, 1fr); gap:8px;
+    display:flex; flex-wrap:wrap; gap:8px;
     max-height:220px; overflow-y:auto;
   }
   .detail-attendees-grid .avatar{
     margin-left:0; cursor:default;
-    width:100%; height:auto; aspect-ratio:1; font-size: clamp(9px, 2.6vw, 12px);
+    width:44px; height:44px; font-size:15px;
   }
 
   .self-signed-note{
@@ -242,20 +242,20 @@
   }
   .signup-cancel-btn:disabled{ opacity:.5; }
 
-  .signup-mode-toggle{
-    display:flex; background: rgba(255,255,255,0.05); border:1px solid var(--line);
-    border-radius:999px; padding:2px; margin-bottom:14px;
-  }
-  .signup-mode-toggle button{
-    flex:1; font-size:12px; font-weight:700; padding:8px 0; border-radius:999px; color:var(--tertiary);
-  }
-  .signup-mode-toggle button.active{ background: var(--card-strong); color: var(--label); }
-
   .signup-submit{
     width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px;
     background: var(--label); color:#000; margin-top:2px;
   }
   .signup-submit:disabled{ opacity:.5; }
+
+  .signup-entry-row{ display:flex; gap:8px; }
+  .signup-entry-btn{
+    flex:1; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px;
+    background: var(--label); color:#000;
+  }
+  .signup-entry-btn.secondary{
+    background: rgba(255,255,255,0.05); color: var(--label); border:1px solid var(--line);
+  }
 
   .signup-list{ display:flex; flex-direction:column; gap:6px; }
   .signup-empty{ font-size:12.5px; color:var(--tertiary); padding: 4px 2px; }
@@ -383,14 +383,12 @@
         <button type="button" class="signup-cancel-btn" id="signupCancelBtn" disabled>取消報名</button>
       </div>
 
-      <button type="button" class="signup-submit" id="signupToggleBtn">我要報名</button>
+      <div class="signup-entry-row" id="signupEntryRow">
+        <button type="button" class="signup-entry-btn" id="signupToggleMemberBtn">登入報名</button>
+        <button type="button" class="signup-entry-btn secondary" id="signupToggleGuestBtn">訪客報名</button>
+      </div>
 
       <div id="eventSignupSection" style="display:none">
-        <div class="signup-mode-toggle">
-          <button type="button" class="active" data-mode="member" id="signupModeMember">球員</button>
-          <button type="button" data-mode="guest" id="signupModeGuest">訪客</button>
-        </div>
-
         <div id="signupMemberFields">
           <div id="signupAsSelf"></div>
         </div>
@@ -1022,14 +1020,6 @@
     document.getElementById('detailAttendees').innerHTML = detailAttendeesHTML(ev);
 
     const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
-
-    // 沒登入的人打開報名表單，直接停在訪客分頁比較實用（球員分頁點了
-    // 也只會看到「請先登入」），登入的人一樣預設球員分頁替自己報名。
-    signupMode = currentName ? 'member' : 'guest';
-    document.getElementById('signupModeMember').classList.toggle('active', signupMode === 'member');
-    document.getElementById('signupModeGuest').classList.toggle('active', signupMode === 'guest');
-    document.getElementById('signupMemberFields').style.display = signupMode === 'member' ? '' : 'none';
-    document.getElementById('signupGuestFields').style.display = signupMode === 'guest' ? '' : 'none';
     document.getElementById('signupGuestName').value = '';
     const submitBtn = document.getElementById('signupSubmit');
     submitBtn.disabled = false;
@@ -1047,7 +1037,7 @@
 
     const selfSigned = currentPlayerSignedUp(ev);
     document.getElementById('selfSignedSection').style.display = selfSigned ? '' : 'none';
-    document.getElementById('signupToggleBtn').style.display = selfSigned ? 'none' : '';
+    document.getElementById('signupEntryRow').style.display = selfSigned ? 'none' : '';
     document.getElementById('eventSignupSection').style.display = 'none';
     if(selfSigned){
       // 每次重新打開都把按鈕文字重置成「取消報名」，不要沿用上一次
@@ -1088,9 +1078,19 @@
   }
   document.getElementById('signupCancelBtn').addEventListener('click', cancelCurrentSignup);
 
-  document.getElementById('signupToggleBtn').addEventListener('click', function(){
-    this.style.display = 'none';
+  document.getElementById('signupToggleMemberBtn').addEventListener('click', function(){
+    signupMode = 'member';
+    document.getElementById('signupEntryRow').style.display = 'none';
     document.getElementById('eventSignupSection').style.display = '';
+    document.getElementById('signupMemberFields').style.display = '';
+    document.getElementById('signupGuestFields').style.display = 'none';
+  });
+  document.getElementById('signupToggleGuestBtn').addEventListener('click', function(){
+    signupMode = 'guest';
+    document.getElementById('signupEntryRow').style.display = 'none';
+    document.getElementById('eventSignupSection').style.display = '';
+    document.getElementById('signupMemberFields').style.display = 'none';
+    document.getElementById('signupGuestFields').style.display = '';
   });
 
   const SIGNUP_FAIL_MSG = {
@@ -1195,20 +1195,6 @@
     if(e.target.id === 'eventEditOverlay') closeEventEdit();
   });
 
-  document.getElementById('signupModeMember').addEventListener('click', function(){
-    signupMode = 'member';
-    this.classList.add('active');
-    document.getElementById('signupModeGuest').classList.remove('active');
-    document.getElementById('signupMemberFields').style.display = '';
-    document.getElementById('signupGuestFields').style.display = 'none';
-  });
-  document.getElementById('signupModeGuest').addEventListener('click', function(){
-    signupMode = 'guest';
-    this.classList.add('active');
-    document.getElementById('signupModeMember').classList.remove('active');
-    document.getElementById('signupMemberFields').style.display = 'none';
-    document.getElementById('signupGuestFields').style.display = '';
-  });
   document.getElementById('signupSubmit').addEventListener('click', submitSignup);
   document.getElementById('eventDetailOverlay').addEventListener('click', function(e){
     if(e.target.id === 'eventDetailOverlay') closeEventDetail();

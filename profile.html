@@ -76,6 +76,9 @@
     color: var(--gold); border:1px solid rgba(242,196,85,0.4); background: var(--gold-bg);
   }
   .prow-tag.ended{ color: var(--secondary); border-color: var(--line); background: rgba(255,255,255,0.05); }
+  .row-chevron{ flex-shrink:0; font-size:12px; color:var(--tertiary); }
+  .prow-toggle{ cursor:pointer; }
+  .prow-toggle:active{ background: rgba(255,255,255,0.03); }
   .empty-row{ padding: 20px 10px; font-size:12.5px; color:var(--tertiary); text-align:center; }
   .more-row{
     width:100%; text-align:center;
@@ -113,7 +116,7 @@
   .season-body .t{ font-size:13.5px; font-weight:700; margin-bottom:3px; }
   .season-body .s{ font-size:11.5px; color:var(--tertiary); }
 
-  /* ---- 年度總覽（點整張卡片展開看所有勳章）---- */
+  /* ---- 年度總覽（點整張卡片展開看所有里程碑）---- */
   .yo-card{ padding:20px; margin-bottom:8px; cursor:pointer; }
   .yo-stats{ display:flex; align-items:center; margin-bottom:18px; }
   .yo-stat{ flex:1; text-align:center; min-width:0; }
@@ -199,7 +202,7 @@
           <div class="yo-stats">
             <div class="yo-stat"><div class="yo-stat-value" id="yoAttended">0</div><div class="yo-stat-label">參加活動</div></div>
             <div class="yo-stat-sep"></div>
-            <div class="yo-stat"><div class="yo-stat-value" id="yoBadgeCount">0</div><div class="yo-stat-label">勳章數目</div></div>
+            <div class="yo-stat"><div class="yo-stat-value" id="yoBadgeCount">0</div><div class="yo-stat-label">里程碑</div></div>
             <div class="yo-chevron" id="yoChevron">↓</div>
           </div>
           <div class="yo-milestone">
@@ -244,8 +247,14 @@
 <script src="identity-picker.js"></script>
 <script src="bottom-nav.js"></script>
 <script>
-  const HISTORY_PREVIEW_COUNT = 3;
+  const HISTORY_PREVIEW_COUNT = 1;
+  const HISTORY_EXPAND_COUNT = 5;
   let historyExpanded = false;
+  let historyFullyExpanded = false;
+  const UPCOMING_PREVIEW_COUNT = 3;
+  const UPCOMING_EXPAND_COUNT = 5;
+  let upcomingExpanded = false;
+  let upcomingFullyExpanded = false;
 
   let EVENTS = [];
   let ALL_WEEKS = [];
@@ -301,7 +310,7 @@
   });
 
   // ---------------------------------------------------------------
-  // 年度總覽：參加場數／勳章數目／挑戰中，展開看所有里程碑勳章。
+  // 年度總覽：參加場數／里程碑／挑戰中，展開看所有里程碑。
   // 場次判定：這一年（取 ALL_WEEKS 裡最新的年份）出現在 present_names
   // 或 dropin_names 就算一場，跟月繳/臨打身分無關。
   // ---------------------------------------------------------------
@@ -369,16 +378,19 @@
     });
   }
 
-  function eventRowHTML(ev, ended){
+  // toggle（若有）= { id, expanded }：整張卡片變成可點擊的收合／展開列，
+  // 「已結束」標籤左邊留位置放一顆小箭頭（跟年度總覽的箭頭同一種風格）。
+  function eventRowHTML(ev, ended, toggle){
     const isoDate = String(ev.date).slice(0, 10);
     const mm = isoDate.slice(5,7);
     const dd = isoDate.slice(8,10);
-    return '<div class="prow">' +
+    return '<div class="prow' + (toggle ? ' prow-toggle' : '') + '"' + (toggle ? ' id="' + toggle.id + '"' : '') + '>' +
       '<div class="prow-date"><div class="mm">' + mm + '月</div><div class="dd">' + dd + '</div></div>' +
       '<div class="prow-body">' +
         '<div class="prow-title">' + ev.title + '</div>' +
         '<div class="prow-meta">' + (ev.type ? ev.type + '・' : '') + ev.time + '・' + ev.location + '</div>' +
       '</div>' +
+      (toggle ? '<span class="row-chevron">' + (toggle.expanded ? '↑' : '↓') + '</span>' : '') +
       '<span class="prow-tag' + (ended ? ' ended' : '') + '">' + (ended ? '已結束' : '報名中') + '</span>' +
     '</div>';
   }
@@ -387,35 +399,101 @@
     const list = eventsForPlayer(name).filter(function(ev){ return !isEventEnded(ev); })
       .sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
     const el = document.getElementById('upcomingList');
-    el.innerHTML = list.length
-      ? list.map(function(ev){ return eventRowHTML(ev, false); }).join('')
-      : '<div class="empty-row">目前沒有報名中的活動</div>';
+    if(!list.length){
+      el.innerHTML = '<div class="empty-row">目前沒有報名中的活動</div>';
+      return;
+    }
+    // 三段式：收合只顯示最近 1 項 → 點箭頭先展開到 5 項 → 超過 5 項時
+    // 下方再放「顯示更多」，點了才一次展開全部（跟歷史活動同一套邏輯）。
+    const visibleCount = !upcomingExpanded ? UPCOMING_PREVIEW_COUNT : (upcomingFullyExpanded ? list.length : UPCOMING_EXPAND_COUNT);
+    const visible = list.slice(0, visibleCount);
+    const collapsible = list.length > UPCOMING_PREVIEW_COUNT;
+    const showMoreBtn = upcomingExpanded && !upcomingFullyExpanded && list.length > UPCOMING_EXPAND_COUNT;
+    el.innerHTML = visible.map(function(ev, idx){
+      const toggle = (collapsible && idx === visible.length - 1) ? { id: 'upcomingToggleRow', expanded: upcomingExpanded } : null;
+      return eventRowHTML(ev, false, toggle);
+    }).join('') + (showMoreBtn
+      ? '<button type="button" class="more-row" id="upcomingMoreBtn">顯示更多（還有 ' + (list.length - UPCOMING_EXPAND_COUNT) + ' 項）</button>'
+      : '');
+    const toggleRow = document.getElementById('upcomingToggleRow');
+    if(toggleRow) toggleRow.addEventListener('click', function(){
+      upcomingExpanded = !upcomingExpanded;
+      if(!upcomingExpanded) upcomingFullyExpanded = false;
+      renderUpcomingList(name);
+    });
+    const moreBtn = document.getElementById('upcomingMoreBtn');
+    if(moreBtn) moreBtn.addEventListener('click', function(){ upcomingFullyExpanded = true; renderUpcomingList(name); });
   }
 
-  // 賽事／企劃優先排在前面，同優先度內再依日期新到舊排序。
+  // 賽事／企劃優先排在前面，同優先度內再依日期新到舊排序；舊制的每週
+  // 出席紀錄跟一般練習活動同一個優先度，一起照日期排序。
   function historyPriority(ev){
     return (ev.type === '賽事' || ev.type === '企劃') ? 0 : 1;
   }
 
+  // 舊制出席紀錄沒有標題／時段／地點，只有 week_date 跟出席名單，
+  // 用固定文案呈現，跟新制報名活動的卡片維持一樣的排版。
+  function weekHistoryRowHTML(week, toggle){
+    const isoDate = String(week.week_date).slice(0, 10);
+    const mm = isoDate.slice(5,7);
+    const dd = isoDate.slice(8,10);
+    return '<div class="prow' + (toggle ? ' prow-toggle' : '') + '"' + (toggle ? ' id="' + toggle.id + '"' : '') + '>' +
+      '<div class="prow-date"><div class="mm">' + mm + '月</div><div class="dd">' + dd + '</div></div>' +
+      '<div class="prow-body">' +
+        '<div class="prow-title">例行練習</div>' +
+        '<div class="prow-meta">舊制出席紀錄</div>' +
+      '</div>' +
+      (toggle ? '<span class="row-chevron">' + (toggle.expanded ? '↑' : '↓') + '</span>' : '') +
+      '<span class="prow-tag ended">已結束</span>' +
+    '</div>';
+  }
+
+  // 歷史活動彙整兩種來源：新制的活動報名（EVENTS）跟舊制的每週出席表
+  // （ALL_WEEKS）。同一天如果兩邊都有紀錄，只算新制那筆，避免同一場
+  // 出席被算兩次。
   function renderHistoryList(name){
-    const list = eventsForPlayer(name).filter(isEventEnded)
-      .sort(function(a,b){
-        const pa = historyPriority(a), pb = historyPriority(b);
-        if(pa !== pb) return pa - pb;
-        return String(b.date).localeCompare(String(a.date));
-      });
+    const eventItems = eventsForPlayer(name).filter(isEventEnded).map(function(ev){
+      return { date: String(ev.date).slice(0, 10), priority: historyPriority(ev), type: 'event', payload: ev };
+    });
+    const eventDates = new Set(eventItems.map(function(item){ return item.date; }));
+    const weekItems = ALL_WEEKS.filter(function(w){
+      const isoDate = String(w.week_date).slice(0, 10);
+      if(eventDates.has(isoDate)) return false;
+      return splitNames(w.present_names).indexOf(name) !== -1 ||
+        splitNames(w.dropin_names).some(function(entry){ return parseDropinEntry(entry).name === name; });
+    }).map(function(w){
+      return { date: String(w.week_date).slice(0, 10), priority: 1, type: 'week', payload: w };
+    });
+
+    const list = eventItems.concat(weekItems).sort(function(a,b){
+      if(a.priority !== b.priority) return a.priority - b.priority;
+      return b.date.localeCompare(a.date);
+    });
     const el = document.getElementById('historyList');
     if(!list.length){
       el.innerHTML = '<div class="empty-row">尚無歷史活動紀錄</div>';
       return;
     }
-    const visible = historyExpanded ? list : list.slice(0, HISTORY_PREVIEW_COUNT);
-    const moreBtn = list.length > HISTORY_PREVIEW_COUNT
-      ? '<button type="button" class="more-row" id="historyMoreBtn">' + (historyExpanded ? '收合 ↑' : '查看更多 ↓（還有 ' + (list.length - HISTORY_PREVIEW_COUNT) + ' 項）') + '</button>'
-      : '';
-    el.innerHTML = visible.map(function(ev){ return eventRowHTML(ev, true); }).join('') + moreBtn;
-    const btn = document.getElementById('historyMoreBtn');
-    if(btn) btn.addEventListener('click', function(){ historyExpanded = !historyExpanded; renderHistoryList(name); });
+    // 三段式：收合只顯示最新 1 項 → 點箭頭先展開到 5 項 → 超過 5 項時
+    // 下方再放「顯示更多」，點了才一次展開全部。
+    const visibleCount = !historyExpanded ? HISTORY_PREVIEW_COUNT : (historyFullyExpanded ? list.length : HISTORY_EXPAND_COUNT);
+    const visible = list.slice(0, visibleCount);
+    const collapsible = list.length > HISTORY_PREVIEW_COUNT;
+    const showMoreBtn = historyExpanded && !historyFullyExpanded && list.length > HISTORY_EXPAND_COUNT;
+    el.innerHTML = visible.map(function(item, idx){
+      const toggle = (collapsible && idx === visible.length - 1) ? { id: 'historyToggleRow', expanded: historyExpanded } : null;
+      return item.type === 'event' ? eventRowHTML(item.payload, true, toggle) : weekHistoryRowHTML(item.payload, toggle);
+    }).join('') + (showMoreBtn
+      ? '<button type="button" class="more-row" id="historyMoreBtn">顯示更多（還有 ' + (list.length - HISTORY_EXPAND_COUNT) + ' 項）</button>'
+      : '');
+    const toggleRow = document.getElementById('historyToggleRow');
+    if(toggleRow) toggleRow.addEventListener('click', function(){
+      historyExpanded = !historyExpanded;
+      if(!historyExpanded) historyFullyExpanded = false;
+      renderHistoryList(name);
+    });
+    const moreBtn = document.getElementById('historyMoreBtn');
+    if(moreBtn) moreBtn.addEventListener('click', function(){ historyFullyExpanded = true; renderHistoryList(name); });
   }
 
   // ---------------------------------------------------------------
@@ -494,8 +572,8 @@
     if(idx < 0){
       el.innerHTML = '<div class="season-card glass">' +
         '<div class="season-body">' +
-          '<div class="t">' + year + ' 呼朋引伴</div>' +
-          '<div class="s">尚未上榜，累積揪團／帶新人次數即可上榜</div>' +
+          '<div class="t">' + year + ' WHO朋引伴</div>' +
+          '<div class="s">尚未上榜，累積WHO朋引伴人次即可上榜</div>' +
         '</div>' +
       '</div>';
       return;
@@ -503,8 +581,8 @@
     el.innerHTML = '<div class="season-card glass">' +
       '<div class="season-rank">NO.' + ranks[idx] + '</div>' +
       '<div class="season-body">' +
-        '<div class="t">' + year + ' 呼朋引伴</div>' +
-        '<div class="s">揪團／帶新人次數 ' + list[idx].value + ' 次</div>' +
+        '<div class="t">' + year + ' WHO朋引伴</div>' +
+        '<div class="s">累計WHO朋引伴 ' + list[idx].value + ' 人次</div>' +
       '</div>' +
     '</div>';
   }
@@ -585,6 +663,9 @@
     content.style.display = '';
 
     historyExpanded = false;
+    historyFullyExpanded = false;
+    upcomingExpanded = false;
+    upcomingFullyExpanded = false;
     renderYearOverview(name);
     renderUpcomingList(name);
     renderHistoryList(name);
