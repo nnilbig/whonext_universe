@@ -772,7 +772,8 @@
     list.querySelectorAll('.event-card').forEach(function(card){
       card.addEventListener('click', function(e){
         if(e.target.closest('.event-status') || e.target.closest('.event-edit-btn')) return;
-        openEventDetail(Number(card.dataset.index));
+        const skipEntry = !!e.target.closest('.event-cta-tag');
+        openEventDetail(Number(card.dataset.index), skipEntry);
       });
     });
 
@@ -1186,7 +1187,7 @@
     return { disabled:false, label:'送出報名' };
   }
 
-  function openEventDetail(index){
+  function openEventDetail(index, skipEntry){
     detailIndex = index;
     const ev = EVENTS[index];
     const statusMeta = eventStatusMeta(ev);
@@ -1235,6 +1236,13 @@
       document.getElementById('signupMemberFields').style.display = '';
       document.getElementById('signupGuestFields').style.display = 'none';
       renderMemberFields(currentName);
+    } else if(skipEntry && !signupState.disabled){
+      // 從卡片上的「我要報名」標籤點進來：跳過中間的入口按鈕，
+      // 直接展開球員登入／訪客報名的選擇。
+      document.getElementById('signupEntryRow').style.display = 'none';
+      document.getElementById('eventSignupSection').style.display = '';
+      document.getElementById('signupModeToggle').style.display = '';
+      setSignupTab('member');
     } else {
       // 未登入：先顯示單一「我要報名」按鈕，點了才展開球員登入／訪客報名的選擇。
       document.getElementById('signupEntryRow').style.display = '';
