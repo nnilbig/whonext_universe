@@ -63,7 +63,7 @@
       }
       listEl.innerHTML = names.map(function(n){
         return '<button type="button" class="whoami-account" data-name="' + n + '">' +
-          '<div class="whoami-account-avatar">' + n.slice(0,1) + '</div>' +
+          '<div class="whoami-account-avatar">' + avatarInitial(n) + '</div>' +
           '<div class="whoami-account-name">' + n + '</div>' +
         '</button>';
       }).join('');

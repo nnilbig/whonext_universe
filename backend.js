@@ -36,6 +36,14 @@ function apiPrefetch(params){
   apiGet(params).then(function(result){ setApiCache(params, result); }).catch(function(){});
 }
 
+// 頭像顯示文字：姓名開頭是「小」的話（如「小白」）跳過取下一個字（顯示「白」），
+// 避免暱稱類姓名的頭像全部撞成同一個「小」字。
+function avatarInitial(name){
+  const n = String(name || '').trim();
+  if(n.charAt(0) === '小' && n.length > 1) return n.charAt(1);
+  return n.slice(0, 1);
+}
+
 // ---------------------------------------------------------------
 // 「我的錢包」餘額規則。members 表目前還沒有專門的餘額欄位，先直接
 // 把 monthly_total_fee 當作錢包餘額的數字來源；之後有專門的儲值／

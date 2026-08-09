@@ -344,7 +344,7 @@ function weekFinancials(w){
   return { monthlyInc, leaveDed, dropinInc, income, expense, net: income - expense };
 }
 
-function initialOf(name){ return name.slice(0,1); }
+function initialOf(name){ return avatarInitial(name); }
 
 function years(){ return [...new Set(ALL_WEEKS.map(w=> monthOf(w).slice(0,4)))].sort(); }
 function weeksOfYear(y){ return ALL_WEEKS.filter(w=> monthOf(w).slice(0,4) === y).sort((a,b) => a.date.localeCompare(b.date)); }

@@ -75,7 +75,7 @@
       var name = getPlayerName();
       if(name){
         playerBtn.classList.add('has-identity');
-        playerBtn.innerHTML = '<span class="nav-id-avatar">' + name.slice(0,1) + '</span><span class="nav-id-name">' + name + '</span>';
+        playerBtn.innerHTML = '<span class="nav-id-avatar">' + avatarInitial(name) + '</span><span class="nav-id-name">' + name + '</span>';
       } else {
         playerBtn.classList.remove('has-identity');
         playerBtn.textContent = '登入';

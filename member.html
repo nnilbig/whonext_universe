@@ -384,7 +384,7 @@
       const statusCls = status === 'present' ? 'good' : status === 'leave' ? 'warn' : '';
       return `
       <div class="row">
-        <div class="row-avatar">${m.name.slice(0,1)}</div>
+        <div class="row-avatar">${avatarInitial(m.name)}</div>
         <div class="row-main">
           <div class="row-top">
             <div class="row-name">${m.name}</div>
@@ -540,7 +540,7 @@
       : '';
     const rowsHtml = names.length ? visible.map(n=>`
       <div class="row">
-        <div class="row-avatar">${n.slice(0,1)}</div>
+        <div class="row-avatar">${avatarInitial(n)}</div>
         <div class="row-main">
           <div class="row-top">
             <div class="row-name">${n}</div>

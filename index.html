@@ -601,7 +601,7 @@
 
     const hostInfo = eventHostInfo(ev.title);
     const hostHTML = hostInfo
-      ? '<div class="avatar-host" title="發起人：' + hostInfo.name + '">' + hostInfo.name.slice(0, 1) + '</div>' +
+      ? '<div class="avatar-host" title="發起人：' + hostInfo.name + '">' + avatarInitial(hostInfo.name) + '</div>' +
         '<div class="event-host-sep"></div>'
       : '';
 
@@ -612,7 +612,7 @@
     const shown = names.slice(0, 4);
     const extra = count - shown.length;
     const avatarsHTML = shown.map(function(n, idx){
-      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '">' + String(n).trim().slice(0, 1) + '</div>';
+      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '">' + avatarInitial(n) + '</div>';
     }).join('') + (extra > 0 ? '<div class="avatar-more">+' + extra + '</div>' : '');
 
     let label = count + (attendance !== null ? ' 人出席' : ' 人已報名');
@@ -979,7 +979,7 @@
     const names = Array.isArray(ev.signup_names) ? ev.signup_names : [];
     if(!names.length) return '<div class="detail-attendees-empty">尚無人報名</div>';
     return '<div class="detail-attendees-grid">' + names.map(function(n, idx){
-      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '" title="' + n + '">' + String(n).trim().slice(0, 1) + '</div>';
+      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '" title="' + n + '">' + avatarInitial(n) + '</div>';
     }).join('') + '</div>';
   }
 

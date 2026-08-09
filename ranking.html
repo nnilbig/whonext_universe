@@ -214,7 +214,7 @@
     const visibleResults = trophyExpanded ? ev.results : ev.results.slice(0, TROPHY_PAGE_SIZE);
     row.innerHTML = visibleResults.map(function(r){
       const membersHtml = r.members.map(function(name){
-        return '<div class="trophy-member"><div class="trophy-member-avatar">' + name.slice(0,1) + '</div><div class="trophy-member-name">' + name + '</div></div>';
+        return '<div class="trophy-member"><div class="trophy-member-avatar">' + avatarInitial(name) + '</div><div class="trophy-member-name">' + name + '</div></div>';
       }).join('');
       return '<div class="trophy-card ' + r.cls + ' glass">' +
         '<div class="trophy-rank">NO.' + r.rank + '</div>' +
@@ -292,7 +292,7 @@
       const cardsHtml = page.map(function(item){
         return '<div class="rank-card ' + item.cls + ' glass">' +
           '<div class="rank-no">NO.' + item.rank + '</div>' +
-          '<div class="rank-avatar">' + item.p.name.slice(0,1) + '</div>' +
+          '<div class="rank-avatar">' + avatarInitial(item.p.name) + '</div>' +
           '<div class="rank-person-name">' + item.p.name + '</div>' +
           '<div class="rank-value">' + item.p.value + data.valueSuffix + '</div>' +
         '</div>';
