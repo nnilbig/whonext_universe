@@ -56,6 +56,14 @@
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
+
+    // 球員登入也走同一份 identity-picker.js（跟 profile.html 共用），
+    // 用 overlay 包起來就能留在目前頁面完成登入，不用跳去 profile.html。
+    var loginOverlay = document.createElement('div');
+    loginOverlay.className = 'auth-overlay';
+    loginOverlay.id = 'navLoginOverlay';
+    loginOverlay.innerHTML = '<div class="auth-box"><div id="navLoginContainer"></div></div>';
+    document.body.appendChild(loginOverlay);
   }
 
   if(document.readyState === 'loading'){

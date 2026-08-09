@@ -83,9 +83,27 @@
     }
   }
 
+  // 球員登入用 identity-picker.js 同一套流程，塞進 nav 自己的 overlay，
+  // 留在目前頁面完成登入，不用跳去 profile.html。每次重開都重繪起始畫面。
+  function openNavLogin(){
+    closeAdminLogin();
+    var overlay = document.getElementById('navLoginOverlay');
+    var container = document.getElementById('navLoginContainer');
+    if(!overlay || !container || !window.WhonextIdentityPicker) return;
+    container.innerHTML = '';
+    WhonextIdentityPicker.render(container);
+    overlay.classList.add('open');
+  }
+
+  function closeNavLogin(){
+    var overlay = document.getElementById('navLoginOverlay');
+    if(overlay) overlay.classList.remove('open');
+  }
+
   // 管理員登入永遠從「Google 驗證」這步開始，帳密表單只是第二步，
   // 每次重開都要重置，不然會停在上次登入到一半的畫面。
   function openAdminLogin(){
+    closeNavLogin();
     var overlay = document.getElementById('adminLoginOverlay');
     if(!overlay) return;
     document.getElementById('adminLoginStart').style.display = '';
@@ -149,8 +167,8 @@
   // nav 上只剩「登入／頭像」這顆按鈕（管理員登入從我的錢包／我的活動
   // 的登入選單「我是管理員」進去，見 identity-picker.js）。點這顆按鈕：
   // 如果目前正在看管理員視角，只是切回球員視角，已經綁定的球員身分
-  // 保留，不用重選；如果本來就是球員身分，點一下代表想更換身分，
-  // 才會清空重選。
+  // 保留，不用重選；如果本來就是球員身分且已經綁定身分（頭像狀態），
+  // 點一下直接登出清空身分；還沒登入才會打開登入選單。
   function wireNavRoleToggle(){
     var toggle = document.getElementById('navRoleToggle');
     if(!toggle) return;
@@ -161,9 +179,11 @@
         setRole('player');
         return;
       }
-      setPlayerName('');
-      var page = location.pathname.split('/').pop();
-      if(page !== 'profile.html') location.href = 'profile.html';
+      if(getPlayerName()){
+        setPlayerName('');
+        return;
+      }
+      openNavLogin();
     });
 
     var googleBtn = document.getElementById('adminGoogleBtn');
@@ -180,7 +200,18 @@
       var passInput = document.getElementById('adminLoginPass');
       if(passInput) passInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') submitAdminLogin(); });
     }
+
+    var navLoginOverlay = document.getElementById('navLoginOverlay');
+    if(navLoginOverlay){
+      navLoginOverlay.addEventListener('click', function(e){ if(e.target === navLoginOverlay) closeNavLogin(); });
+    }
   }
+
+  // 選完身份（chooseIdentity 呼叫 setPlayerName）就把 nav 的登入 overlay
+  // 收起來，回到原本正在看的頁面，不用手動再關一次。
+  document.addEventListener('whonext:playername-change', function(){
+    if(getPlayerName()) closeNavLogin();
+  });
 
   document.addEventListener('DOMContentLoaded', function(){
     applyAdminClass();

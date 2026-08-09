@@ -39,7 +39,19 @@
       "Bash(lsof -ti:8821 -sTCP:LISTEN)",
       "Bash(lsof -ti:8822 -sTCP:LISTEN)",
       "Bash(lsof -ti:8823 -sTCP:LISTEN)",
-      "Bash(lsof -ti:8824 -sTCP:LISTEN)"
+      "Bash(lsof -ti:8824 -sTCP:LISTEN)",
+      "Bash(pkill -f \"http.server 8791\")",
+      "Bash(node -c auth.js)",
+      "Bash(node -c top-nav.js)",
+      "Bash(chromium-cli --help)",
+      "Bash(node -e \"require.resolve\\('playwright'\\)\")",
+      "Bash(npm ls *)",
+      "Bash(python -c \"import playwright; print\\('ok'\\)\")",
+      "Bash(pip show *)",
+      "Bash(where.exe msedge.exe)",
+      "Bash(where.exe chrome.exe)",
+      "Bash(node --check _check_tmp.js)",
+      "Bash(rm -f _check_tmp.js)"
     ]
   }
 }
