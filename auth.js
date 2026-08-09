@@ -175,6 +175,7 @@
 
   window.WhonextAuth = {
     ROLE_KEY: ROLE_KEY, getRole: getRole, setRole: setRole,
-    getPlayerName: getPlayerName, setPlayerName: setPlayerName
+    getPlayerName: getPlayerName, setPlayerName: setPlayerName,
+    openAdminLogin: openAdminLogin
   };
 })();
