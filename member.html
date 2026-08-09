@@ -205,6 +205,13 @@
       <div class="edit-field-label">錢包餘額（$）</div>
       <input type="number" id="editTotal" class="edit-input" inputmode="numeric">
 
+      <div class="edit-field-label">Email（選填，之後 Google 登入比對用）</div>
+      <input type="email" id="editEmail" class="edit-input" placeholder="example@gmail.com">
+      <div class="edit-field-label">推薦人（選填，只在第一次建檔時填）</div>
+      <select id="editReferrer" class="edit-input"><option value="">— 無 —</option></select>
+      <div class="edit-field-label">加入日期</div>
+      <input type="date" id="editRegisteredAt" class="edit-input">
+
       <div class="edit-actions">
         <button type="button" class="edit-cancel" id="editCancel">取消</button>
         <button type="button" class="edit-save" id="editSave">儲存</button>
@@ -405,6 +412,30 @@
     if(moreBtn) moreBtn.addEventListener('click', ()=>{ monthlyExpanded = !monthlyExpanded; renderMonthlyMembers(); });
   }
 
+  function todayISO(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // 找這個人「其他月份」最近一筆有 email/推薦人/加入日期的紀錄，讓新月份
+  // 帶出來不用重填——這幾欄是跟人綁定的，不是跟月份綁定的。
+  function memberProfileFallback(name){
+    const records = ALL_MEMBERS.filter(x=> x.name === name && String(x.month) !== currentMonth)
+      .sort((a,b)=> String(a.month).localeCompare(String(b.month)));
+    return records.length ? records[records.length - 1] : null;
+  }
+
+  function fillProfileFields(profile){
+    document.getElementById('editEmail').value = (profile && profile.email) || '';
+    document.getElementById('editReferrer').value = (profile && profile.referrer) || '';
+    document.getElementById('editRegisteredAt').value = (profile && profile.registered_at) || todayISO();
+  }
+
+  function referrerOptionsHTML(){
+    const names = [...new Set(ALL_MEMBERS.map(m=> m.name))].sort((a,b)=> a.localeCompare(b));
+    return '<option value="">— 無 —</option>' + names.map(n=> '<option value="' + n + '">' + n + '</option>').join('');
+  }
+
   function openEdit(name){
     const m = currentMembers.find(x=>x.name === name);
     if(!m) return;
@@ -414,6 +445,8 @@
     document.getElementById('editName').value = m.name;
     document.getElementById('editWeekly').value = m.weekly_fee != null ? m.weekly_fee : DEFAULT_WEEKLY;
     document.getElementById('editTotal').value = m.monthly_total_fee != null ? m.monthly_total_fee : 0;
+    document.getElementById('editReferrer').innerHTML = referrerOptionsHTML();
+    fillProfileFields(m.email || m.referrer || m.registered_at ? m : memberProfileFallback(name));
     document.getElementById('editSave').textContent = '儲存';
     document.getElementById('editOverlay').classList.add('open');
   }
@@ -424,10 +457,21 @@
     document.getElementById('editName').value = '';
     document.getElementById('editWeekly').value = DEFAULT_WEEKLY;
     document.getElementById('editTotal').value = 0;
+    document.getElementById('editReferrer').innerHTML = referrerOptionsHTML();
+    fillProfileFields(null);
     document.getElementById('editSave').textContent = '新增';
     document.getElementById('editOverlay').classList.add('open');
     setTimeout(()=> document.getElementById('editName').focus(), 50);
   }
+  // 新增模式下，姓名如果跟舊月份的人同名（例如回鍋的臨打/月繳成員），
+  // 離開姓名欄時自動把 email/推薦人/加入日期帶出來，不用重填。
+  document.getElementById('editName').addEventListener('blur', function(){
+    if(sheetMode !== 'new') return;
+    const name = this.value.trim();
+    if(!name) return;
+    const known = memberProfileFallback(name);
+    if(known) fillProfileFields(known);
+  });
   function closeEdit(){
     document.getElementById('editOverlay').classList.remove('open');
     editingName = null;
@@ -440,7 +484,13 @@
     }
     const weekly = Math.max(0, Number(document.getElementById('editWeekly').value) || 0);
     const total = Math.max(0, Number(document.getElementById('editTotal').value) || 0);
-    const record = { month: currentMonth, name, weekly_fee: weekly, monthly_total_fee: total };
+    const email = document.getElementById('editEmail').value.trim();
+    const referrer = document.getElementById('editReferrer').value;
+    const registeredAt = document.getElementById('editRegisteredAt').value;
+    const record = {
+      month: currentMonth, name, weekly_fee: weekly, monthly_total_fee: total,
+      email: email, referrer: referrer, registered_at: registeredAt
+    };
 
     const updated = sheetMode === 'new'
       ? currentMembers.concat([record])

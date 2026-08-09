@@ -324,8 +324,10 @@
       .map(name=>({ name, value: counts[name] }))
       .sort((a,b)=> b.value - a.value || a.name.localeCompare(b.name));
   }
+  // 訪客類佔位名字：純「友」「友1」，或「{邀請人}友{編號}」這種沒留真名的
+  // 臨打訪客（例如「忠友1」「CC友」），一律排除在真實身份之外。
   function isPlaceholderName(name){
-    return /^友\d*$/.test(name);
+    return /友\d*$/.test(name);
   }
   function computeFriendBoard(weeks){
     const referrers = [];

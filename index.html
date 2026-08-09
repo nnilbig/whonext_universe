@@ -123,6 +123,10 @@
   .event-status.ended{ background: rgba(255,255,255,0.05); color: var(--tertiary); }
   body.is-admin .event-status{ cursor:pointer; box-shadow: inset 0 0 0 1px currentColor; }
   body.is-admin .event-status:active{ opacity:.7; }
+  .event-self-tag{
+    font-size:10px; font-weight:700; padding:3px 9px; border-radius:999px; flex-shrink:0; white-space:nowrap;
+    color: var(--gold); background: var(--gold-bg); border:1px solid rgba(242,196,85,0.35);
+  }
   .event-meta{ font-size:12.5px; color:var(--secondary); line-height:1.5; font-family: var(--sf-mono); }
   .event-meta .sep{ color:var(--tertiary); margin:0 6px; }
 
@@ -157,6 +161,7 @@
     font-size:10.5px; font-weight:800; color:#000;
     background: var(--gold); border:2px solid #0a0a0a;
   }
+  .event-host-label{ font-size:10.5px; color:var(--tertiary); flex-shrink:0; }
   .event-host-sep{ width:1px; height:14px; background:var(--line); flex-shrink:0; }
   .avatar-stack{ display:flex; }
   .avatar{
@@ -400,6 +405,13 @@
     return type === '賽事' ? 'et-match' : type === '企劃' ? 'et-project' : type === '練習' ? 'et-practice' : '';
   }
 
+  // 判斷目前登入的球員是否已經報名這場賽事，卡片狀態標籤旁邊顯示「你已報名」。
+  function currentPlayerSignedUp(ev){
+    if(!window.WhonextAuth || WhonextAuth.getRole() !== 'player') return false;
+    const name = WhonextAuth.getPlayerName();
+    return !!name && Array.isArray(ev.signup_names) && ev.signup_names.indexOf(name) !== -1;
+  }
+
   // 賽事標題關鍵字對應主辦人，卡片頭像用這份資料顯示。
   const HOST_MAP = [
     { keywords: ['WHONEXT'], name: '儒' },
@@ -549,7 +561,8 @@
 
     const hostInfo = eventHostInfo(ev.title);
     const hostHTML = hostInfo
-      ? '<div class="avatar-host" title="主辦：' + hostInfo.name + '">' + hostInfo.name.slice(0, 1) + '</div><div class="event-host-sep"></div>'
+      ? '<div class="avatar-host" title="發起人：' + hostInfo.name + '">' + hostInfo.name.slice(0, 1) + '</div>' +
+        '<div class="event-host-label">發起人</div><div class="event-host-sep"></div>'
       : '';
 
     if(!count){
@@ -602,6 +615,7 @@
       const dd = isoDate.slice(8,10);
       const wd = WEEKDAYS[new Date(isoDate + 'T00:00:00').getDay()];
       const statusMeta = eventStatusMeta(ev);
+      const selfTagHTML = currentPlayerSignedUp(ev) ? '<span class="event-self-tag">你已報名</span>' : '';
       return '<div class="event-card glass ' + eventTypeClass(ev.type) + '" data-index="' + i + '">' +
         '<div class="event-date">' +
           '<div class="ed-month">' + mm + '月</div>' +
@@ -613,6 +627,7 @@
             '<div class="event-title">' + ev.title + '</div>' +
             '<div class="event-title-actions">' +
               '<button type="button" class="event-status ' + statusMeta.cls + '" data-index="' + i + '">' + statusMeta.label + '</button>' +
+              selfTagHTML +
               '<button type="button" class="event-edit-btn admin-only" data-index="' + i + '">編輯</button>' +
             '</div>' +
           '</div>' +
