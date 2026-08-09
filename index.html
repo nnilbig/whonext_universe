@@ -217,17 +217,16 @@
 
   .detail-attendees{ margin-top:12px; }
   .detail-attendees-empty{ font-size:12px; color:var(--tertiary); }
-  .detail-attendees-toggle{
-    margin-top:8px; font-size:11.5px; font-weight:700; color:var(--secondary);
-  }
   .detail-attendees-list{
-    margin-top:10px; display:flex; flex-direction:column; gap:2px;
-    max-height:140px; overflow-y:auto;
+    display:flex; flex-direction:column;
+    max-height:180px; overflow-y:auto;
   }
   .detail-attendee-row{
-    font-size:12.5px; color:var(--secondary); padding:6px 2px; border-top:1px solid var(--line);
+    display:flex; align-items:center; gap:10px;
+    font-size:12.5px; color:var(--secondary); padding:7px 2px; border-top:1px solid var(--line);
   }
   .detail-attendee-row:first-child{ border-top:none; }
+  .detail-attendee-row .avatar{ margin-left:0; width:22px; height:22px; font-size:9.5px; }
 
   .self-signed-note{
     font-size:12.5px; font-weight:700; color:var(--gold); text-align:center; margin-bottom:10px;
@@ -235,6 +234,13 @@
   .signup-cancel-btn{
     width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px;
     color: var(--warn); border:1px solid rgba(231,161,90,0.4); background: rgba(231,161,90,0.1);
+  }
+
+  .signup-self-note{ font-size:13px; color:var(--secondary); padding: 4px 2px; margin-bottom:2px; }
+  .signup-self-note b{ color:var(--label); font-weight:800; }
+  .signup-self-note.warn{ color: var(--warn); }
+  .signup-login-link{
+    display:inline-block; margin: 6px 2px 2px; font-size:12.5px; font-weight:700; color:var(--gold);
   }
   .signup-cancel-btn:disabled{ opacity:.5; }
 
@@ -384,11 +390,11 @@
       <div id="eventSignupSection" style="display:none">
         <div class="signup-mode-toggle">
           <button type="button" class="active" data-mode="member" id="signupModeMember">球員</button>
-          <button type="button" data-mode="guest" id="signupModeGuest">臨打</button>
+          <button type="button" data-mode="guest" id="signupModeGuest">訪客</button>
         </div>
 
         <div id="signupMemberFields">
-          <select id="signupMemberName" class="edit-input"></select>
+          <div id="signupAsSelf"></div>
         </div>
         <div id="signupGuestFields" style="display:none">
           <input type="text" id="signupGuestName" class="edit-input" placeholder="輸入姓名">
@@ -971,30 +977,16 @@
       .sort(function(a, b){ return a.localeCompare(b); });
   }
 
-  // 報名頭像疊圖 + 展開看全部名單（跟卡片上的疊圖是分開的一份，因為
-  // 這裡欄位夠寬可以放展開列表，卡片上只有空間放疊圖本身）。
+  // 報名頭像＋名單，欄位塞得下就直接全部列出來，不用再多一層展開收合。
   function detailAttendeesHTML(ev){
     const names = Array.isArray(ev.signup_names) ? ev.signup_names : [];
     if(!names.length) return '<div class="detail-attendees-empty">尚無人報名</div>';
-    const shown = names.slice(0, 4);
-    const extra = names.length - shown.length;
-    const avatarsHTML = shown.map(function(n, idx){
-      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '">' + String(n).trim().slice(0, 1) + '</div>';
-    }).join('') + (extra > 0 ? '<div class="avatar-more">+' + extra + '</div>' : '');
-    const listHTML = names.map(function(n){ return '<div class="detail-attendee-row">' + n + '</div>'; }).join('');
-    return '<div class="avatar-stack">' + avatarsHTML + '</div>' +
-      '<button type="button" class="detail-attendees-toggle" id="detailAttendeesToggle">展開名單 ↓</button>' +
-      '<div class="detail-attendees-list" id="detailAttendeesList" style="display:none">' + listHTML + '</div>';
-  }
-  function wireDetailAttendeesToggle(){
-    const btn = document.getElementById('detailAttendeesToggle');
-    if(!btn) return;
-    btn.addEventListener('click', function(){
-      const list = document.getElementById('detailAttendeesList');
-      const expanded = list.style.display !== 'none';
-      list.style.display = expanded ? 'none' : '';
-      btn.textContent = expanded ? '展開名單 ↓' : '收合 ↑';
-    });
+    return '<div class="detail-attendees-list">' + names.map(function(n, idx){
+      return '<div class="detail-attendee-row">' +
+        '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '">' + String(n).trim().slice(0, 1) + '</div>' +
+        '<span>' + n + '</span>' +
+      '</div>';
+    }).join('') + '</div>';
   }
 
   // 已報名時要取消，需要這筆報名紀錄的 id（getEvents 的 signup_names
@@ -1018,6 +1010,15 @@
     }
   }
 
+  // 球員模式一定要登入才能報名，而且只能替自己報名（沒有下拉選單可以
+  // 選別人）；沒登入就顯示「請先登入」，引導去 profile.html 綁定身分。
+  // 訪客模式不需要登入，輸入姓名＋選推薦人（目前的會員名單）就能報名。
+  function signupAsSelfHTML(name){
+    if(name) return '<div class="signup-self-note">以 <b>' + name + '</b> 身份報名</div>';
+    return '<div class="signup-self-note warn">尚未登入，無法以球員身份報名</div>' +
+      '<a href="profile.html" class="signup-login-link">前往登入 →</a>';
+  }
+
   function openEventDetail(index){
     detailIndex = index;
     const ev = EVENTS[index];
@@ -1025,35 +1026,41 @@
     document.getElementById('detailMeta').textContent = (ev.type ? ev.type + '　' : '') + String(ev.date).slice(0, 10) + '　' + ev.time + '　' + ev.location;
     document.getElementById('detailProgress').innerHTML = progressHTML(ev, eventStatusMeta(ev));
     document.getElementById('detailAttendees').innerHTML = detailAttendeesHTML(ev);
-    wireDetailAttendeesToggle();
 
-    signupMode = 'member';
-    document.getElementById('signupModeMember').classList.add('active');
-    document.getElementById('signupModeGuest').classList.remove('active');
-    document.getElementById('signupMemberFields').style.display = '';
-    document.getElementById('signupGuestFields').style.display = 'none';
+    const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+
+    // 沒登入的人打開報名表單，直接停在訪客分頁比較實用（球員分頁點了
+    // 也只會看到「請先登入」），登入的人一樣預設球員分頁替自己報名。
+    signupMode = currentName ? 'member' : 'guest';
+    document.getElementById('signupModeMember').classList.toggle('active', signupMode === 'member');
+    document.getElementById('signupModeGuest').classList.toggle('active', signupMode === 'guest');
+    document.getElementById('signupMemberFields').style.display = signupMode === 'member' ? '' : 'none';
+    document.getElementById('signupGuestFields').style.display = signupMode === 'guest' ? '' : 'none';
     document.getElementById('signupGuestName').value = '';
     const submitBtn = document.getElementById('signupSubmit');
     submitBtn.disabled = false;
     submitBtn.textContent = '送出報名';
 
-    // 已經知道現在登入的是誰，球員模式直接帶出自己的名字，臨打模式的
-    // 推薦人也預設是自己（畢竟通常是自己拉朋友來），兩邊都還是可以改。
-    const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
-    const names = currentMemberNames();
-    const nameOptions = names.map(function(n){ return '<option value="' + n + '">' + n + '</option>'; }).join('');
-    document.getElementById('signupMemberName').innerHTML = nameOptions;
+    document.getElementById('signupAsSelf').innerHTML = signupAsSelfHTML(currentName);
+
+    // 推薦人（訪客模式）從目前的會員名單選，登入的人預設推薦人是自己
+    // （畢竟通常是自己拉朋友來），還是可以改選別人。
+    const nameOptions = currentMemberNames().map(function(n){ return '<option value="' + n + '">' + n + '</option>'; }).join('');
     document.getElementById('signupReferrer').innerHTML = '<option value="">— 無 —</option>' + nameOptions;
-    if(currentName){
-      if(names.indexOf(currentName) !== -1) document.getElementById('signupMemberName').value = currentName;
-      document.getElementById('signupReferrer').value = currentName;
-    }
+    if(currentName) document.getElementById('signupReferrer').value = currentName;
 
     const selfSigned = currentPlayerSignedUp(ev);
     document.getElementById('selfSignedSection').style.display = selfSigned ? '' : 'none';
     document.getElementById('signupToggleBtn').style.display = selfSigned ? 'none' : '';
     document.getElementById('eventSignupSection').style.display = 'none';
-    if(selfSigned) loadDetailSelfSignup(ev, currentName);
+    if(selfSigned){
+      // 每次重新打開都把按鈕文字重置成「取消報名」，不要沿用上一次
+      // 點擊留下的「取消中…」，查到 id 前先鎖住避免打沒有 id 的請求。
+      const cancelBtn = document.getElementById('signupCancelBtn');
+      cancelBtn.textContent = '取消報名';
+      cancelBtn.disabled = true;
+      loadDetailSelfSignup(ev, currentName);
+    }
 
     document.getElementById('eventDetailOverlay').classList.add('open');
   }
@@ -1103,8 +1110,8 @@
     const ev = EVENTS[detailIndex];
     const payload = { event_id: ev.id, type: signupMode };
     if(signupMode === 'member'){
-      const name = document.getElementById('signupMemberName').value;
-      if(!name){ showToast('目前沒有可選的球員名單'); return; }
+      const name = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+      if(!name){ showToast('請先登入才能以球員身份報名'); return; }
       payload.member_name = name;
     } else {
       const guestName = document.getElementById('signupGuestName').value.trim();

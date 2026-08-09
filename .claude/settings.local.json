@@ -34,7 +34,10 @@
       "Bash(node test-dual-nav.js)",
       "Bash(lsof -ti:8816 -sTCP:LISTEN)",
       "Bash(lsof -ti:8817 -sTCP:LISTEN)",
-      "Bash(lsof -ti:8818 -sTCP:LISTEN)"
+      "Bash(lsof -ti:8818 -sTCP:LISTEN)",
+      "Bash(lsof -ti:8819 -sTCP:LISTEN)",
+      "Bash(lsof -ti:8821 -sTCP:LISTEN)",
+      "Bash(lsof -ti:8822 -sTCP:LISTEN)"
     ]
   }
 }
