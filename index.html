@@ -232,6 +232,11 @@
   }
   .edit-cancel{ background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--secondary); }
   .edit-save{ background: var(--label); color:#000; }
+  .edit-delete-btn{
+    width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px; margin-bottom:8px;
+    color: var(--warn); border:1px solid rgba(231,161,90,0.4); background: rgba(231,161,90,0.1);
+  }
+  .edit-delete-btn:disabled{ opacity:.5; }
 
   /* ---------- EVENT DETAIL / SIGNUP ---------- */
   /* 固定高度先把文字跟報名欄位的空間留好，展開表單時內容不會整個跳動，
@@ -397,6 +402,7 @@
         </label>
       </div>
 
+      <button type="button" class="edit-delete-btn admin-only" id="eventEditDelete" style="display:none">刪除賽事</button>
       <div class="edit-actions">
         <button type="button" class="edit-cancel" id="eventEditCancel">取消</button>
         <button type="button" class="edit-save" id="eventEditSave">儲存</button>
@@ -821,6 +827,7 @@
     document.getElementById('eventEditLocation').value = ev.location;
     document.getElementById('eventEditCapacity').value = ev.capacity || '';
     document.getElementById('eventEditOverflow').value = ev.overflow_mode === 'waitlist' ? 'waitlist' : 'reject';
+    document.getElementById('eventEditDelete').style.display = '';
     document.getElementById('eventEditOverlay').classList.add('open');
   }
 
@@ -840,6 +847,7 @@
     document.getElementById('eventEditAttendList').innerHTML = '';
     document.getElementById('eventEditRecurringWrap').style.display = 'none';
     document.getElementById('eventEditRecurring').checked = false;
+    document.getElementById('eventEditDelete').style.display = 'none';
     document.getElementById('eventEditOverlay').classList.add('open');
   }
 
@@ -1028,6 +1036,33 @@
       else Object.assign(ev, backup);
       showToast('儲存失敗，請稍後再試');
     }
+  }
+
+  // saveEvents 是整份陣列覆寫寫回表單，所以刪除只要先把這筆從本地
+  // EVENTS 陣列拿掉再存檔即可，不用另外開一個刪除用的後端 action。
+  async function deleteCurrentEvent(){
+    if(editingIndex === null || editingIndex === 'new') return;
+    const ev = EVENTS[editingIndex];
+    if(!confirm('確定要刪除「' + ev.title + '」（' + String(ev.date).slice(0, 10) + '）這場賽事嗎？此動作無法復原，已報名的人也會一起消失。')) return;
+
+    const btn = document.getElementById('eventEditDelete');
+    btn.disabled = true;
+    btn.textContent = '刪除中…';
+
+    const backup = EVENTS.slice();
+    EVENTS.splice(editingIndex, 1);
+    const ok = await persistEvents();
+
+    if(ok){
+      closeEventEdit();
+      await refreshEvents();
+      showToast('已刪除賽事');
+    } else {
+      EVENTS = backup;
+      showToast('刪除失敗，請稍後再試');
+    }
+    btn.disabled = false;
+    btn.textContent = '刪除賽事';
   }
 
   let detailIndex = null;
@@ -1323,6 +1358,7 @@
   });
   document.getElementById('eventEditCancel').addEventListener('click', closeEventEdit);
   document.getElementById('eventEditSave').addEventListener('click', saveEventEdit);
+  document.getElementById('eventEditDelete').addEventListener('click', deleteCurrentEvent);
   document.getElementById('eventEditOverlay').addEventListener('click', function(e){
     if(e.target.id === 'eventEditOverlay') closeEventEdit();
   });
