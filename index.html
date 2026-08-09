@@ -405,7 +405,7 @@
     return type === '賽事' ? 'et-match' : type === '企劃' ? 'et-project' : type === '練習' ? 'et-practice' : '';
   }
 
-  // 判斷目前登入的球員是否已經報名這場賽事，卡片狀態標籤旁邊顯示「你已報名」。
+  // 判斷目前登入的球員是否已經報名這場賽事，卡片狀態標籤旁邊顯示「已報名」。
   function currentPlayerSignedUp(ev){
     if(!window.WhonextAuth || WhonextAuth.getRole() !== 'player') return false;
     const name = WhonextAuth.getPlayerName();
@@ -561,8 +561,9 @@
 
     const hostInfo = eventHostInfo(ev.title);
     const hostHTML = hostInfo
-      ? '<div class="avatar-host" title="發起人：' + hostInfo.name + '">' + hostInfo.name.slice(0, 1) + '</div>' +
-        '<div class="event-host-label">發起人</div><div class="event-host-sep"></div>'
+      ? '<div class="event-host-label">發起人</div>' +
+        '<div class="avatar-host" title="發起人：' + hostInfo.name + '">' + hostInfo.name.slice(0, 1) + '</div>' +
+        '<div class="event-host-sep"></div>'
       : '';
 
     if(!count){
@@ -615,7 +616,7 @@
       const dd = isoDate.slice(8,10);
       const wd = WEEKDAYS[new Date(isoDate + 'T00:00:00').getDay()];
       const statusMeta = eventStatusMeta(ev);
-      const selfTagHTML = currentPlayerSignedUp(ev) ? '<span class="event-self-tag">你已報名</span>' : '';
+      const selfTagHTML = currentPlayerSignedUp(ev) ? '<span class="event-self-tag">已報名</span>' : '';
       return '<div class="event-card glass ' + eventTypeClass(ev.type) + '" data-index="' + i + '">' +
         '<div class="event-date">' +
           '<div class="ed-month">' + mm + '月</div>' +
