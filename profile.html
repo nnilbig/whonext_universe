@@ -113,15 +113,21 @@
   .season-body .t{ font-size:13.5px; font-weight:700; margin-bottom:3px; }
   .season-body .s{ font-size:11.5px; color:var(--tertiary); }
 
-  /* ---- 年度總覽（展開看所有勳章）---- */
-  .yo-card{ padding:20px; margin-bottom:8px; }
-  .yo-stats{ display:flex; align-items:center; }
+  /* ---- 年度總覽（點整張卡片展開看所有勳章）---- */
+  .yo-card{ padding:20px; margin-bottom:8px; cursor:pointer; }
+  .yo-stats{ display:flex; align-items:center; margin-bottom:18px; }
   .yo-stat{ flex:1; text-align:center; min-width:0; }
   .yo-stat-value{ font-family: var(--sf-mono); font-size:24px; font-weight:800; line-height:1; margin-bottom:4px; }
-  .yo-stat-value.yo-stat-text{ font-size:15px; font-family: var(--sf); color: var(--gold); }
   .yo-stat-label{ font-size:11px; color:var(--tertiary); }
   .yo-stat-sep{ width:1px; height:32px; background:var(--line); flex-shrink:0; }
-  .tc-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:18px 8px; margin-top:18px; }
+  .yo-chevron{ flex-shrink:0; margin-left:6px; font-size:12px; color:var(--tertiary); }
+  .yo-milestone{ border-top:1px solid var(--line); padding-top:16px; }
+  .yo-milestone-label{ font-size:12px; color:var(--secondary); margin-bottom:8px; }
+  .yo-milestone-label b{ color:var(--gold); font-weight:800; }
+  .yo-progress-track{ height:8px; border-radius:999px; background:rgba(255,255,255,0.08); overflow:hidden; margin-bottom:6px; }
+  .yo-progress-fill{ height:100%; border-radius:999px; background: var(--gold); }
+  .yo-progress-count{ font-size:11px; color:var(--tertiary); font-family: var(--sf-mono); text-align:right; }
+  .tc-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:18px 8px; margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
   .tc-item{ display:flex; flex-direction:column; align-items:center; gap:7px; }
   .tc-badge{
     width:44px; height:44px; border-radius:50%;
@@ -132,11 +138,6 @@
   .tc-badge.locked{ border-color: var(--line); background: rgba(255,255,255,0.04); color: var(--tertiary); }
   .tc-label{ font-size:10.5px; color:var(--secondary); text-align:center; line-height:1.3; }
   .tc-item.locked .tc-label{ color: var(--tertiary); }
-  .tc-toggle-btn{
-    display:block; width:100%; text-align:center; font-size:12.5px; font-weight:700; color:var(--secondary);
-    margin-top:18px; padding-top:14px; border-top:1px solid var(--line);
-  }
-  .tc-toggle-btn:active{ color:var(--label); }
 
   /* ---- 管理員：球員名冊預覽 ---- */
   .roster-manage-link{
@@ -194,16 +195,19 @@
         <div class="section-label-row">
           <div class="section-label">年度總覽</div>
         </div>
-        <div class="yo-card glass">
+        <div class="yo-card glass" id="yoToggleBtn">
           <div class="yo-stats">
-            <div class="yo-stat"><div class="yo-stat-value" id="yoAttended">0</div><div class="yo-stat-label">參加場數</div></div>
+            <div class="yo-stat"><div class="yo-stat-value" id="yoAttended">0</div><div class="yo-stat-label">參加活動</div></div>
             <div class="yo-stat-sep"></div>
             <div class="yo-stat"><div class="yo-stat-value" id="yoBadgeCount">0</div><div class="yo-stat-label">勳章數目</div></div>
-            <div class="yo-stat-sep"></div>
-            <div class="yo-stat"><div class="yo-stat-value yo-stat-text" id="yoChallenge">—</div><div class="yo-stat-label">挑戰中</div></div>
+            <div class="yo-chevron" id="yoChevron">↓</div>
+          </div>
+          <div class="yo-milestone">
+            <div class="yo-milestone-label" id="yoMilestoneLabel"></div>
+            <div class="yo-progress-track"><div class="yo-progress-fill" id="yoProgressFill" style="width:0%"></div></div>
+            <div class="yo-progress-count" id="yoProgressCount"></div>
           </div>
           <div class="tc-grid" id="tcGrid" style="display:none"></div>
-          <button type="button" class="tc-toggle-btn" id="yoToggleBtn">展開看所有勳章 ↓</button>
         </div>
 
         <div class="section-label-row">
@@ -304,10 +308,10 @@
   const MILESTONES = [
     { threshold: 1, label: '初登場' },
     { threshold: 5, label: '常客' },
-    { threshold: 10, label: '熟面孔' },
-    { threshold: 20, label: '菁英球員' },
-    { threshold: 30, label: '資深球員' },
-    { threshold: 40, label: '傳奇球員' }
+    { threshold: 15, label: '熟面孔' },
+    { threshold: 25, label: '常駐玩家' },
+    { threshold: 35, label: '核心球員' },
+    { threshold: 45, label: '傳奇球星' }
   ];
   let yoExpanded = false;
 
@@ -329,7 +333,17 @@
 
     document.getElementById('yoAttended').textContent = attended;
     document.getElementById('yoBadgeCount').textContent = earned.length;
-    document.getElementById('yoChallenge').textContent = next ? next.label : '全部達成';
+
+    if(next){
+      document.getElementById('yoMilestoneLabel').innerHTML = '距離下一個里程碑「<b>' + next.label + '</b>」還差 ' + (next.threshold - attended) + ' 場';
+      document.getElementById('yoProgressFill').style.width = Math.round(attended / next.threshold * 100) + '%';
+      document.getElementById('yoProgressCount').textContent = attended + ' / ' + next.threshold + ' 場';
+    } else {
+      const last = MILESTONES[MILESTONES.length - 1];
+      document.getElementById('yoMilestoneLabel').innerHTML = '已達成所有里程碑，<b>' + last.label + '</b> 解鎖！';
+      document.getElementById('yoProgressFill').style.width = '100%';
+      document.getElementById('yoProgressCount').textContent = attended + ' 場';
+    }
 
     document.getElementById('tcGrid').innerHTML = MILESTONES.map(function(m){
       const got = attended >= m.threshold;
@@ -343,7 +357,7 @@
   document.getElementById('yoToggleBtn').addEventListener('click', function(){
     yoExpanded = !yoExpanded;
     document.getElementById('tcGrid').style.display = yoExpanded ? '' : 'none';
-    this.textContent = yoExpanded ? '收合 ↑' : '展開看所有勳章 ↓';
+    document.getElementById('yoChevron').textContent = yoExpanded ? '↑' : '↓';
   });
 
   // ---------------------------------------------------------------

@@ -28,7 +28,9 @@
       "Bash(lsof -ti:8799 -sTCP:LISTEN)",
       "Bash(lsof -ti:8800 -sTCP:LISTEN)",
       "Bash(node test-new-picker.js)",
-      "Bash(lsof -ti:8811 -sTCP:LISTEN)"
+      "Bash(lsof -ti:8811 -sTCP:LISTEN)",
+      "Bash(lsof -ti:8814 -sTCP:LISTEN)",
+      "Bash(lsof -ti:8815 -sTCP:LISTEN)"
     ]
   }
 }
