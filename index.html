@@ -189,7 +189,7 @@
     background: var(--gold); border:2px solid #0a0a0a;
   }
   .event-host-sep{ width:1px; height:14px; background:var(--line); flex-shrink:0; }
-  .avatar-stack{ display:flex; }
+  .avatar-stack{ display:flex; margin-right:6px; }
   .avatar{
     width:26px; height:26px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
@@ -247,7 +247,7 @@
   .detail-meta{ font-size:12.5px; color:var(--secondary); line-height:1.6; font-family: var(--sf-mono); margin-bottom:14px; }
   #eventSignupSection{ display:flex; flex-direction:column; }
 
-  .detail-attendees{ margin-top:20px; }
+  #detailAttendees{ margin-top:20px; }
   .detail-attendees-empty{ font-size:12px; color:var(--tertiary); }
   .detail-attendees-grid{
     display:flex; flex-wrap:wrap; gap:8px;
@@ -423,7 +423,7 @@
 
       <div id="eventSignupSection" style="display:none">
         <div class="signup-mode-toggle" id="signupModeToggle" style="display:none">
-          <button type="button" class="active" data-mode="member" id="signupModeMemberBtn">會員登入</button>
+          <button type="button" class="active" data-mode="member" id="signupModeMemberBtn">球員登入</button>
           <button type="button" data-mode="guest" id="signupModeGuestBtn">訪客報名</button>
         </div>
         <div id="signupMemberFields">
@@ -1060,7 +1060,7 @@
     }
   }
 
-  // 未登入、還在「訪客報名」分頁選擇畫面時用的 tab 切換（會員登入／訪客報名）。
+  // 未登入、還在「訪客報名」分頁選擇畫面時用的 tab 切換（球員登入／訪客報名）。
   // 已登入的人不會看到這組 tab，直接跳過這一步。
   function setSignupTab(mode){
     signupMode = mode;
@@ -1153,7 +1153,7 @@
       document.getElementById('signupGuestFields').style.display = 'none';
       renderMemberFields(currentName);
     } else {
-      // 未登入：先顯示單一「我要報名」按鈕，點了才展開會員登入／訪客報名的選擇。
+      // 未登入：先顯示單一「我要報名」按鈕，點了才展開球員登入／訪客報名的選擇。
       document.getElementById('signupEntryRow').style.display = '';
       document.getElementById('eventSignupSection').style.display = 'none';
     }
