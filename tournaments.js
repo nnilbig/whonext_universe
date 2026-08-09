@@ -11,7 +11,7 @@ const TOURNAMENT_EVENTS = [
   ]},
   { label: '2025・夏季賽', results: [
     { rank: 1, cls: 'n', members: ['Ting', '喬', '儒', '扯翔'] },
-    { rank: 2, cls: 'e', members: ['霞', '孟翰', '小健', 'Jason'] },
+    { rank: 2, cls: 'e', members: ['霞', '孟翰', '小健', '覺深'] },
     { rank: 3, cls: 'x', members: ['嘉偉', 'Eden', '承', '雞佛'] },
     { rank: 4, cls: '', members: ['安', '容', '博', '祈翰'] }
   ]},
