@@ -16,8 +16,8 @@
 
   // 設定/清除目前綁定的球員身分，並同步更新 top nav 的頭像顯示，
   // 讓正在看 profile.html 的頁面也能透過事件即時重繪。isAdmin／photoUrl
-  // 都來自登入/註冊回傳的 profile（is_admin、photo_url），換身分或登出
-  // 一律重置回球員視角，管理員視角要重新點一次「管理員」才會切換過去。
+  // 都來自登入/註冊回傳的 player 資料（is_admin、avatar_url），換身分或
+  // 登出一律重置回球員視角，管理員視角要重新點一次「管理員」才會切換過去。
   function setPlayerName(name, isAdmin, photoUrl){
     if(name){
       localStorage.setItem(PLAYER_NAME_KEY, name);

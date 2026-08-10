@@ -264,7 +264,7 @@
   const DEFAULT_WEEKLY = 210;
   let currentMembers = [];
   let ALL_MEMBERS = [];
-  let ALL_PROFILES = [];
+  let ALL_ROSTER = [];
   let editingName = null;
   let sheetMode = 'edit';
   let currentMonth = null;
@@ -357,25 +357,26 @@
     }
   }
 
-  function loadCachedProfiles(){
-    const cached = getApiCache({ action:'getProfiles' });
-    if(cached) ALL_PROFILES = cached.profiles || [];
+  function loadCachedRoster(){
+    const cached = getApiCache({ action:'getRoster' });
+    if(cached) ALL_ROSTER = cached.roster || [];
     return !!cached;
   }
 
-  async function refreshProfiles(){
+  async function refreshRoster(){
     try{
-      const result = await apiGet({ action:'getProfiles' });
-      setApiCache({ action:'getProfiles' }, result);
-      ALL_PROFILES = result.profiles || [];
+      const result = await apiGet({ action:'getRoster' });
+      setApiCache({ action:'getRoster' }, result);
+      ALL_ROSTER = result.roster || [];
     } catch(e){
       // 讀取失敗就沿用快取（可能是空陣列），畫面稍後仍會顯示載入失敗的空狀態
     }
   }
 
-  // 「球員清單」是身分主檔（profiles）跟月繳資料（members）合併顯示，
-  // 不是月繳名冊那種按月切換——一律顯示「目前」（有資料的最新一個月）
-  // 的錢包餘額，不受下面月份導覽影響，兩者是分開的兩件事。
+  // 「球員清單」是 getRoster（members 歷史姓名 + players 綁定狀態合併）
+  // 跟月繳資料（members）合併顯示，不是月繳名冊那種按月切換——一律顯示
+  // 「目前」（有資料的最新一個月）的錢包餘額，不受下面月份導覽影響，
+  // 兩者是分開的兩件事。
   function latestMonthlyBalance(name){
     const ms = months();
     if(!ms.length) return null;
@@ -387,7 +388,7 @@
   function renderRoster(){
     const list = document.getElementById('rosterList');
     if(!list) return;
-    const rows = ALL_PROFILES.slice().sort((a, b)=> String(a.name).localeCompare(String(b.name)));
+    const rows = ALL_ROSTER.slice().sort((a, b)=> String(a.name).localeCompare(String(b.name)));
     document.getElementById('rosterCount').textContent = '共 ' + rows.length + ' 位';
 
     if(!rows.length){
@@ -401,7 +402,7 @@
       : '';
 
     const rowsHtml = visible.map(function(p){
-      const registered = p.status === 'active';
+      const registered = p.is_bound;
       const isAdmin = p.is_admin === true || p.is_admin === 'TRUE';
       const balance = latestMonthlyBalance(p.name);
       return '<div class="row">' +
@@ -736,13 +737,13 @@
 
     const hadCachedWeeks = loadCachedWeeks();
     loadCachedMembers();
-    if(loadCachedProfiles()) renderRoster();
+    if(loadCachedRoster()) renderRoster();
     if(hadCachedWeeks){
       const cachedMs = months();
       if(cachedMs.length) renderMonth(cachedMs[cachedMs.length - 1]);
     }
 
-    await Promise.all([refreshWeeks(), refreshMembers(), refreshProfiles()]);
+    await Promise.all([refreshWeeks(), refreshMembers(), refreshRoster()]);
     renderRoster();
     const ms = months();
     if(!ms.length){

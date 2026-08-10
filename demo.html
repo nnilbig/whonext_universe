@@ -452,10 +452,10 @@
 <script src="pwa-install-prompt.js"></script>
 <script>
   // ---------- 快速登入（demo 測試工具）----------
-  // 不走 Google 驗證，直接滑動選一位「目前真實球員清單」（getProfiles）
-  // 裡的人，點下去就呼叫真的 WhonextAuth.setPlayerName() 登入——跟正式
-  // 站共用同一份 localStorage 身分，所以選完可以直接用下面的 bottom nav
-  // 切去「個人」「球隊錢包」等頁面，看那個人的真實資料。
+  // 不走 LINE 驗證，直接滑動選一位「目前真實球員清單」（getPlayers，只有
+  // 已經用 LINE 登入過的人）裡的人，點下去就呼叫真的 WhonextAuth.setPlayerName()
+  // 登入——跟正式站共用同一份 localStorage 身分，所以選完可以直接用下面
+  // 的 bottom nav 切去「個人」「球隊錢包」等頁面，看那個人的真實資料。
   var gauthOverlay = document.getElementById('gauthOverlay');
   var gauthSheet = document.getElementById('gauthSheet');
 
@@ -466,12 +466,12 @@
     if(e.target === gauthOverlay) closeGauth();
   });
 
-  function loadProfilesForPicker(){
-    var cached = getApiCache({ action: 'getProfiles' });
-    if(cached) return Promise.resolve(cached.profiles || []);
-    return apiGet({ action: 'getProfiles' }).then(function(result){
-      setApiCache({ action: 'getProfiles' }, result);
-      return result.profiles || [];
+  function loadPlayersForPicker(){
+    var cached = getApiCache({ action: 'getPlayers' });
+    if(cached) return Promise.resolve(cached.players || []);
+    return apiGet({ action: 'getPlayers' }).then(function(result){
+      setApiCache({ action: 'getPlayers' }, result);
+      return result.players || [];
     });
   }
 
@@ -483,17 +483,17 @@
       '<button type="button" class="gauth-cancel-btn" id="gauthCancelBtn">取消</button>';
     document.getElementById('gauthCancelBtn').addEventListener('click', closeGauth);
 
-    loadProfilesForPicker().then(function(profiles){
+    loadPlayersForPicker().then(function(players){
       var row = document.getElementById('pickerRow');
       if(!row) return; // 使用者已經關掉視窗
-      if(!profiles.length){ row.innerHTML = '<div class="gauth-sub">目前沒有球員資料</div>'; return; }
+      if(!players.length){ row.innerHTML = '<div class="gauth-sub">目前沒有球員資料</div>'; return; }
 
-      var sorted = profiles.slice().sort(function(a, b){ return String(a.name).localeCompare(String(b.name)); });
+      var sorted = players.slice().sort(function(a, b){ return String(a.custom_name).localeCompare(String(b.custom_name)); });
       row.innerHTML = sorted.map(function(p, i){
         var isAdmin = p.is_admin === true || p.is_admin === 'TRUE';
         return '<button type="button" class="picker-card' + (isAdmin ? ' is-admin' : '') + '" data-i="' + i + '">' +
-          '<div class="picker-avatar">' + avatarInitial(p.name) + '</div>' +
-          '<div class="picker-name">' + p.name + '</div>' +
+          '<div class="picker-avatar">' + avatarInitial(p.custom_name) + '</div>' +
+          '<div class="picker-name">' + p.custom_name + '</div>' +
           (isAdmin ? '<div class="picker-admin-tag">管理員</div>' : '') +
         '</button>';
       }).join('');
@@ -501,7 +501,7 @@
         btn.addEventListener('click', function(){
           var p = sorted[Number(btn.dataset.i)];
           var isAdmin = p.is_admin === true || p.is_admin === 'TRUE';
-          WhonextAuth.setPlayerName(p.name, isAdmin);
+          WhonextAuth.setPlayerName(p.custom_name, isAdmin);
           closeGauth();
         });
       });

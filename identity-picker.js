@@ -63,17 +63,17 @@
   // ---------------------------------------------------------------
   // 註冊
   // ---------------------------------------------------------------
-  // 暱稱建議清單給「還沒綁 LINE」的名字——不限 status，舊名冊(legacy)
-  // 還沒人綁過的、跟以前用 Google 註冊過(留有 email，但沒有 line_user_id)
-  // 的都算，因為那些人現在要換成用 LINE 繼續用同一個身份。
+  // 暱稱建議清單給「還沒綁 LINE」的名字——players 表本身只會有已經登入過
+  // 的人(line_user_id 是主鍵)，舊球員名單改成即時從 getRoster（merges
+  // members 歷史姓名 + players 綁定狀態）撈，只列 is_bound 還是 false 的。
   var legacyNicknamesCache = null;
   function getLegacyNicknames(){
     if(legacyNicknamesCache) return Promise.resolve(legacyNicknamesCache);
-    const cached = getApiCache({ action:'getProfiles' });
-    const load = cached ? Promise.resolve(cached) : apiGet({ action:'getProfiles' }).then(function(r){ setApiCache({ action:'getProfiles' }, r); return r; });
+    const cached = getApiCache({ action:'getRoster' });
+    const load = cached ? Promise.resolve(cached) : apiGet({ action:'getRoster' }).then(function(r){ setApiCache({ action:'getRoster' }, r); return r; });
     return load.then(function(result){
-      legacyNicknamesCache = (result.profiles || [])
-        .filter(function(p){ return !p.line_user_id; })
+      legacyNicknamesCache = (result.roster || [])
+        .filter(function(p){ return !p.is_bound; })
         .map(function(p){ return p.name; });
       return legacyNicknamesCache;
     }).catch(function(){ return []; });
@@ -136,11 +136,12 @@
   }
 
   // is_admin 存在 sheet 裡可能是布林值也可能是核取方塊讀出來的 'TRUE'
-  // 字串，兩種都要認得。photo_url 是註冊當下存的 LINE 大頭貼連結，
-  // nav 會優先顯示這張照片，沒有的話才退回姓名縮寫圓圈。
-  function finishLogin(container, profile){
-    const isAdmin = profile.is_admin === true || profile.is_admin === 'TRUE';
-    WhonextAuth.setPlayerName(profile.name, isAdmin, profile.photo_url);
+  // 字串，兩種都要認得。avatar_url 是註冊當下存的 LINE 大頭貼連結，
+  // nav 會優先顯示這張照片，沒有的話才退回姓名縮寫圓圈。custom_name 才是
+  // signups/members 等其他表拿來對應球員的鍵值，不是 display_name。
+  function finishLogin(container, player){
+    const isAdmin = player.is_admin === true || player.is_admin === 'TRUE';
+    WhonextAuth.setPlayerName(player.custom_name, isAdmin, player.avatar_url);
   }
 
   // ---------------------------------------------------------------

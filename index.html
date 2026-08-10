@@ -555,32 +555,33 @@
     return FRIEND_CLUB_KEYWORDS.some(function(k){ return t.indexOf(k) !== -1; });
   }
 
-  // 「發起活動」的權限存在 profiles 分頁的 can_create_events 欄位，跟管理員
-  // 權限分開判斷，純看目前綁定的球員姓名對應的身分主檔有沒有這個權限。
-  // profiles 分頁的勾選格在 Sheets 讀出來可能是布林 true 也可能是文字
-  // 'TRUE'，兩種都要認得。
-  async function getProfiles(){
-    const cached = getApiCache({ action:'getProfiles' });
-    if(cached) return cached.profiles || [];
+  // 「發起活動」的權限存在 players 分頁的 can_create_events 欄位，跟管理員
+  // 權限分開判斷，純看目前綁定的球員姓名（custom_name）對應的身分主檔有
+  // 沒有這個權限。這裡用 getRoster 不是 getPlayers，因為 getRoster 才有
+  // 「name」這個跟其他頁面一致的鍵值。can_create_events 在 Sheets 讀出來
+  // 可能是布林 true 也可能是文字 'TRUE'，兩種都要認得。
+  async function getRoster(){
+    const cached = getApiCache({ action:'getRoster' });
+    if(cached) return cached.roster || [];
     try{
-      const result = await apiGet({ action:'getProfiles' });
-      setApiCache({ action:'getProfiles' }, result);
-      return result.profiles || [];
+      const result = await apiGet({ action:'getRoster' });
+      setApiCache({ action:'getRoster' }, result);
+      return result.roster || [];
     } catch(e){
       return [];
     }
   }
-  function canCreateEvents(profiles, name){
-    const profile = profiles.find(function(p){ return p.name === name; });
-    return !!profile && (profile.can_create_events === true || profile.can_create_events === 'TRUE');
+  function canCreateEvents(roster, name){
+    const entry = roster.find(function(p){ return p.name === name; });
+    return !!entry && (entry.can_create_events === true || entry.can_create_events === 'TRUE');
   }
   async function updateFriendEventAddBtn(){
     const btn = document.getElementById('friendEventAddBtn');
     if(!btn) return;
     const name = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
     if(!name){ btn.style.display = 'none'; return; }
-    const profiles = await getProfiles();
-    btn.style.display = canCreateEvents(profiles, name) ? '' : 'none';
+    const roster = await getRoster();
+    btn.style.display = canCreateEvents(roster, name) ? '' : 'none';
   }
 
   // type 存英文代碼（practice/project/match），但資料庫裡舊資料還是中文字串，
@@ -998,8 +999,9 @@
     }
   };
 
-  // 手動新增（非範本）時，出席名單從完整球員名單（profiles）勾選，
-  // 預設全部未選，由發起人自己挑誰出席；也能在下面手動加訪客姓名。
+  // 手動新增（非範本）時，出席名單從完整球員名單（getRoster：members 歷史
+  // 姓名 + players 綁定狀態）勾選，預設全部未選，由發起人自己挑誰出席；
+  // 也能在下面手動加訪客姓名。
   async function loadAttendRosterPicker(){
     document.getElementById('eventEditAttendLabel').textContent = '出席名單';
     document.getElementById('eventEditRecurringWrap').style.display = 'none';
@@ -1008,8 +1010,8 @@
     const listEl = document.getElementById('eventEditAttendList');
     listEl.innerHTML = '<div class="signup-empty">載入球員名單中…</div>';
     try{
-      const profiles = await getProfiles();
-      const names = [...new Set(profiles.map(function(p){ return p.name; }).filter(Boolean))]
+      const roster = await getRoster();
+      const names = [...new Set(roster.map(function(p){ return p.name; }).filter(Boolean))]
         .sort(function(a, b){ return a.localeCompare(b); });
       listEl.innerHTML = names.length
         ? names.map(function(n){ return importRowHTML(n, false); }).join('')
@@ -1777,7 +1779,7 @@
   // getWeeks 額外拿來算「進行中／已結束」賽事卡片的實際出席人數，所以讀完要重繪一次。
   refreshWeeksForEvents();
   apiPrefetch({ action:'getMembers' });
-  apiPrefetch({ action:'getProfiles' });
+  apiPrefetch({ action:'getRoster' });
 </script>
 </body>
 </html>
