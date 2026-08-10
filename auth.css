@@ -34,6 +34,9 @@ body.is-admin .admin-only.flex{ display:flex; }
   font-size:12.5px; font-weight:700; color:var(--secondary);
   padding:12px 0 2px;
 }
+/* 管理員登入跟訪客登入是完全不同性質的入口，拉開明顯距離＋加一條分隔線，
+   避免看起來像同一組選項，誤點。 */
+.whoami-admin-btn{ margin-top:14px; padding-top:16px; border-top:1px solid var(--line); }
 
 /* 固定高度（不只 min-height），佔位文字換成 Google 按鈕時容器尺寸
    不會變，卡片／視窗不會跟著跳動，只有按鈕本身淡入淡出的差別。 */
@@ -42,12 +45,6 @@ body.is-admin .admin-only.flex{ display:flex; }
 .whoami-primary-btn{
   width:100%; font-size:13.5px; font-weight:700; padding:12px 0; border-radius:12px;
   background: var(--label); color:#000; margin-top:4px;
-}
-
-.whoami-account-avatar-lg{
-  width:64px; height:64px; border-radius:50%; margin:0 auto 14px;
-  display:flex; align-items:center; justify-content:center;
-  font-weight:800; font-size:22px; background: var(--gold-bg); border:2px solid var(--gold); color:var(--gold);
 }
 
 .whoami-account-list{

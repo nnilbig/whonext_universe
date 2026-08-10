@@ -1,7 +1,6 @@
 (function(){
   var ROLE_KEY = 'whonext_role';
   var PLAYER_NAME_KEY = 'whonext_player_name';
-  var GUEST_NAME_KEY = 'whonext_guest_name';
   var GOOGLE_CLIENT_ID = '702772011583-5g00roumo9mgruijtn3jhg525bot1cja.apps.googleusercontent.com';
   var IDLE_LIMIT_MS = 5 * 60 * 1000;
   var idleTimer = null;
@@ -9,26 +8,12 @@
   function getRole(){ return localStorage.getItem(ROLE_KEY) || 'player'; }
 
   function getPlayerName(){ return localStorage.getItem(PLAYER_NAME_KEY) || ''; }
-  function getGuestName(){ return localStorage.getItem(GUEST_NAME_KEY) || ''; }
 
   // 設定/清除目前綁定的球員身分，並同步更新 top nav 的頭像顯示，
-  // 讓正在看 profile.html 的頁面也能透過事件即時重繪。球員身分／訪客
-  // 身分互斥，設一個就把另一個清掉，避免 nav 同時顯示兩種身分。
+  // 讓正在看 profile.html 的頁面也能透過事件即時重繪。
   function setPlayerName(name){
     if(name) localStorage.setItem(PLAYER_NAME_KEY, name);
     else localStorage.removeItem(PLAYER_NAME_KEY);
-    if(name) localStorage.removeItem(GUEST_NAME_KEY);
-    updateNavRoleToggle();
-    document.dispatchEvent(new CustomEvent('whonext:playername-change'));
-  }
-
-  // 訪客身分：沒有綁定 Google 帳號、也不是 profiles 裡的正式球員，純粹
-  // 記住一個顯示名稱，跟球員身分共用同一個變動事件，讓各頁面重繪邏輯
-  // 不用另外再監聽一次。
-  function setGuestName(name){
-    if(name) localStorage.setItem(GUEST_NAME_KEY, name);
-    else localStorage.removeItem(GUEST_NAME_KEY);
-    if(name) localStorage.removeItem(PLAYER_NAME_KEY);
     updateNavRoleToggle();
     document.dispatchEvent(new CustomEvent('whonext:playername-change'));
   }
@@ -79,22 +64,40 @@
     document.body.classList.toggle('is-admin', getRole() === 'admin');
   }
 
-  // Top nav 的「球員／管理員」切換鈕，反映目前角色的 active 狀態；
-  // 球員那兩顆按鈕沒登入時是「註冊」「登入」；已經綁定身分（球員或
-  // 訪客都算）後，「登入」那顆換成頭像＋姓名（點一下跳去我的活動，
-  // 不會登出），「註冊」那顆借位變成「登出」。
+  // Top nav 的兩顆按鈕依目前狀態切換：
+  //   管理員視角：左邊顯示「管理員」badge，右邊「登出」——不管點哪顆都是
+  //   結束管理員視角（跟 wireNavRoleToggle 的 admin 分支一致）。
+  //   沒綁定球員身分：「註冊」「登入」。
+  //   已綁定球員身分：頭像＋姓名（點一下跳去我的活動）排在左邊、
+  //   「登出」排在右邊（用 CSS order 换位，見 top-nav.css）。
   function updateNavRoleToggle(){
     var isAdmin = getRole() === 'admin';
-    document.querySelectorAll('#navRoleToggle .role-toggle-btn').forEach(function(btn){
-      btn.classList.toggle('active', (btn.dataset.role === 'admin') === isAdmin);
-    });
-    var name = getPlayerName() || getGuestName();
+    var toggle = document.getElementById('navRoleToggle');
     var secondaryBtn = document.getElementById('navSecondaryBtn');
+    var primaryBtn = document.getElementById('navPrimaryBtn');
+
+    if(isAdmin){
+      if(toggle) toggle.classList.remove('identity-active');
+      if(secondaryBtn){
+        secondaryBtn.classList.add('active');
+        secondaryBtn.textContent = '管理員';
+      }
+      if(primaryBtn){
+        primaryBtn.classList.remove('has-identity');
+        primaryBtn.textContent = '登出';
+      }
+      return;
+    }
+
+    if(secondaryBtn) secondaryBtn.classList.remove('active');
+    if(primaryBtn) primaryBtn.classList.remove('active');
+
+    var name = getPlayerName();
+    if(toggle) toggle.classList.toggle('identity-active', !!name);
     if(secondaryBtn){
       secondaryBtn.dataset.entry = name ? 'logout' : 'register';
       secondaryBtn.textContent = name ? '登出' : '註冊';
     }
-    var primaryBtn = document.getElementById('navPrimaryBtn');
     if(primaryBtn){
       if(name){
         primaryBtn.classList.add('has-identity');
@@ -198,11 +201,10 @@
       }
       var entry = btn.dataset.entry;
       if(entry === 'logout'){
-        if(getPlayerName()) setPlayerName('');
-        else setGuestName('');
+        setPlayerName('');
         return;
       }
-      if(entry === 'login' && (getPlayerName() || getGuestName())){
+      if(entry === 'login' && getPlayerName()){
         window.location.href = 'profile.html';
         return;
       }
@@ -222,10 +224,10 @@
     }
   }
 
-  // 選完/建完身份（球員或訪客）就把 nav 的登入 overlay 收起來，回到原本
-  // 正在看的頁面，不用手動再關一次。
+  // 選完/建完球員身份就把 nav 的登入 overlay 收起來，回到原本正在看的
+  // 頁面，不用手動再關一次。
   document.addEventListener('whonext:playername-change', function(){
-    if(getPlayerName() || getGuestName()) closeNavLogin();
+    if(getPlayerName()) closeNavLogin();
   });
 
   document.addEventListener('DOMContentLoaded', function(){
@@ -238,7 +240,6 @@
   window.WhonextAuth = {
     ROLE_KEY: ROLE_KEY, getRole: getRole, setRole: setRole,
     getPlayerName: getPlayerName, setPlayerName: setPlayerName,
-    getGuestName: getGuestName, setGuestName: setGuestName,
-    openAdminLogin: openAdminLogin
+    openAdminLogin: openAdminLogin, closeNavLogin: closeNavLogin
   };
 })();

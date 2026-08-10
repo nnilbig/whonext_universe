@@ -22,6 +22,11 @@
   font-size:13px; font-weight:700; color: var(--tertiary);
 }
 .role-toggle-btn.active{ color: var(--label); }
+/* 已登入（球員／訪客）時，頭像＋名字要排在登出按鈕左邊，
+   讓登出永遠貼著身分顯示的右側，不用動 DOM 順序（未登入時
+   維持「註冊／登入」原本的排列）。 */
+.role-toggle.identity-active #navSecondaryBtn{ order:2; }
+.role-toggle.identity-active #navPrimaryBtn{ order:1; }
 
 .nav-id-avatar{
   width:28px; height:28px; border-radius:50%; flex-shrink:0;

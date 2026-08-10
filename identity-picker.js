@@ -2,12 +2,14 @@
   // 「球員登入」入口分成「註冊」／「登入」兩支，我的活動／我的錢包／nav
   // 共用同一份畫面跟邏輯，避免各處各刻一份之後跑掉。
   //   註冊：手動選/打暱稱（可以從舊名冊挑，也能直接輸入新的）-> 綁定
-  //         Google 帳號完成註冊，或不綁 Google、直接以訪客登入。
+  //         Google 帳號完成註冊，或不綁 Google、直接以訪客身份關窗繼續逛。
   //   登入：已經綁過 Google 帳號的人一鍵登入；沒綁過的話會被導去註冊。
   //         這裡也放訪客登入／管理員登入的入口。
+  // 訪客登入不用輸入名字、也不記錄任何身分，純粹是「先不登入，關掉這個
+  // 視窗繼續逛」的捷徑（呼叫 WhonextAuth.closeNavLogin()）。
   // Google 憑證一律送後端驗證（GIS 的 script 由 backend.js 的 WhonextGis
   // 共用載入，跟 auth.js 的管理員登入共用同一份 ready queue）。
-  // 選完/建完身份呼叫 WhonextAuth.setPlayerName()／setGuestName()，會觸發
+  // 選完/建完球員身份呼叫 WhonextAuth.setPlayerName()，會觸發
   // whonext:playername-change，呼叫方監聽這個事件重繪自己的頁面即可
   // （這個 identity picker 的容器通常也會因此被換掉，不用自己關窗）。
 
@@ -43,10 +45,10 @@
         '<div class="whoami-sub">用已經綁定過的 Google 帳號登入，或先以訪客身份逛逛。</div>' +
         '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
         '<button type="button" class="whoami-secondary-btn" id="wiGuestBtn">訪客登入</button>' +
-        '<button type="button" class="whoami-secondary-btn" id="wiAdminBtn">管理員登入</button>' +
+        '<button type="button" class="whoami-secondary-btn whoami-admin-btn" id="wiAdminBtn">管理員登入</button>' +
         (hideBack ? '' : '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>') +
       '</div>';
-    container.querySelector('#wiGuestBtn').addEventListener('click', function(){ renderGuestForm(container, ''); });
+    container.querySelector('#wiGuestBtn').addEventListener('click', browseAsGuest);
     container.querySelector('#wiAdminBtn').addEventListener('click', function(){ WhonextAuth.openAdminLogin(); });
     if(!hideBack) container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
     renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), handleLoginCredential);
@@ -108,7 +110,7 @@
         '<datalist id="wiNicknameList"></datalist>' +
         '<div class="auth-error" id="wiNicknameError" style="display:none">請先輸入暱稱，再綁定 Google 帳號</div>' +
         '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
-        '<button type="button" class="whoami-secondary-btn" id="wiGuestInsteadBtn">不註冊，以訪客登入</button>' +
+        '<button type="button" class="whoami-secondary-btn" id="wiGuestInsteadBtn">不註冊，先逛逛就好</button>' +
         (hideBack ? '' : '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>') +
       '</div>';
 
@@ -117,10 +119,7 @@
       if(listEl) listEl.innerHTML = names.map(function(n){ return '<option value="' + n + '">'; }).join('');
     });
 
-    container.querySelector('#wiGuestInsteadBtn').addEventListener('click', function(){
-      const nameInput = container.querySelector('#wiNickname');
-      renderGuestForm(container, nameInput ? nameInput.value.trim() : '');
-    });
+    container.querySelector('#wiGuestInsteadBtn').addEventListener('click', browseAsGuest);
     if(!hideBack) container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
 
     renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), function(c, credential){
@@ -154,29 +153,12 @@
   }
 
   // ---------------------------------------------------------------
-  // 訪客
+  // 訪客：不記錄任何身分，純粹關掉登入視窗（nav 情境）讓使用者繼續逛；
+  // 內嵌在頁面裡（沒有 overlay 可關）的情境下就單純沒有動作，使用者
+  // 本來就還留在原本的畫面上。
   // ---------------------------------------------------------------
-  function renderGuestForm(container, prefill){
-    container.innerHTML =
-      '<div class="whoami-card glass">' +
-        '<div class="whoami-title">訪客登入</div>' +
-        '<div class="whoami-sub">不用綁定 Google 帳號，輸入名字就能先逛逛，之後隨時可以再回來註冊。</div>' +
-        '<input type="text" id="wiGuestName" class="nav-login-input" placeholder="輸入你的名字" value="' + (prefill || '') + '">' +
-        '<div class="auth-error" id="wiGuestError" style="display:none">請輸入名字</div>' +
-        '<button type="button" class="whoami-primary-btn" id="wiGuestConfirmBtn">確認</button>' +
-        '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>' +
-      '</div>';
-    container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
-    container.querySelector('#wiGuestConfirmBtn').addEventListener('click', function(){
-      const input = container.querySelector('#wiGuestName');
-      const name = input.value.trim();
-      if(!name){
-        container.querySelector('#wiGuestError').style.display = 'block';
-        input.focus();
-        return;
-      }
-      WhonextAuth.setGuestName(name);
-    });
+  function browseAsGuest(){
+    if(window.WhonextAuth && WhonextAuth.closeNavLogin) WhonextAuth.closeNavLogin();
   }
 
   // ---------------------------------------------------------------
