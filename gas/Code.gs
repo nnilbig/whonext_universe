@@ -447,8 +447,9 @@ function saveEvents(data) {
 
 // 註冊流程：使用者在「選擇暱稱」欄位手動挑/打了一個名字，這裡直接照那
 // 個名字判斷是綁定還是新建，不用像舊版那樣先讓使用者確認候選名單：
-//   - 名字剛好等於某筆還沒綁定(status=legacy 且沒有 email)的 profiles.name
-//     -> 綁定那一列
+//   - 名字剛好等於某筆還沒綁 Google 的 profiles.name(不限 status，舊名冊
+//     legacy 或已經用 LINE 註冊過的 active 都算——同一個人想「換一個
+//     管道也能登入」，不是只有第一次註冊才能綁) -> 綁定那一列
 //   - 沒對到 -> 開一筆全新的 profiles(status 直接是 active)
 // 兩種情況都重新驗證一次 token，不信任前端傳來的 email/google_id，避免
 // 竄改 request 冒充別人。
@@ -462,7 +463,6 @@ function registerGoogleProfile(data) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const rows = sheet.getDataRange().getValues();
   const nameCol = headers.indexOf('name');
-  const statusCol = headers.indexOf('status');
   const emailCol = headers.indexOf('email');
 
   const alreadyBound = rows.slice(1).some(r => r[emailCol] && String(r[emailCol]).toLowerCase() === account.email.toLowerCase());
@@ -470,7 +470,7 @@ function registerGoogleProfile(data) {
 
   let legacyRow = -1;
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][nameCol] === name && rows[i][statusCol] === 'legacy' && !rows[i][emailCol]) {
+    if (rows[i][nameCol] === name && !rows[i][emailCol]) {
       legacyRow = i + 1;
       break;
     }
@@ -502,8 +502,9 @@ function registerGoogleProfile(data) {
 }
 
 // 註冊流程（LINE 版），邏輯跟 registerGoogleProfile 對稱：
-//   - 名字剛好等於某筆還沒綁定(status=legacy 且沒有 line_user_id)的 profiles.name
-//     -> 綁定那一列
+//   - 名字剛好等於某筆還沒綁 LINE 的 profiles.name(不限 status，舊名冊
+//     legacy 或已經用 Google 註冊過的 active 都算——同一個人想「換一個
+//     管道也能登入」，不是只有第一次註冊才能綁) -> 綁定那一列
 //   - 沒對到 -> 開一筆全新的 profiles(status 直接是 active)
 // LINE 的 email 不一定拿得到(沒申請 email 權限，或使用者沒綁信箱)，
 // photo_url/email 只有真的有值才寫入，不會用空字串蓋掉既有欄位。
@@ -517,7 +518,6 @@ function registerLineProfile(data) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const rows = sheet.getDataRange().getValues();
   const nameCol = headers.indexOf('name');
-  const statusCol = headers.indexOf('status');
   const lineIdCol = headers.indexOf('line_user_id');
   if (lineIdCol < 0) return { success: false, reason: 'missing_line_user_id_column' };
 
@@ -526,7 +526,7 @@ function registerLineProfile(data) {
 
   let legacyRow = -1;
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][nameCol] === name && rows[i][statusCol] === 'legacy' && !rows[i][lineIdCol]) {
+    if (rows[i][nameCol] === name && !rows[i][lineIdCol]) {
       legacyRow = i + 1;
       break;
     }

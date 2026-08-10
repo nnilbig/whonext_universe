@@ -95,17 +95,23 @@
   // ---------------------------------------------------------------
   // 註冊
   // ---------------------------------------------------------------
-  // 暱稱建議清單只給「舊名冊、還沒綁定」的名字（status legacy 且沒有
-  // email）—— 已經綁過的人選了也只會被擋掉，先篩掉比較不會誤導。
+  // 暱稱建議清單給「至少還有一種登入管道沒綁」的名字——不限 status，
+  // 舊名冊(legacy)還沒人綁過的、跟已經用 Google 或 LINE 其中一邊註冊過
+  // (active)但還沒綁另一邊的都算，因為同一個人可能想「換一個管道再綁
+  // 一次」而不是只有第一次註冊才能選。這裡不分使用者接下來要點 Google
+  // 還是 LINE 按鈕，兩種都可能綁的名字都列出來，真的選錯管道送出時
+  // gas/Code.gs 那邊還是會用正確的欄位再判斷一次，不會綁錯人。
   var legacyNicknamesCache = null;
   function getLegacyNicknames(){
     if(legacyNicknamesCache) return Promise.resolve(legacyNicknamesCache);
     const cached = getApiCache({ action:'getProfiles' });
     const load = cached ? Promise.resolve(cached) : apiGet({ action:'getProfiles' }).then(function(r){ setApiCache({ action:'getProfiles' }, r); return r; });
     return load.then(function(result){
-      legacyNicknamesCache = (result.profiles || [])
-        .filter(function(p){ return p.status === 'legacy' && !p.email; })
-        .map(function(p){ return p.name; });
+      const names = new Set();
+      (result.profiles || []).forEach(function(p){
+        if(!p.email || !p.line_user_id) names.add(p.name);
+      });
+      legacyNicknamesCache = Array.from(names);
       return legacyNicknamesCache;
     }).catch(function(){ return []; });
   }
