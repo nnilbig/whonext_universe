@@ -3,7 +3,7 @@
 // 所有頁面共用同一個 BACKEND_URL，先讀快取立刻顯示，同時背景重新
 // 抓取最新資料（stale-while-revalidate），首頁會預先暖機常用資料。
 // ---------------------------------------------------------------
-const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbwpKZsUHViZorN9tmQcGUmQH1e_Yd5ugqNcoSJEenLY_jnbUhiQrvZzkb7UbalmrbjQ/exec';
+const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbxvNbJKNqZIKTUhKGa5uSWZkBpbAF1Zt8zjJy3M-E-GVTIWU1LCIYlyc5EQQNzobn4/exec';
 const API_CACHE_PREFIX = 'whonext_api_';
 
 function apiGet(params){
@@ -45,7 +45,44 @@ function avatarInitial(name){
 }
 
 // ---------------------------------------------------------------
-// LINE LIFF SDK 共用載入器：identity-picker.js 需要
+// Google Identity Services 共用載入器。identity-picker.js（球員登入／
+// 註冊／綁定）要用到 GIS 的按鈕，共用同一份 script 標籤跟 ready
+// callback queue，避免重複注入。跟 WhonextLiff 對稱。
+// ---------------------------------------------------------------
+window.WhonextGis = (function(){
+  var ready = false;
+  var queue = [];
+  function onReady(cb){
+    if(ready){ cb(); return; }
+    queue.push(cb);
+  }
+  if(!document.getElementById('google-identity-services')){
+    // 先把 accounts.google.com 的連線（DNS/TLS）預先建好，之後不管是
+    // script 本身還是按鈕渲染要用的 iframe，都不用重新握手，減少開登入
+    // 視窗時 Google 按鈕從佔位文字換成真的按鈕那一下的延遲／跳動。
+    ['preconnect', 'dns-prefetch'].forEach(function(rel){
+      var link = document.createElement('link');
+      link.rel = rel;
+      link.href = 'https://accounts.google.com';
+      if(rel === 'preconnect') link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    });
+    var s = document.createElement('script');
+    s.id = 'google-identity-services';
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = function(){
+      ready = true;
+      queue.forEach(function(cb){ cb(); });
+      queue = [];
+    };
+    document.head.appendChild(s);
+  }
+  return { onReady: onReady };
+})();
+
+// ---------------------------------------------------------------
+// LINE LIFF SDK 共用載入器，跟 WhonextGis 對稱：identity-picker.js 需要
 // 用到（點了「使用 LINE 登入/註冊」，或從 LINE 導回來要接續驗證）才動態
 // 載入 script + liff.init()，不在每個頁面都預先載入。LIFF ID 裡「-」
 // 前面那段數字就是 LINE Login channel 的 Channel ID，後端驗證 id_token

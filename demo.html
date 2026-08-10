@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="bottom-nav.css">
 <link rel="stylesheet" href="pwa-install-prompt.css">
+<link rel="stylesheet" href="auth.css">
 <style>
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; padding:0; height:100%; }
@@ -260,8 +261,31 @@
     font-weight:800; font-size:17px; background: var(--gold-bg); border:1.5px solid var(--gold); color:var(--gold);
   }
   .picker-card.is-admin .picker-avatar{ border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,0.15); }
+  .picker-avatar img{ width:100%; height:100%; border-radius:50%; object-fit:cover; }
   .picker-name{ font-size:12px; font-weight:700; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .picker-admin-tag{ font-size:9px; font-weight:800; color:var(--gold); }
+
+  /* ---------- 身份綁定 prototype：Gmail + LINE 雙軌（demo 專用，MOCK_ 假資料，
+     完全獨立於真的 WhonextAuth／後台，不會動到真實登入狀態）---------- */
+  .idproto-avatar{
+    width:52px; height:52px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:18px; background: var(--gold-bg); border:1.5px solid var(--gold); color:var(--gold);
+    overflow:hidden;
+  }
+  .idproto-avatar img{ width:100%; height:100%; border-radius:50%; object-fit:cover; }
+  .idproto-row{ display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .idproto-name{ font-size:15px; font-weight:800; }
+  .idproto-sub{ font-size:11.5px; color:var(--tertiary); margin-top:2px; }
+  .idproto-bind-row{ display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-top:1px solid var(--line); }
+  .idproto-bind-label{ font-size:13px; font-weight:700; }
+  .idproto-bind-sub{ font-size:11px; color:var(--tertiary); margin-top:2px; }
+  .idproto-bind-status{ font-size:12px; font-weight:700; color:var(--gold); }
+  .idproto-bind-btn{
+    font-size:12px; font-weight:700; padding:8px 14px; border-radius:999px;
+    background: rgba(255,255,255,0.06); border:1px solid var(--line); color: var(--label);
+  }
+  .idproto-logout-btn{ display:block; width:100%; text-align:center; font-size:12.5px; font-weight:700; color:var(--secondary); padding:14px 0 0; margin-top:4px; }
 </style>
 </head>
 <body>
@@ -373,6 +397,16 @@
       </div>
     </div>
     <a class="board-more" href="ranking.html">查看完整排行 →</a>
+
+    <!-- ---------- 身份綁定 prototype：Gmail + LINE 雙軌 ---------- -->
+    <div class="hero" style="margin-top:10px;">
+      <div class="hero-eyebrow">PROTOTYPE</div>
+      <div class="wordmark">身份綁定</div>
+    </div>
+    <div class="section-label-row" style="margin-top:0">
+      <div class="section-label">Gmail + LINE 雙軌登入</div>
+    </div>
+    <div class="glass" id="idProtoCard" style="padding:20px"></div>
 
   </div>
 
@@ -535,6 +569,250 @@
   document.addEventListener('whonext:playername-change', renderIdentityWidget);
 
   renderIdentityWidget();
+</script>
+<script>
+  // ---------- 身份綁定 prototype：Gmail + LINE 雙軌（MOCK_ 假資料）----------
+  // 跟上面「快速登入」是兩件事：這裡完全不碰真的 WhonextAuth／後台，
+  // 只是拿一份假的 players 資料 + 假的 Google/LINE 帳號清單，演示：
+  //   1) 註冊／登入分開走 Google 或 LINE，同一個帳號重複註冊會擋
+  //      (already_bound)，暱稱撞名也會擋 (name_taken)。
+  //   2) 「先用 LINE 註冊過的人，之後想再多綁 Gmail」一定要先登入，
+  //      在下面的個人卡片按「綁定」才能加另一個 provider 上同一列
+  //      （player_id 不變）——不是在匿名的註冊流程用同名自動合併。
+  //   3) 頭像看「這次用哪個 provider 登入」決定要顯示 photo_url
+  //      (Google) 還是 avatar_url (LINE)，不是另外存一個「目前頭像」欄位。
+
+  var MOCK_GOOGLE_ACCOUNTS = [
+    { google_id:'g001', email:'chiao@gmail.com', name:'喬', photo_url:'https://i.pravatar.cc/100?img=12' },
+    { google_id:'g002', email:'cindy@gmail.com', name:'Cindy', photo_url:'https://i.pravatar.cc/100?img=32' },
+    { google_id:'g999', email:'newbie@gmail.com', name:'新來的', photo_url:'https://i.pravatar.cc/100?img=45' }
+  ];
+  var MOCK_LINE_ACCOUNTS = [
+    { line_user_id:'U001', line_display_name:'喬', avatar_url:'https://i.pravatar.cc/100?img=12' },
+    { line_user_id:'U002', line_display_name:'阿明', avatar_url:'https://i.pravatar.cc/100?img=8' },
+    { line_user_id:'U999', line_display_name:'新來的LINE仔', avatar_url:'https://i.pravatar.cc/100?img=50' }
+  ];
+
+  // 初始三列示範三種綁定狀態：喬 = 雙軌都綁了，阿明 = 只綁 LINE，
+  // Cindy = 只綁 Google，方便直接測「登入」「加綁另一個 provider」兩條路徑。
+  var MOCK_PLAYERS = [
+    { player_id:'p-mock-1', custom_name:'喬', email:'chiao@gmail.com', google_id:'g001', photo_url:'https://i.pravatar.cc/100?img=12',
+      line_user_id:'U001', line_display_name:'喬', avatar_url:'https://i.pravatar.cc/100?img=12',
+      referrer:'', is_bound:true, can_create_events:true, is_admin:true, created_at:'2026-01-10' },
+    { player_id:'p-mock-2', custom_name:'阿明', email:'', google_id:'', photo_url:'',
+      line_user_id:'U002', line_display_name:'阿明', avatar_url:'https://i.pravatar.cc/100?img=8',
+      referrer:'', is_bound:true, can_create_events:false, is_admin:false, created_at:'2026-02-15' },
+    { player_id:'p-mock-3', custom_name:'Cindy', email:'cindy@gmail.com', google_id:'g002', photo_url:'https://i.pravatar.cc/100?img=32',
+      line_user_id:'', line_display_name:'', avatar_url:'',
+      referrer:'', is_bound:true, can_create_events:false, is_admin:false, created_at:'2026-03-01' }
+  ];
+
+  var mockSession = null; // { player, loginProvider: 'google'|'line' }
+  var providerIdField = { google:'google_id', line:'line_user_id' };
+
+  // 照片連結失效／被擋(或這個 sandbox 沒有對外網路)就退回姓名縮寫圓圈，
+  // 跟 auth.js 的 navAvatarHTML 同一套 onerror fallback 邏輯。
+  function mockAvatarHTML(cls, name, photoUrl){
+    if(!photoUrl) return '<div class="' + cls + '">' + avatarInitial(name) + '</div>';
+    var initial = avatarInitial(name);
+    return '<div class="' + cls + '"><img src="' + photoUrl + '" referrerpolicy="no-referrer" alt=""' +
+      ' onerror="this.parentElement.textContent=\'' + initial + '\'"></div>';
+  }
+  function mockActivePhoto(){
+    if(!mockSession) return '';
+    return mockSession.loginProvider === 'google' ? mockSession.player.photo_url : mockSession.player.avatar_url;
+  }
+  function openIdProto(){ gauthOverlay.classList.add('open'); }
+
+  // ---------- 卡片：登入狀態（畫在頁面上，不是 overlay 裡）----------
+  function renderIdProtoCard(){
+    var card = document.getElementById('idProtoCard');
+    if(!mockSession){
+      card.innerHTML =
+        '<div class="idproto-sub" style="margin-bottom:14px">尚未登入（跟右上角的「登入」是分開的假資料，只是拿來展示 Gmail／LINE 雙軌綁定的邏輯）。</div>' +
+        '<div class="whoami-branch-row">' +
+          '<button type="button" class="whoami-branch-btn" id="idpRegisterBtn">註冊</button>' +
+          '<button type="button" class="whoami-branch-btn" id="idpLoginBtn">登入</button>' +
+        '</div>';
+      document.getElementById('idpRegisterBtn').addEventListener('click', function(){ openIdProto(); renderMockRegister(); });
+      document.getElementById('idpLoginBtn').addEventListener('click', function(){ openIdProto(); renderMockLoginMenu(); });
+      return;
+    }
+
+    var p = mockSession.player;
+    var isAdmin = p.is_admin === true;
+    card.innerHTML =
+      '<div class="idproto-row">' +
+        mockAvatarHTML('idproto-avatar', p.custom_name, mockActivePhoto()) +
+        '<div>' +
+          '<div class="idproto-name">' + p.custom_name + (isAdmin ? '（管理員）' : '') + '</div>' +
+          '<div class="idproto-sub">這次用「' + (mockSession.loginProvider === 'google' ? 'Google' : 'LINE') + '」登入，頭像也是那個來源的照片</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="idproto-bind-row">' +
+        '<div><div class="idproto-bind-label">Gmail</div><div class="idproto-bind-sub">' + (p.email || '尚未綁定') + '</div></div>' +
+        (p.google_id ? '<div class="idproto-bind-status">已綁定 ✓</div>' : '<button type="button" class="idproto-bind-btn" id="idpBindGoogleBtn">綁定</button>') +
+      '</div>' +
+      '<div class="idproto-bind-row">' +
+        '<div><div class="idproto-bind-label">LINE</div><div class="idproto-bind-sub">' + (p.line_display_name || '尚未綁定') + '</div></div>' +
+        (p.line_user_id ? '<div class="idproto-bind-status">已綁定 ✓</div>' : '<button type="button" class="idproto-bind-btn" id="idpBindLineBtn">綁定</button>') +
+      '</div>' +
+      '<button type="button" class="idproto-logout-btn" id="idpLogoutBtn">登出</button>';
+
+    var bindGoogleBtn = document.getElementById('idpBindGoogleBtn');
+    if(bindGoogleBtn) bindGoogleBtn.addEventListener('click', function(){ openIdProto(); renderMockAccountPicker('google', function(account){ bindProviderToSession('google', account); }); });
+    var bindLineBtn = document.getElementById('idpBindLineBtn');
+    if(bindLineBtn) bindLineBtn.addEventListener('click', function(){ openIdProto(); renderMockAccountPicker('line', function(account){ bindProviderToSession('line', account); }); });
+    document.getElementById('idpLogoutBtn').addEventListener('click', function(){ mockSession = null; renderIdProtoCard(); });
+  }
+
+  // ---------- Overlay：登入選單 ----------
+  function renderMockLoginMenu(){
+    gauthSheet.innerHTML =
+      '<div class="whoami-card">' +
+        '<div class="whoami-title">登入</div>' +
+        '<div class="whoami-sub">用已經綁定過的帳號登入（demo 假資料，跟真的登入無關）。</div>' +
+        '<button type="button" class="whoami-line-btn" id="idpLineLoginBtn">使用 LINE 登入</button>' +
+        '<button type="button" class="whoami-google-btn" id="idpGoogleLoginBtn">使用 Google 登入</button>' +
+        '<button type="button" class="whoami-secondary-btn" id="idpBackBtn">‹ 返回</button>' +
+      '</div>';
+    document.getElementById('idpBackBtn').addEventListener('click', closeGauth);
+    document.getElementById('idpLineLoginBtn').addEventListener('click', function(){ renderMockAccountPicker('line', function(account){ mockLogin('line', account); }); });
+    document.getElementById('idpGoogleLoginBtn').addEventListener('click', function(){ renderMockAccountPicker('google', function(account){ mockLogin('google', account); }); });
+  }
+
+  // ---------- Overlay：註冊 ----------
+  function renderMockRegister(){
+    gauthSheet.innerHTML =
+      '<div class="whoami-card">' +
+        '<div class="whoami-title">註冊</div>' +
+        '<div class="whoami-sub">輸入暱稱，再綁定 Google 或 LINE 帳號完成註冊。</div>' +
+        '<input type="text" id="idpNickname" class="nav-login-input" placeholder="輸入暱稱" autocomplete="off">' +
+        '<div class="auth-error" id="idpNicknameError" style="display:none">請先輸入暱稱，再綁定帳號</div>' +
+        '<button type="button" class="whoami-line-btn" id="idpLineRegisterBtn">使用 LINE 綁定</button>' +
+        '<button type="button" class="whoami-google-btn" id="idpGoogleRegisterBtn">使用 Google 綁定</button>' +
+        '<button type="button" class="whoami-secondary-btn" id="idpBackBtn">‹ 返回</button>' +
+      '</div>';
+    document.getElementById('idpBackBtn').addEventListener('click', closeGauth);
+
+    function startRegister(provider){
+      var input = document.getElementById('idpNickname');
+      var name = input ? input.value.trim() : '';
+      if(!name){
+        document.getElementById('idpNicknameError').style.display = 'block';
+        if(input) input.focus();
+        return;
+      }
+      renderMockAccountPicker(provider, function(account){ mockRegister(provider, account, name); });
+    }
+    document.getElementById('idpLineRegisterBtn').addEventListener('click', function(){ startRegister('line'); });
+    document.getElementById('idpGoogleRegisterBtn').addEventListener('click', function(){ startRegister('google'); });
+  }
+
+  // ---------- Overlay：假帳號選擇器（模擬 OAuth 選帳號畫面） ----------
+  function renderMockAccountPicker(provider, onPick){
+    var accounts = provider === 'google' ? MOCK_GOOGLE_ACCOUNTS : MOCK_LINE_ACCOUNTS;
+    gauthSheet.innerHTML =
+      '<div class="gauth-title">選擇' + (provider === 'google' ? ' Google' : ' LINE') + ' 帳號</div>' +
+      '<div class="gauth-sub">demo 用假帳號清單，模擬 OAuth 彈窗選帳號。</div>' +
+      '<div class="picker-row" id="idpAccountRow"></div>' +
+      '<button type="button" class="gauth-cancel-btn" id="idpAccountCancelBtn">取消</button>';
+    document.getElementById('idpAccountCancelBtn').addEventListener('click', closeGauth);
+    document.getElementById('idpAccountRow').innerHTML = accounts.map(function(a, i){
+      var name = provider === 'google' ? a.name : a.line_display_name;
+      var photo = provider === 'google' ? a.photo_url : a.avatar_url;
+      return '<button type="button" class="picker-card" data-i="' + i + '">' +
+        mockAvatarHTML('picker-avatar', name, photo) +
+        '<div class="picker-name">' + name + '</div>' +
+      '</button>';
+    }).join('');
+    document.querySelectorAll('#idpAccountRow .picker-card').forEach(function(btn){
+      btn.addEventListener('click', function(){ onPick(accounts[Number(btn.dataset.i)]); });
+    });
+  }
+
+  function renderMockNotRegistered(provider, account){
+    var name = provider === 'google' ? account.name : account.line_display_name;
+    gauthSheet.innerHTML =
+      '<div class="whoami-card">' +
+        '<div class="whoami-title">這個帳號還沒註冊</div>' +
+        '<div class="whoami-sub">「' + name + '」還沒綁定過球員身份，要先完成註冊才能登入。</div>' +
+        '<button type="button" class="whoami-primary-btn" id="idpGoRegisterBtn">前往註冊</button>' +
+        '<button type="button" class="whoami-secondary-btn" id="idpBackBtn">‹ 返回</button>' +
+      '</div>';
+    document.getElementById('idpGoRegisterBtn').addEventListener('click', renderMockRegister);
+    document.getElementById('idpBackBtn').addEventListener('click', closeGauth);
+  }
+
+  function renderMockError(msg, backTo){
+    gauthSheet.innerHTML =
+      '<div class="whoami-card">' +
+        '<div class="auth-error" style="margin:0 0 14px;">' + msg + '</div>' +
+        '<button type="button" class="whoami-secondary-btn" id="idpRetryBtn">‹ 返回</button>' +
+      '</div>';
+    document.getElementById('idpRetryBtn').addEventListener('click', function(){ (backTo || renderMockLoginMenu)(); });
+  }
+
+  // ---------- 邏輯：登入／註冊／加綁 ----------
+  function mockLogin(provider, account){
+    var idField = providerIdField[provider];
+    var accountId = account[idField];
+    var row = MOCK_PLAYERS.find(function(p){ return p[idField] === accountId; });
+    if(!row){ renderMockNotRegistered(provider, account); return; }
+    finishMockLogin(row, provider);
+  }
+
+  function mockRegister(provider, account, name){
+    var idField = providerIdField[provider];
+    var accountId = account[idField];
+
+    var alreadyBound = MOCK_PLAYERS.some(function(p){ return p[idField] === accountId; });
+    if(alreadyBound){ renderMockError('這個帳號已經註冊過了，改用「登入」即可', renderMockRegister); return; }
+
+    var nameTaken = MOCK_PLAYERS.some(function(p){ return p.custom_name === name; });
+    if(nameTaken){ renderMockError('這個暱稱已經有人用了，換一個看看', renderMockRegister); return; }
+
+    var row = {
+      player_id: 'p-mock-' + Math.random().toString(36).slice(2, 8),
+      custom_name: name, email:'', google_id:'', photo_url:'',
+      line_user_id:'', line_display_name:'', avatar_url:'',
+      referrer:'', is_bound:true, can_create_events:false, is_admin:false,
+      created_at: new Date().toISOString().slice(0, 10)
+    };
+    applyAccountToRow(row, provider, account);
+    MOCK_PLAYERS.push(row);
+    finishMockLogin(row, provider);
+  }
+
+  // 已登入狀態下，於個人卡片多綁一個 provider——只能綁到「目前登入的這一列」，
+  // 且該帳號不能是別人已經綁過的 (避免帳號被搶綁到別的球員身上)。這是
+  // 唯一能讓 gmail/line 綁在同一個 player_id 上的路徑，匿名註冊流程故意
+  // 不做「同名自動合併」(見上面 mockRegister 的 name_taken)。
+  function bindProviderToSession(provider, account){
+    var idField = providerIdField[provider];
+    var accountId = account[idField];
+    var boundElsewhere = MOCK_PLAYERS.some(function(p){ return p !== mockSession.player && p[idField] === accountId; });
+    if(boundElsewhere){ renderMockError('這個帳號已經綁定在別的球員身上了', closeGauth); return; }
+    applyAccountToRow(mockSession.player, provider, account);
+    closeGauth();
+    renderIdProtoCard();
+  }
+
+  function applyAccountToRow(row, provider, account){
+    if(provider === 'google'){
+      row.google_id = account.google_id; row.email = account.email; row.photo_url = account.photo_url;
+    } else {
+      row.line_user_id = account.line_user_id; row.line_display_name = account.line_display_name; row.avatar_url = account.avatar_url;
+    }
+  }
+
+  function finishMockLogin(row, provider){
+    mockSession = { player: row, loginProvider: provider };
+    closeGauth();
+    renderIdProtoCard();
+  }
+
+  renderIdProtoCard();
 </script>
 </body>
 </html>

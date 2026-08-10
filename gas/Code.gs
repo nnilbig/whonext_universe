@@ -9,21 +9,36 @@
 //   id, event_id, type, member_name, guest_name, referrer, status, created_at
 // 還需要一個 players 分頁(一人一列的球員身分主檔,跟 members 那種每月覆寫的
 // 月繳名單分開),欄位標題:
-//   line_user_id, display_name, custom_name, referrer, avatar_url, is_bound, can_create_events, is_admin, created_at
-// line_user_id 是主鍵——LINE 唯一的用戶 ID(如 U123456...)，一個人一定要
-// 先用 LINE 登入過才會有這一列，所以這個表裡不會有「舊名冊、還沒登入過」
-// 的佔位列(那種名單改成即時從 members 歷史姓名撈，見 getRoster)。
-//   display_name：LINE 目前的暱稱，每次登入可能改變。
+//   player_id, custom_name, email, google_id, photo_url, line_user_id,
+//   line_display_name, avatar_url, referrer, is_bound, can_create_events,
+//   is_admin, created_at
+// player_id 才是真正的主鍵——一個 UUID(Utilities.getUuid())，註冊當下
+// 產生一次、永不變動，其他表以後要關聯球員也是用這個，不是用
+// google_id/line_user_id(那兩個只是「目前綁定了哪些登入方式」)。故意
+// 不用循序數字，Apps Script 沒有跨併發請求的原子遞增，循序 ID 也容易被
+// 列舉猜測。
+//   google_id / email / photo_url 是 Google 那組綁定欄位，
+//   line_user_id / line_display_name / avatar_url 是 LINE 那組，兩組
+//   互相獨立、都可以是空的，但一個 player_id 兩組都可以同時綁——見
+//   linkProviderProfile。頭像要顯示哪一張由「這次用哪個 provider
+//   登入」決定(photo_url 或 avatar_url)，不是另外存一個「目前頭像」。
 //   custom_name：綁定的本名/綽號，是 members/signups 等其他表拿來對應
-//     球員的鍵值(還沒遷移成 line_user_id 之前，全部都还是用這個)，註冊當下
-//     就會填好，同名會被擋掉(見 registerLineProfile)。
+//     球員的鍵值(還沒遷移成 player_id 之前，全部都还是用這個)，註冊當下
+//     就會填好，同名會被擋掉(見 registerLineProfile/registerGoogleProfile)。
 //   is_bound：是否已完成舊資料綁定，目前註冊當下就一定會填 custom_name，
 //     所以新建的列一律是 true；保留這個欄位是因為之後如果改成「先登入、
 //     再另外綁舊資料」的兩步式流程，這裡就能派上用場。
-// line_user_id 這個 column 沒加的話 lineLogin/registerLineProfile 會直接
-// 回錯誤，不會壞掉其他功能。
-// 這個表原本叫 profiles、用 Google 帳號登入，2026-08-10 全部改成 LINE
-// 登入、line_user_id 當主鍵，舊表已經不用了。
+// line_user_id/google_id 這兩個 column 沒加的話對應的 login/register
+// action 會直接回錯誤，不會壞掉其他功能。
+// 加綁第二個 provider(例如已經用 LINE 註冊過的人想再多綁 Gmail)一定要
+// 先登入，在前端「帳號綁定」面板操作(linkProviderProfile)，不是在匿名
+// 的註冊流程用同名自動合併——同名自動合併等於任何人都能打別人的暱稱去
+// 「認領」別人的帳號，故意不做。
+// 這個表原本叫 profiles、用 Google 帳號登入，後來一度改成只用 LINE、
+// line_user_id 當主鍵，2026-08-10 再改回「Google + LINE 雙軌都能綁」，
+// player_id 才是主鍵。既有列(改欄位之前建的)如果沒有 player_id，
+// login/register 這幾支 function 會自動補一個寫回去(見 ensurePlayerId)，
+// 不用另外跑遷移腳本。
 // ============================================
 
 const SHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
@@ -32,6 +47,9 @@ const MEMBERS_SHEET = 'members';
 const EVENTS_SHEET = 'events';
 const SIGNUPS_SHEET = 'signups';
 const PLAYERS_SHEET = 'players';
+// 前端 identity-picker.js 用的同一組 Google OAuth Client ID，驗證 ID token
+// 時要確認 token 的 aud 等於這個值，不然任何 Google 專案簽出來的 token 都會過。
+const GOOGLE_CLIENT_ID = '702772011583-5g00roumo9mgruijtn3jhg525bot1cja.apps.googleusercontent.com';
 // 前端 LIFF SDK 用的 LIFF ID 是「{Channel ID}-{隨機碼}」，這裡只需要前面
 // 那段 Channel ID 來驗證 id_token 的 aud。LINE 的 verify endpoint 只吃
 // id_token + client_id 就能驗證簽章/效期，不像換 token 那樣需要 Channel
@@ -83,6 +101,14 @@ function doPost(e) {
     result = lineLogin(body.data);
   } else if (action === 'registerLineProfile') {
     result = registerLineProfile(body.data);
+  } else if (action === 'googleLogin') {
+    result = googleLogin(body.data);
+  } else if (action === 'registerGoogleProfile') {
+    result = registerGoogleProfile(body.data);
+  } else if (action === 'linkProviderProfile') {
+    result = linkProviderProfile(body.data);
+  } else if (action === 'bindCustomName') {
+    result = bindCustomName(body.data);
   } else {
     result = { error: '未知的 action: ' + action };
   }
@@ -133,6 +159,24 @@ function verifyLineIdToken(idToken) {
     return null;
   }
   return { sub: info.sub, name: info.name || '', picture: info.picture || '', email: info.email || '' };
+}
+
+// 驗證前端 Google Identity Services 送來的 ID token(JWT)，不能只信任前端
+// 解出來的內容 —— 打 Google 官方的 tokeninfo endpoint，讓 Google 幫忙驗簽章
+// 跟過期時間，這邊只要再確認 aud 是我們自己的 Client ID、email 有驗證過即可。
+// 驗證失敗回傳 null。
+function verifyGoogleCredential(credential) {
+  if (!credential) return null;
+  const res = UrlFetchApp.fetch(
+    'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(credential),
+    { muteHttpExceptions: true }
+  );
+  if (res.getResponseCode() !== 200) return null;
+  const info = JSON.parse(res.getContentText());
+  if (info.aud !== GOOGLE_CLIENT_ID) return null;
+  if (info.email_verified !== 'true' && info.email_verified !== true) return null;
+  if (!info.email || !info.sub) return null;
+  return { sub: info.sub, name: info.name || '', picture: info.picture || '', email: info.email };
 }
 
 // -------- 讀取 --------
@@ -262,7 +306,7 @@ function getEventSignups(eventId) {
   return { signups };
 }
 
-// 球員身分主檔(一人一列，line_user_id 當主鍵),跟 members 那種每月覆寫的
+// 球員身分主檔(一人一列，player_id 當主鍵),跟 members 那種每月覆寫的
 // 月繳名單分開存放，才不會每次存月繳都要記得把身分欄位一起帶回去。
 function getPlayers() {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PLAYERS_SHEET);
@@ -283,20 +327,40 @@ function getPlayers() {
   return { players };
 }
 
-// line_user_id 比對 players，找到就回傳整列資料(物件)，找不到回傳 null。
-// line_user_id 這個 column 還沒手動加進表格的話直接回傳 null，不要噴錯。
-function findPlayerByLineId(lineUserId) {
+// 用某個欄位(line_user_id/google_id/player_id)比對 players，找到就回傳
+// { player, rowIndex, headers, sheet }(rowIndex 是試算表列號，1-based，
+// 含標題列)，找不到回傳 null。回傳 rowIndex/headers/sheet 是為了
+// ensurePlayerId/linkProviderProfile 可以直接寫回那一列，不用再查一次。
+// 這個欄位還沒手動加進表格的話直接回傳 null，不要噴錯。
+function findPlayerRowByField(fieldName, value) {
+  if (!value) return null;
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PLAYERS_SHEET);
   const rows = sheet.getDataRange().getValues();
   const headers = rows.shift();
-  const lineIdCol = headers.indexOf('line_user_id');
-  if (lineIdCol < 0) return null;
+  const col = headers.indexOf(fieldName);
+  if (col < 0) return null;
 
-  const row = rows.find(r => r[lineIdCol] && String(r[lineIdCol]) === String(lineUserId));
-  if (!row) return null;
-  const player = {};
-  headers.forEach((h, i) => { player[h] = row[i]; });
-  return player;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i][col] && String(rows[i][col]) === String(value)) {
+      const player = {};
+      headers.forEach((h, j) => { player[h] = rows[i][j]; });
+      return { player: player, rowIndex: i + 2, headers: headers, sheet: sheet };
+    }
+  }
+  return null;
+}
+
+// 既有列(schema 改成 player_id 當主鍵之前建的)可能沒有 player_id，
+// login 的時候順手補一個寫回去，不用另外跑遷移腳本。player_id 這個
+// column 還沒手動加的話就不硬寫，回傳空字串。
+function ensurePlayerId(found) {
+  if (found.player.player_id) return found.player.player_id;
+  const idCol = found.headers.indexOf('player_id');
+  if (idCol < 0) return '';
+  const id = Utilities.getUuid();
+  found.sheet.getRange(found.rowIndex, idCol + 1).setValue(id);
+  found.player.player_id = id;
+  return id;
 }
 
 // 「登入」用的 LINE 快速登入：只認已經綁定過的帳號(line_user_id 對得到)，
@@ -305,18 +369,30 @@ function lineLogin(data) {
   const account = verifyLineIdToken(data && data.idToken);
   if (!account) return { success: false, reason: 'invalid_token' };
 
-  const player = findPlayerByLineId(account.sub);
-  if (player) return { success: true, matched: true, profile: player };
-  return { success: true, matched: false, account: account };
+  const found = findPlayerRowByField('line_user_id', account.sub);
+  if (!found) return { success: true, matched: false, account: account };
+  ensurePlayerId(found);
+  return { success: true, matched: true, profile: found.player };
+}
+
+// 「登入」用的 Google 快速登入，跟 lineLogin 對稱。
+function googleLogin(data) {
+  const account = verifyGoogleCredential(data && data.credential);
+  if (!account) return { success: false, reason: 'invalid_token' };
+
+  const found = findPlayerRowByField('google_id', account.sub);
+  if (!found) return { success: true, matched: false, account: account };
+  ensurePlayerId(found);
+  return { success: true, matched: true, profile: found.player };
 }
 
 // 合併「members 歷史上出現過的所有姓名」跟「players 目前的綁定狀態」，
 // 給球員清單(member.html)、手動建活動的出席名單(index.html)這種需要
-// 列出「還沒登入過 LINE 的舊球員」的畫面用——players 表本身因為
-// line_user_id 是主鍵，沒辦法再放「還沒綁定」的佔位列，所以這裡改成
-// 即時從 members 撈全部出現過的姓名，再對照 players.custom_name 補上
-// 是否已綁定/大頭貼/管理員等資訊。custom_name 已綁定但可能還沒出現在
-// members 裡的人(例如剛註冊、還沒繳過月費)也會被列進去。
+// 列出「還沒註冊過的舊球員」的畫面用——players 表本身不會有「還沒綁定」
+// 的佔位列，所以這裡改成即時從 members 撈全部出現過的姓名，再對照
+// players.custom_name 補上是否已綁定/大頭貼/管理員等資訊。custom_name
+// 已綁定但可能還沒出現在 members 裡的人(例如剛註冊、還沒繳過月費)也會
+// 被列進去。
 function getRoster() {
   const membersSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(MEMBERS_SHEET);
   const memberRows = membersSheet.getDataRange().getValues();
@@ -349,7 +425,8 @@ function getRoster() {
       name: name,
       is_bound: !!bound,
       line_user_id: bound ? bound.line_user_id : '',
-      display_name: bound ? bound.display_name : '',
+      google_id: bound ? bound.google_id : '',
+      display_name: bound ? bound.line_display_name : '',
       avatar_url: bound ? bound.avatar_url : '',
       is_admin: bound ? bound.is_admin : false,
       can_create_events: bound ? bound.can_create_events : false
@@ -450,17 +527,34 @@ function saveEvents(data) {
   return { success: true, count: newRows.length, events: data };
 }
 
-// 註冊流程：使用者在「選擇暱稱」欄位手動挑/打了一個名字(custom_name)，
-// 一定是新建一筆 players(line_user_id 是主鍵，這個 LINE 帳號不可能已經
-// 有列卻沒被 lineLogin 比對到)：
+// 沒有指定暱稱時（新版註冊流程：選完 Google/LINE 驗證身分就直接建檔、
+// 進畫面，暱稱綁定是後面可以略過的一步）用 provider 給的顯示名稱頂著
+// 用；撞到已經有人在用的 custom_name 就自動加數字尾碼，不要因為撞名
+// 擋住「直接進畫面」——這是系統自動選的，不是使用者自己打的，不用像
+// 使用者手動輸入暱稱（見 bindCustomName）那樣嚴格擋掉重來。
+function pickUniqueCustomName(rows, customNameCol, desired) {
+  const base = String(desired || '').trim() || '玩家';
+  const existing = new Set(rows.slice(1).map(r => r[customNameCol]).filter(Boolean).map(String));
+  if (!existing.has(base)) return base;
+  let i = 2;
+  while (existing.has(base + i)) i++;
+  return base + i;
+}
+
+// 註冊流程：驗證 Google/LINE 身分就直接建一筆新的 players(player_id 是
+// 主鍵，這個 LINE 帳號不可能已經有列卻沒被 lineLogin 比對到)：
 //   - 這個 LINE 帳號(line_user_id)已經有列 -> already_bound，請改用「登入」
-//   - custom_name 撞到別人已經在用的名字 -> name_taken，換一個
-//   - 都沒問題 -> 新增一列，is_bound 直接是 true(見檔案開頭欄位說明)
+//   - 前端有帶暱稱(data.name，使用者自己選擇要綁)且撞到別人在用的名字
+//     -> name_taken，換一個
+//   - 都沒問題 -> 新增一列。有帶暱稱就直接綁(is_bound:true)；沒帶暱稱
+//     的話用 LINE 顯示名稱頂著(is_bound:false)，之後可以用 bindCustomName
+//     補真正要綁的暱稱。
+// 「已經用 Google 註冊過的人想再多綁 LINE」不是這裡處理——那要先登入，
+// 到「帳號綁定」面板用 linkProviderProfile，不是靠同名自動合併(同名
+// 自動合併等於任何人都能打別人的暱稱去「認領」別人的帳號)。
 function registerLineProfile(data) {
   const account = verifyLineIdToken(data && data.idToken);
   if (!account) return { success: false, reason: 'invalid_token' };
-  const name = String((data && data.name) || '').trim();
-  if (!name) return { success: false, reason: 'missing_name' };
 
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PLAYERS_SHEET);
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -472,17 +566,23 @@ function registerLineProfile(data) {
   const alreadyBound = rows.slice(1).some(r => r[lineIdCol] && String(r[lineIdCol]) === String(account.sub));
   if (alreadyBound) return { success: false, reason: 'already_bound' };
 
-  // custom_name 是整個系統拿來對應報名/賽事發起人的鍵值，同名會撞到別人
-  // 的資料，這裡擋掉並請使用者換個暱稱，不要靜默改名造成混淆。
-  const nameTaken = rows.slice(1).some(r => r[customNameCol] === name);
-  if (nameTaken) return { success: false, reason: 'name_taken' };
+  const typedName = String((data && data.name) || '').trim();
+  let name;
+  if (typedName) {
+    const nameTaken = rows.slice(1).some(r => r[customNameCol] === typedName);
+    if (nameTaken) return { success: false, reason: 'name_taken' };
+    name = typedName;
+  } else {
+    name = pickUniqueCustomName(rows, customNameCol, account.name);
+  }
 
   const updates = {
+    player_id: Utilities.getUuid(),
     line_user_id: account.sub,
-    display_name: account.name || '',
+    line_display_name: account.name || '',
     custom_name: name,
     avatar_url: account.picture || '',
-    is_bound: true,
+    is_bound: !!typedName,
     can_create_events: false,
     is_admin: false,
     created_at: new Date()
@@ -492,6 +592,119 @@ function registerLineProfile(data) {
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, headers.length).setValues([newRow]);
 
   return { success: true, profile: updates };
+}
+
+// 註冊流程（Google 版），邏輯跟 registerLineProfile 對稱，只是換一組
+// 欄位(google_id/email/photo_url)寫入，同一套 player_id/custom_name
+// 規則（含「沒帶暱稱就用顯示名稱頂著」）。
+function registerGoogleProfile(data) {
+  const account = verifyGoogleCredential(data && data.credential);
+  if (!account) return { success: false, reason: 'invalid_token' };
+
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PLAYERS_SHEET);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const rows = sheet.getDataRange().getValues();
+  const customNameCol = headers.indexOf('custom_name');
+  const googleIdCol = headers.indexOf('google_id');
+  if (googleIdCol < 0) return { success: false, reason: 'missing_google_id_column' };
+
+  const alreadyBound = rows.slice(1).some(r => r[googleIdCol] && String(r[googleIdCol]) === String(account.sub));
+  if (alreadyBound) return { success: false, reason: 'already_bound' };
+
+  const typedName = String((data && data.name) || '').trim();
+  let name;
+  if (typedName) {
+    const nameTaken = rows.slice(1).some(r => r[customNameCol] === typedName);
+    if (nameTaken) return { success: false, reason: 'name_taken' };
+    name = typedName;
+  } else {
+    name = pickUniqueCustomName(rows, customNameCol, account.name);
+  }
+
+  const updates = {
+    player_id: Utilities.getUuid(),
+    google_id: account.sub,
+    email: account.email || '',
+    photo_url: account.picture || '',
+    custom_name: name,
+    is_bound: !!typedName,
+    can_create_events: false,
+    is_admin: false,
+    created_at: new Date()
+  };
+
+  const newRow = headers.map(h => updates[h] !== undefined ? updates[h] : '');
+  sheet.getRange(sheet.getLastRow() + 1, 1, 1, headers.length).setValues([newRow]);
+
+  return { success: true, profile: updates };
+}
+
+// 註冊當下略過暱稱綁定的人，之後在「要不要綁定暱稱」畫面補真正要用的
+// 舊資料暱稱。只認 player_id（前端已登入才知道這個值），custom_name
+// 撞到別人（不是自己這個 player_id）在用的名字就擋掉。
+function bindCustomName(data) {
+  const playerId = String((data && data.player_id) || '').trim();
+  const name = String((data && data.name) || '').trim();
+  if (!playerId) return { success: false, reason: 'missing_player_id' };
+  if (!name) return { success: false, reason: 'missing_name' };
+
+  const target = findPlayerRowByField('player_id', playerId);
+  if (!target) return { success: false, reason: 'player_not_found' };
+
+  const customNameCol = target.headers.indexOf('custom_name');
+  const rows = target.sheet.getDataRange().getValues();
+  rows.shift();
+  const playerIdCol = target.headers.indexOf('player_id');
+  const nameTaken = rows.some(r => r[customNameCol] === name && String(r[playerIdCol]) !== playerId);
+  if (nameTaken) return { success: false, reason: 'name_taken' };
+
+  target.sheet.getRange(target.rowIndex, customNameCol + 1).setValue(name);
+  const isBoundCol = target.headers.indexOf('is_bound');
+  if (isBoundCol >= 0) target.sheet.getRange(target.rowIndex, isBoundCol + 1).setValue(true);
+  target.player.custom_name = name;
+  target.player.is_bound = true;
+
+  return { success: true, profile: target.player };
+}
+
+// 已登入狀態下，在個人頁「帳號綁定」面板多綁一個 provider(例如已經用
+// LINE 註冊過的人想再多綁 Gmail)。前端直接送 player_id 指定要綁到哪一
+// 列——跟 signupEvent 這些 action 一樣，是整個後端採用的信任等級(前端
+// 傳什麼 ID 就信什麼，沒有伺服器端 session 可以再驗證「這個 player_id
+// 真的是你」)，不是這裡特別鬆。真正擋壞事的是：要綁定的那個 provider
+// 帳號一定要能通過 verifyGoogleCredential/verifyLineIdToken，不能亂填
+// google_id/line_user_id，而且那個帳號不能是「別人已經綁走的」。
+function linkProviderProfile(data) {
+  const playerId = String((data && data.player_id) || '').trim();
+  const provider = data && data.provider;
+  if (!playerId) return { success: false, reason: 'missing_player_id' };
+  if (provider !== 'google' && provider !== 'line') return { success: false, reason: 'invalid_provider' };
+
+  const account = provider === 'google'
+    ? verifyGoogleCredential(data && data.token)
+    : verifyLineIdToken(data && data.token);
+  if (!account) return { success: false, reason: 'invalid_token' };
+
+  const idField = provider === 'google' ? 'google_id' : 'line_user_id';
+  const boundElsewhere = findPlayerRowByField(idField, account.sub);
+  if (boundElsewhere && String(boundElsewhere.player.player_id) !== playerId) {
+    return { success: false, reason: 'already_bound' };
+  }
+
+  const target = findPlayerRowByField('player_id', playerId);
+  if (!target) return { success: false, reason: 'player_not_found' };
+
+  const updates = provider === 'google'
+    ? { google_id: account.sub, email: account.email || '', photo_url: account.picture || '' }
+    : { line_user_id: account.sub, line_display_name: account.name || '', avatar_url: account.picture || '' };
+
+  Object.keys(updates).forEach(h => {
+    const col = target.headers.indexOf(h);
+    if (col >= 0) target.sheet.getRange(target.rowIndex, col + 1).setValue(updates[h]);
+  });
+  Object.assign(target.player, updates);
+
+  return { success: true, profile: target.player };
 }
 
 // 賽事報名。用 LockService 避免多人同時報名時,名額判斷算錯(超賣)。

@@ -33,18 +33,56 @@ body.is-admin .admin-only.flex{ display:flex; }
   font-size:12.5px; font-weight:700; color:var(--secondary);
   padding:12px 0 2px;
 }
+/* 固定高度（不只 min-height），佔位文字換成 Google 按鈕時容器尺寸
+   不會變，卡片／視窗不會跟著跳動，只有按鈕本身淡入淡出的差別。 */
+.whoami-google-btn-wrap{ display:flex; align-items:center; justify-content:center; height:44px; overflow:hidden; }
+.whoami-loading{ font-size:12.5px; color:var(--tertiary); padding:10px 2px; }
+
 .whoami-primary-btn{
   width:100%; font-size:13.5px; font-weight:700; padding:12px 0; border-radius:12px;
   background: var(--label); color:#000; margin-top:4px;
 }
+.whoami-primary-btn:disabled{ opacity:0.4; }
 
-/* ---------- LINE 登入按鈕（見 identity-picker.js） ---------- */
+/* ---------- 註冊方式選擇（見 identity-picker.js 的 renderRegister） ---------- */
+.whoami-method-row{ display:flex; gap:8px; margin-bottom:14px; }
+.whoami-method-btn{
+  flex:1; font-size:13.5px; font-weight:700; padding:14px 0; border-radius:12px; text-align:center;
+  background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--label);
+}
+.whoami-method-btn.selected{ border-color: var(--gold); background: var(--gold-bg); color: var(--gold); }
+
+/* ---------- LINE 登入按鈕（跟 Google 按鈕併排用，見 identity-picker.js） ---------- */
+.whoami-or-divider{ text-align:center; font-size:11px; color:var(--tertiary); margin:10px 0; }
 .whoami-line-btn{
   width:100%; display:flex; align-items:center; justify-content:center;
   background:#06C755; color:#fff; font-size:14px; font-weight:700;
   padding:12px; border-radius:999px;
 }
 .whoami-line-btn:active{ filter:brightness(0.94); }
+
+/* ---------- Google 登入按鈕（demo.html 的雙軌登入 prototype 專用的假按鈕，
+   真的 identity-picker.js 走 GIS 官方 renderButton，見上面的
+   .whoami-google-btn-wrap，兩邊不衝突） ---------- */
+.whoami-google-btn{
+  width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
+  background:#fff; color:#3c4043; font-size:14px; font-weight:700;
+  padding:12px; border-radius:999px; border:1px solid #dadce0; margin-top:8px;
+}
+.whoami-google-btn:active{ filter:brightness(0.96); }
+
+/* ---------- 帳號綁定面板（profile.html，見 identity-picker.js 的
+   renderBindPanel）：顯示目前 Gmail／LINE 各自的綁定狀態，未綁定的
+   那一項才會有「綁定」按鈕。 ---------- */
+.whoami-bind-row{ display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-top:1px solid var(--line); }
+.whoami-bind-row:first-child{ border-top:none; }
+.whoami-bind-label{ font-size:13px; font-weight:700; }
+.whoami-bind-sub{ font-size:11px; color:var(--tertiary); margin-top:2px; }
+.whoami-bind-status{ font-size:12px; font-weight:700; color:var(--gold); }
+.whoami-bind-btn{
+  font-size:12px; font-weight:700; padding:8px 14px; border-radius:999px;
+  background: rgba(255,255,255,0.06); border:1px solid var(--line); color: var(--label);
+}
 
 .whoami-account-list{
   display:flex; gap:14px; overflow-x:auto; scrollbar-width:none;

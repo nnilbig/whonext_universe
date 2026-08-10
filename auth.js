@@ -3,6 +3,7 @@
   var PLAYER_NAME_KEY = 'whonext_player_name';
   var IS_ADMIN_KEY = 'whonext_player_is_admin';
   var PHOTO_KEY = 'whonext_player_photo';
+  var PLAYER_ID_KEY = 'whonext_player_id';
   var IDLE_LIMIT_MS = 5 * 60 * 1000;
   var idleTimer = null;
 
@@ -13,21 +14,30 @@
 
   function getPlayerName(){ return localStorage.getItem(PLAYER_NAME_KEY) || ''; }
   function getPlayerPhoto(){ return localStorage.getItem(PHOTO_KEY) || ''; }
+  // players 表的 player_id（真正的主鍵），profile.html 的「帳號綁定」面板
+  // 要用這個去比對/呼叫 linkProviderProfile，不是用 name（name 可能之後
+  // 還會改）。舊的登入狀態（這個欄位加進來之前存的）會是空字串，這種情況
+  // 綁定面板要請使用者重新登入一次才能用，不能瞎綁。
+  function getPlayerId(){ return localStorage.getItem(PLAYER_ID_KEY) || ''; }
 
   // 設定/清除目前綁定的球員身分，並同步更新 top nav 的頭像顯示，
-  // 讓正在看 profile.html 的頁面也能透過事件即時重繪。isAdmin／photoUrl
-  // 都來自登入/註冊回傳的 player 資料（is_admin、avatar_url），換身分或
-  // 登出一律重置回球員視角，管理員視角要重新點一次「管理員」才會切換過去。
-  function setPlayerName(name, isAdmin, photoUrl){
+  // 讓正在看 profile.html 的頁面也能透過事件即時重繪。isAdmin／photoUrl／
+  // playerId 都來自登入/註冊回傳的 player 資料（is_admin、avatar_url 或
+  // photo_url 視登入用哪個 provider 而定、player_id），換身分或登出一律
+  // 重置回球員視角，管理員視角要重新點一次「管理員」才會切換過去。
+  function setPlayerName(name, isAdmin, photoUrl, playerId){
     if(name){
       localStorage.setItem(PLAYER_NAME_KEY, name);
       localStorage.setItem(IS_ADMIN_KEY, isAdmin ? '1' : '0');
       if(photoUrl) localStorage.setItem(PHOTO_KEY, photoUrl);
       else localStorage.removeItem(PHOTO_KEY);
+      if(playerId) localStorage.setItem(PLAYER_ID_KEY, playerId);
+      else localStorage.removeItem(PLAYER_ID_KEY);
     } else {
       localStorage.removeItem(PLAYER_NAME_KEY);
       localStorage.removeItem(IS_ADMIN_KEY);
       localStorage.removeItem(PHOTO_KEY);
+      localStorage.removeItem(PLAYER_ID_KEY);
     }
     setRole('player');
     document.dispatchEvent(new CustomEvent('whonext:playername-change'));
@@ -192,6 +202,7 @@
   window.WhonextAuth = {
     ROLE_KEY: ROLE_KEY, getRole: getRole, setRole: setRole,
     getPlayerName: getPlayerName, setPlayerName: setPlayerName,
-    getPlayerIsAdmin: getPlayerIsAdmin, getPlayerPhoto: getPlayerPhoto
+    getPlayerIsAdmin: getPlayerIsAdmin, getPlayerPhoto: getPlayerPhoto,
+    getPlayerId: getPlayerId
   };
 })();
