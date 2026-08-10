@@ -108,7 +108,8 @@ window.WhonextLiff = (function(){
       liff.init({ liffId: LIFF_ID }).then(function(){
         ready = true;
         flush();
-      }).catch(function(){
+      }).catch(function(err){
+        console.error('liff.init failed:', err);
         failed = true;
         flush();
       });

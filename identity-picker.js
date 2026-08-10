@@ -205,8 +205,20 @@
   // ---------------------------------------------------------------
   // 共用
   // ---------------------------------------------------------------
+  // Google 明確擋掉 in-app 瀏覽器（LINE/FB/IG/WeChat 的 WebView 一律回
+  // disallowed_useragent），renderButton 在裡面會什麼都不畫、整塊空白
+  // ——不管是不是真的 LIFF 啟動都一樣擋，跟 LINE 登入那邊的 isInClient
+  // 判斷不同，這裡不用分辨，同一個 WebView 內 Google 一律沒用。
+  function isBlockedForGoogle(){
+    return isLineUa() || isNonLineInAppBrowser();
+  }
+
   function renderGoogleButton(container, btnWrap, onCredential){
     if(!btnWrap) return;
+    if(isBlockedForGoogle()){
+      btnWrap.innerHTML = '<div class="whoami-loading">App 內建瀏覽器無法使用 Google 登入，請改用 LINE 登入，或跳到瀏覽器開啟</div>';
+      return;
+    }
     WhonextGis.onReady(function(){
       if(!document.body.contains(btnWrap)) return; // 使用者已經切到別的畫面
       google.accounts.id.initialize({
@@ -379,7 +391,13 @@
 
     WhonextLiff.ensureReady(function(){
       if(!document.body.contains(container)) return;
-      if(!WhonextLiff.isReady() || !WhonextLiff.isLoggedIn()){
+      if(!WhonextLiff.isReady()){
+        console.error('LINE redirect-back: liff.init failed (see earlier "liff.init failed" log)');
+        renderError(container, 'LINE 登入失敗，請重新嘗試', pending.mode === 'link' ? function(c){ renderBindPanel(c); } : renderStart);
+        return;
+      }
+      if(!WhonextLiff.isLoggedIn()){
+        console.error('LINE redirect-back: liff.init succeeded but liff.isLoggedIn() is false');
         renderError(container, 'LINE 登入失敗，請重新嘗試', pending.mode === 'link' ? function(c){ renderBindPanel(c); } : renderStart);
         return;
       }
