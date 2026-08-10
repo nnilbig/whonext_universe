@@ -4,9 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>WHONEXT UNIVERSE — Ranking Dashboard Demo</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WHONEXT">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="bottom-nav.css">
 <style>
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; padding:0; height:100%; }
@@ -224,27 +233,6 @@
   .gauth-title{ font-size:16px; font-weight:800; margin-bottom:4px; }
   .gauth-sub{ font-size:12.5px; color:var(--secondary); margin-bottom:20px; line-height:1.5; }
 
-  .gbtn{
-    width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
-    background:#fff; color:#1f1f1f; font-size:14px; font-weight:600;
-    padding:12px; border-radius:10px; border:1px solid #dadce0;
-  }
-  .gbtn:active{ background:#f7f7f7; }
-
-  .gauth-account-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
-  .gauth-account{
-    display:flex; align-items:center; gap:12px; padding:12px; text-align:left; width:100%;
-    border:1px solid var(--line); border-radius:14px; background: rgba(255,255,255,0.03);
-  }
-  .gauth-account:active{ background: rgba(255,255,255,0.07); }
-  .gauth-account-avatar{
-    width:36px; height:36px; border-radius:50%; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-    font-weight:800; font-size:14px; background:var(--card-strong); border:1.5px solid var(--line);
-  }
-  .gauth-account-name{ font-size:13.5px; font-weight:700; }
-  .gauth-account-email{ font-size:11.5px; color:var(--tertiary); }
-
   .gauth-spinner-wrap{ display:flex; flex-direction:column; align-items:center; gap:14px; padding: 26px 0 10px; }
   .gauth-spinner{
     width:28px; height:28px; border-radius:50%;
@@ -252,26 +240,27 @@
     animation: gauth-spin .8s linear infinite;
   }
   @keyframes gauth-spin{ to{ transform:rotate(360deg); } }
-  .gauth-spinner-text{ font-size:12.5px; color:var(--secondary); }
-
-  .gauth-field-label{ font-size:11px; color:var(--tertiary); margin:0 2px 6px; }
-  .gauth-input{
-    width:100%; box-sizing:border-box; font-size:16px; color:var(--label);
-    background: rgba(255,255,255,0.05); border:1px solid var(--line); border-radius:12px;
-    padding:11px 14px; margin-bottom:14px;
-  }
-  .gauth-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
-
-  .gauth-primary-btn{ width:100%; font-size:13.5px; font-weight:700; padding:12px 0; border-radius:12px; background: var(--label); color:#000; }
   .gauth-cancel-btn{ width:100%; font-size:12.5px; font-weight:700; padding:10px 0; color:var(--secondary); margin-top:8px; text-align:center; }
 
-  .gauth-success-avatar{
-    width:56px; height:56px; border-radius:50%; margin:6px auto 14px;
-    display:flex; align-items:center; justify-content:center;
-    font-weight:800; font-size:20px; background: var(--gold-bg); border:1.5px solid var(--gold); color:var(--gold);
+  /* ---------- 快速登入：滑動選擇目前真實球員清單（demo 測試工具，
+     直接呼叫真的 WhonextAuth.setPlayerName，不用走 Google 驗證）---------- */
+  .picker-row{
+    display:flex; gap:10px; overflow-x:auto; scroll-snap-type:x proximity;
+    padding: 2px 2px 6px; margin: 0 -2px 4px;
   }
-  .gauth-success-title{ text-align:center; font-size:15px; font-weight:800; margin-bottom:4px; }
-  .gauth-success-sub{ text-align:center; font-size:12.5px; color:var(--secondary); margin-bottom:20px; }
+  .picker-card{
+    flex-shrink:0; width:76px; scroll-snap-align:start;
+    display:flex; flex-direction:column; align-items:center; gap:7px;
+    padding:12px 4px; text-align:center;
+  }
+  .picker-avatar{
+    width:50px; height:50px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:17px; background: var(--gold-bg); border:1.5px solid var(--gold); color:var(--gold);
+  }
+  .picker-card.is-admin .picker-avatar{ border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,0.15); }
+  .picker-name{ font-size:12px; font-weight:700; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .picker-admin-tag{ font-size:9px; font-weight:800; color:var(--gold); }
 </style>
 </head>
 <body>
@@ -456,35 +445,17 @@
   renderTrophyCabinet();
 </script>
 
+<script src="backend.js"></script>
+<script src="auth.js"></script>
+<script src="bottom-nav.js"></script>
 <script>
-  // ---------- Google 登入／註冊／配對流程 MOCK（demo 專用，不打真的 Google API）----------
-  // 對齊邏輯：
-  //   1. Email 優先對齊：OAuth email 已經綁在某個球員身上 -> 直接登入。
-  //   2. 既有名稱配對：email 沒對到，但 Google 顯示名稱疑似是舊名冊（純文字、
-  //      沒綁過帳號）裡的人 -> 跳「是否綁定既有球員身份？」讓使用者手動確認。
-  //   3. 自動建檔：兩者都沒對到 -> 直接用 Google 的 name 建新的球員 Profile，
-  //      不用再手動輸入暱稱。
-  // 頭像顯示文字：姓名開頭是「小」的話（如「小白」）跳過取下一個字（顯示「白」）。
-  function avatarInitial(name){
-    var n = String(name || '').trim();
-    if(n.charAt(0) === '小' && n.length > 1) return n.charAt(1);
-    return n.slice(0, 1);
-  }
-  var MOCK_MEMBERS = [
-    { email: 'shaoen@gmail.com', name: '韶恩' },
-    { email: 'chengcheng@gmail.com', name: '學承' }
-  ];
-  // 舊名冊留下來的純文字球員，還沒綁定任何 Google 帳號。
-  var MOCK_LEGACY_MEMBERS = ['儒', '安', 'Eden'];
-  var MOCK_ACCOUNTS = [
-    { email: 'shaoen@gmail.com', name: '韶恩' },              // email 已綁定 -> 直接登入
-    { email: 'eden.badminton@gmail.com', name: 'Eden' },      // 名稱疑似舊資料「Eden」-> 跳配對選單
-    { email: 'new.player88@gmail.com', name: '新朋友' }       // 兩邊都沒對到 -> 自動建檔
-  ];
-
+  // ---------- 快速登入（demo 測試工具）----------
+  // 不走 Google 驗證，直接滑動選一位「目前真實球員清單」（getProfiles）
+  // 裡的人，點下去就呼叫真的 WhonextAuth.setPlayerName() 登入——跟正式
+  // 站共用同一份 localStorage 身分，所以選完可以直接用下面的 bottom nav
+  // 切去「個人」「球隊錢包」等頁面，看那個人的真實資料。
   var gauthOverlay = document.getElementById('gauthOverlay');
   var gauthSheet = document.getElementById('gauthSheet');
-  var loggedInName = null;
 
   function closeGauth(){
     gauthOverlay.classList.remove('open');
@@ -493,157 +464,73 @@
     if(e.target === gauthOverlay) closeGauth();
   });
 
-  function renderGauthStart(){
-    gauthSheet.innerHTML =
-      '<div class="gauth-title">球員登入</div>' +
-      '<div class="gauth-sub">用 Google 帳號登入，還沒綁定過的帳號會直接帶你完成註冊。</div>' +
-      '<button type="button" class="gbtn" id="gauthGoogleBtn">' +
-        '<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.98v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.66 9c0-.59.1-1.17.29-1.7V4.97H.98A9 9 0 0 0 0 9c0 1.45.35 2.83.98 4.03l2.97-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .98 4.97l2.97 2.33C4.66 5.17 6.65 3.58 9 3.58z"/></svg>' +
-        '<span>使用 Google 繼續</span>' +
-      '</button>' +
-      '<button type="button" class="gauth-cancel-btn" id="gauthCancelBtn">取消</button>';
-    document.getElementById('gauthGoogleBtn').addEventListener('click', renderGauthPicker);
-    document.getElementById('gauthCancelBtn').addEventListener('click', closeGauth);
-  }
-
-  function renderGauthPicker(){
-    var accountsHTML = MOCK_ACCOUNTS.map(function(acc, i){
-      return '<button type="button" class="gauth-account" data-i="' + i + '">' +
-        '<div class="gauth-account-avatar">' + avatarInitial(acc.name) + '</div>' +
-        '<div><div class="gauth-account-name">' + acc.name + '</div><div class="gauth-account-email">' + acc.email + '</div></div>' +
-      '</button>';
-    }).join('');
-    gauthSheet.innerHTML =
-      '<div class="gauth-title">選擇帳戶</div>' +
-      '<div class="gauth-sub">繼續前往 WHONEXT UNIVERSE（demo 測試帳號）</div>' +
-      '<div class="gauth-account-list">' + accountsHTML + '</div>' +
-      '<button type="button" class="gauth-cancel-btn" id="gauthCancelBtn">取消</button>';
-    gauthSheet.querySelectorAll('.gauth-account').forEach(function(btn){
-      btn.addEventListener('click', function(){ chooseGauthAccount(Number(btn.dataset.i)); });
-    });
-    document.getElementById('gauthCancelBtn').addEventListener('click', closeGauth);
-  }
-
-  function chooseGauthAccount(i){
-    var account = MOCK_ACCOUNTS[i];
-    gauthSheet.innerHTML =
-      '<div class="gauth-spinner-wrap">' +
-        '<div class="gauth-spinner"></div>' +
-        '<div class="gauth-spinner-text">驗證 Google 帳號中…</div>' +
-      '</div>';
-    setTimeout(function(){
-      // 1. email 優先對齊
-      var member = MOCK_MEMBERS.find(function(m){ return m.email === account.email; });
-      if(member){ renderGauthWelcomeBack(member); return; }
-      // 2. 既有名稱配對（舊名冊裡有純文字建的同名紀錄，且還沒綁過帳號）
-      var legacyMatch = MOCK_LEGACY_MEMBERS.find(function(n){ return n === account.name; });
-      if(legacyMatch){ renderGauthMatchModal(account); return; }
-      // 3. 都沒對到，自動建檔
-      renderGauthAutoCreate(account);
-    }, 700);
-  }
-
-  function renderGauthWelcomeBack(member){
-    gauthSheet.innerHTML =
-      '<div class="gauth-success-avatar">' + avatarInitial(member.name) + '</div>' +
-      '<div class="gauth-success-title">歡迎回來，' + member.name + '</div>' +
-      '<div class="gauth-success-sub">已使用 Google 帳號登入</div>' +
-      '<button type="button" class="gauth-primary-btn" id="gauthDoneBtn">完成</button>';
-    document.getElementById('gauthDoneBtn').addEventListener('click', function(){
-      finishGauth(member.name);
+  function loadProfilesForPicker(){
+    var cached = getApiCache({ action: 'getProfiles' });
+    if(cached) return Promise.resolve(cached.profiles || []);
+    return apiGet({ action: 'getProfiles' }).then(function(result){
+      setApiCache({ action: 'getProfiles' }, result);
+      return result.profiles || [];
     });
   }
 
-  // 既有名稱配對：Google 顯示名稱疑似舊名冊裡的人，請使用者手動確認
-  // 是不是同一個人，選到就把這個 Google 帳號併進那筆既有球員資料；
-  // 「都不是」則走自動建檔，用 Google 資料開一筆全新的。
-  function renderGauthMatchModal(account){
-    var candidatesHTML = MOCK_LEGACY_MEMBERS.map(function(n){
-      return '<button type="button" class="gauth-account" data-name="' + n + '">' +
-        '<div class="gauth-account-avatar">' + avatarInitial(n) + '</div>' +
-        '<div><div class="gauth-account-name">' + n + '</div><div class="gauth-account-email">舊名冊球員・尚未綁定帳號</div></div>' +
-      '</button>';
-    }).join('');
+  function renderPlayerPicker(){
     gauthSheet.innerHTML =
-      '<div class="gauth-title">是否綁定既有球員身份？</div>' +
-      '<div class="gauth-sub">Google 帳號「' + account.name + '」（' + account.email + '）還沒綁定過，我們在舊名冊找到可能是你的資料，選一個綁定，或建立全新帳號。</div>' +
-      '<div class="gauth-account-list">' + candidatesHTML + '</div>' +
-      '<button type="button" class="gauth-cancel-btn" id="gauthNotMeBtn">都不是，建立新帳號</button>';
-    gauthSheet.querySelectorAll('.gauth-account').forEach(function(btn){
-      btn.addEventListener('click', function(){ bindLegacyMember(account, btn.dataset.name); });
-    });
-    document.getElementById('gauthNotMeBtn').addEventListener('click', function(){
-      renderGauthAutoCreate(account);
-    });
-  }
-
-  function bindLegacyMember(account, legacyName){
-    gauthSheet.innerHTML =
-      '<div class="gauth-success-avatar">' + avatarInitial(legacyName) + '</div>' +
-      '<div class="gauth-success-title">身份已綁定，' + legacyName + '</div>' +
-      '<div class="gauth-success-sub">Google 帳號（' + account.email + '）已併入既有球員資料</div>' +
-      '<button type="button" class="gauth-primary-btn" id="gauthDoneBtn">完成</button>';
-    document.getElementById('gauthDoneBtn').addEventListener('click', function(){
-      finishGauth(legacyName);
-    });
-  }
-
-  // 自動建檔：兩邊都沒對到，直接用 Google 提供的 name／photoURL 開一筆新的，
-  // 不用再手動輸入暱稱。
-  function renderGauthAutoCreate(account){
-    gauthSheet.innerHTML =
-      '<div class="gauth-success-avatar">' + avatarInitial(account.name) + '</div>' +
-      '<div class="gauth-title" style="text-align:center; margin-bottom:4px;">建立球員帳號</div>' +
-      '<div class="gauth-sub" style="text-align:center;">用 Google 資料自動建檔：' + account.name + '（' + account.email + '）</div>' +
-      '<button type="button" class="gauth-primary-btn" id="gauthCreateBtn">確認建立</button>' +
+      '<div class="gauth-title">快速登入</div>' +
+      '<div class="gauth-sub">滑動選一位目前的球員身分（demo 測試用，直接登入不用驗證）。</div>' +
+      '<div class="picker-row" id="pickerRow"><div class="gauth-spinner-wrap"><div class="gauth-spinner"></div></div></div>' +
       '<button type="button" class="gauth-cancel-btn" id="gauthCancelBtn">取消</button>';
     document.getElementById('gauthCancelBtn').addEventListener('click', closeGauth);
-    document.getElementById('gauthCreateBtn').addEventListener('click', function(){
-      renderGauthWelcomeNew(account.name);
+
+    loadProfilesForPicker().then(function(profiles){
+      var row = document.getElementById('pickerRow');
+      if(!row) return; // 使用者已經關掉視窗
+      if(!profiles.length){ row.innerHTML = '<div class="gauth-sub">目前沒有球員資料</div>'; return; }
+
+      var sorted = profiles.slice().sort(function(a, b){ return String(a.name).localeCompare(String(b.name)); });
+      row.innerHTML = sorted.map(function(p, i){
+        var isAdmin = p.is_admin === true || p.is_admin === 'TRUE';
+        return '<button type="button" class="picker-card' + (isAdmin ? ' is-admin' : '') + '" data-i="' + i + '">' +
+          '<div class="picker-avatar">' + avatarInitial(p.name) + '</div>' +
+          '<div class="picker-name">' + p.name + '</div>' +
+          (isAdmin ? '<div class="picker-admin-tag">管理員</div>' : '') +
+        '</button>';
+      }).join('');
+      row.querySelectorAll('.picker-card').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var p = sorted[Number(btn.dataset.i)];
+          var isAdmin = p.is_admin === true || p.is_admin === 'TRUE';
+          WhonextAuth.setPlayerName(p.name, isAdmin);
+          closeGauth();
+        });
+      });
+    }).catch(function(){
+      var row = document.getElementById('pickerRow');
+      if(row) row.innerHTML = '<div class="gauth-sub">載入球員清單失敗，請稍後再試</div>';
     });
-  }
-
-  function renderGauthWelcomeNew(name){
-    gauthSheet.innerHTML =
-      '<div class="gauth-success-avatar">' + avatarInitial(name) + '</div>' +
-      '<div class="gauth-success-title">註冊完成！</div>' +
-      '<div class="gauth-success-sub">帳號已建立，歡迎加入 WHONEXT，' + name + '</div>' +
-      '<button type="button" class="gauth-primary-btn" id="gauthDoneBtn">完成</button>';
-    document.getElementById('gauthDoneBtn').addEventListener('click', function(){
-      finishGauth(name);
-    });
-  }
-
-  function finishGauth(name){
-    loggedInName = name;
-    closeGauth();
-    renderIdentityWidget();
-  }
-
-  function logoutGauth(){
-    loggedInName = null;
-    renderIdentityWidget();
   }
 
   // 右上角身分識別：未登入顯示「登入」按鈕；登入後顯示頭像＋名稱，
-  // 點一下直接登出，不用另外放一顆登出按鈕。
+  // 點一下直接登出（呼叫真的 WhonextAuth.setPlayerName('')）。身分是
+  // 共用的 localStorage 狀態，所以從別頁登入/登出回來這裡也要跟著更新。
   function renderIdentityWidget(){
     const widget = document.getElementById('identityWidget');
-    if(loggedInName){
+    const name = WhonextAuth.getPlayerName();
+    if(name){
       widget.innerHTML =
         '<button type="button" class="id-widget-btn" id="idWidgetBtn">' +
-          '<div class="id-avatar">' + avatarInitial(loggedInName) + '</div>' +
-          '<div class="id-name">' + loggedInName + '</div>' +
+          '<div class="id-avatar">' + avatarInitial(name) + '</div>' +
+          '<div class="id-name">' + name + '</div>' +
         '</button>';
-      document.getElementById('idWidgetBtn').addEventListener('click', logoutGauth);
+      document.getElementById('idWidgetBtn').addEventListener('click', function(){ WhonextAuth.setPlayerName(''); });
     } else {
       widget.innerHTML = '<button type="button" class="login-btn" id="loginBtn">登入</button>';
       document.getElementById('loginBtn').addEventListener('click', function(){
         gauthOverlay.classList.add('open');
-        renderGauthStart();
+        renderPlayerPicker();
       });
     }
   }
+  document.addEventListener('whonext:playername-change', renderIdentityWidget);
 
   renderIdentityWidget();
 </script>
