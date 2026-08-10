@@ -307,6 +307,14 @@
   .signup-list{ display:flex; flex-direction:column; gap:6px; }
   .signup-empty{ font-size:12.5px; color:var(--tertiary); padding: 4px 2px; }
 
+  .guest-add-row{ display:flex; gap:8px; margin-bottom:10px; }
+  .guest-add-row .edit-input{ flex:1; min-width:0; margin-bottom:0; }
+  .guest-add-btn{
+    flex-shrink:0; font-size:13px; font-weight:700; padding:0 16px; border-radius:12px;
+    background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--label);
+  }
+  .guest-add-btn:active{ background: rgba(255,255,255,0.09); }
+
   .import-toggle-row{
     display:flex; align-items:center; justify-content:space-between; gap:8px;
     padding:9px 12px; border-radius:12px; background: rgba(255,255,255,0.04); border:1px solid var(--line);
@@ -401,7 +409,11 @@
       </select>
 
       <div id="eventEditAttendWrap" style="display:none">
-        <div class="edit-field-label">確認出席名單（<span id="eventEditAttendMonth"></span>）</div>
+        <div class="edit-field-label" id="eventEditAttendLabel">出席名單</div>
+        <div class="guest-add-row">
+          <input type="text" id="eventEditGuestName" class="edit-input" placeholder="手動新增訪客姓名">
+          <button type="button" class="guest-add-btn" id="eventEditGuestAdd">新增</button>
+        </div>
         <div class="signup-list" id="eventEditAttendList"></div>
       </div>
 
@@ -872,12 +884,12 @@
     document.getElementById('eventEditLocation').value = '';
     document.getElementById('eventEditCapacity').value = '';
     document.getElementById('eventEditOverflow').value = 'reject';
-    document.getElementById('eventEditAttendWrap').style.display = 'none';
-    document.getElementById('eventEditAttendList').innerHTML = '';
+    document.getElementById('eventEditGuestName').value = '';
     document.getElementById('eventEditRecurringWrap').style.display = 'none';
     document.getElementById('eventEditRecurring').checked = false;
     document.getElementById('eventEditDelete').style.display = 'none';
     document.getElementById('eventEditOverlay').classList.add('open');
+    loadAttendRosterPicker();
   }
 
   function closeEventEdit(){
@@ -918,14 +930,58 @@
     }
   };
 
+  // 手動新增（非範本）時，出席名單從完整球員名單（profiles）勾選，
+  // 預設全部未選，由發起人自己挑誰出席；也能在下面手動加訪客姓名。
+  async function loadAttendRosterPicker(){
+    document.getElementById('eventEditAttendLabel').textContent = '出席名單';
+    document.getElementById('eventEditRecurringWrap').style.display = 'none';
+    document.getElementById('eventEditRecurring').checked = false;
+    document.getElementById('eventEditAttendWrap').style.display = '';
+    const listEl = document.getElementById('eventEditAttendList');
+    listEl.innerHTML = '<div class="signup-empty">載入球員名單中…</div>';
+    try{
+      const profiles = await getProfiles();
+      const names = [...new Set(profiles.map(function(p){ return p.name; }).filter(Boolean))]
+        .sort(function(a, b){ return a.localeCompare(b); });
+      listEl.innerHTML = names.length
+        ? names.map(function(n){ return importRowHTML(n, false); }).join('')
+        : '<div class="signup-empty">尚無球員名單</div>';
+      if(names.length) wireImportToggleRows('eventEditAttendList');
+    } catch(e){
+      listEl.innerHTML = '<div class="signup-empty">讀取球員名單失敗，請稍後再試</div>';
+    }
+  }
+
+  function addGuestAttendRow(){
+    const input = document.getElementById('eventEditGuestName');
+    const name = input.value.trim();
+    if(!name) return;
+    const listEl = document.getElementById('eventEditAttendList');
+    const existing = [...listEl.querySelectorAll('.import-toggle-row')]
+      .find(function(row){ return row.dataset.name === name; });
+    if(existing){
+      existing.dataset.present = '1';
+      existing.querySelector('.import-toggle-status').textContent = '出席';
+      existing.querySelector('.import-toggle-status').setAttribute('style', importStatusStyle(true));
+    } else {
+      const empty = listEl.querySelector('.signup-empty');
+      if(empty) empty.remove();
+      listEl.insertAdjacentHTML('beforeend', importRowHTML(name, true));
+      attachToggleRow(listEl.lastElementChild);
+    }
+    input.value = '';
+    input.focus();
+  }
+  document.getElementById('eventEditGuestAdd').addEventListener('click', addGuestAttendRow);
+  document.getElementById('eventEditGuestName').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); addGuestAttendRow(); }
+  });
+
   // 選範本時順便把本月月繳名單抓進來排好「出席」預設值,存檔時一起送出去,
   // 不用另外再開一次匯入面板。
   async function applyEventTemplate(key){
     if(key !== 'whonext_badminton'){
-      document.getElementById('eventEditAttendWrap').style.display = 'none';
-      document.getElementById('eventEditAttendList').innerHTML = '';
-      document.getElementById('eventEditRecurringWrap').style.display = 'none';
-      document.getElementById('eventEditRecurring').checked = false;
+      await loadAttendRosterPicker();
       return;
     }
     const tpl = EVENT_TEMPLATES[key];
@@ -950,9 +1006,9 @@
       const memberResult = await apiGet({ action:'getMembers', month: month });
       const names = [...new Set((memberResult.members || []).map(function(m){ return m.name; }).filter(Boolean))]
         .sort(function(a, b){ return a.localeCompare(b); });
-      document.getElementById('eventEditAttendMonth').textContent = month;
+      document.getElementById('eventEditAttendLabel').textContent = '確認出席名單（' + month + '）';
       document.getElementById('eventEditAttendList').innerHTML = names.length
-        ? names.map(importRowHTML).join('')
+        ? names.map(function(n){ return importRowHTML(n, true); }).join('')
         : '<div class="signup-empty">本月尚無月繳名單</div>';
       if(names.length) wireImportToggleRows('eventEditAttendList');
       document.getElementById('eventEditAttendWrap').style.display = '';
@@ -1044,13 +1100,13 @@
               if(parts.length) importMsg = '，' + parts.join('、');
               await refreshEvents();
             } else {
-              importMsg = '，但月繳名單匯入失敗，請稍後手動匯入';
+              importMsg = '，但出席名單匯入失敗，請稍後手動匯入';
             }
           } catch(e){
-            importMsg = '，但月繳名單匯入失敗，請稍後手動匯入';
+            importMsg = '，但出席名單匯入失敗，請稍後手動匯入';
           }
         } else {
-          importMsg = '，但月繳名單匯入失敗，請稍後手動匯入';
+          importMsg = '，但出席名單匯入失敗，請稍後手動匯入';
         }
       }
       saveBtn.disabled = false;
@@ -1379,23 +1435,35 @@
       : 'color:var(--good); background:rgba(127,215,154,0.15);';
   }
 
-  function importRowHTML(name){
-    return '<div class="import-toggle-row" data-name="' + name + '" data-present="1">' +
-      '<span>' + name + '</span>' +
-      '<span class="import-toggle-status" style="' + importStatusStyle(true) + '">出席</span>' +
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  // present 預設 true（月繳名單匯入情境：預設出席，點掉才變未選）；
+  // 球員名單挑選／手動新增訪客則明確傳 present，各自符合預期的預設值。
+  function importRowHTML(name, present){
+    const isPresent = present !== false;
+    const safeName = escapeHtml(name);
+    return '<div class="import-toggle-row" data-name="' + safeName + '" data-present="' + (isPresent ? '1' : '0') + '">' +
+      '<span>' + safeName + '</span>' +
+      '<span class="import-toggle-status" style="' + importStatusStyle(isPresent) + '">' + (isPresent ? '出席' : '未選') + '</span>' +
     '</div>';
   }
 
-  function wireImportToggleRows(containerId){
-    document.querySelectorAll('#' + containerId + ' .import-toggle-row').forEach(function(row){
-      row.addEventListener('click', function(){
-        const nowPresent = row.dataset.present !== '1';
-        row.dataset.present = nowPresent ? '1' : '0';
-        const statusEl = row.querySelector('.import-toggle-status');
-        statusEl.textContent = nowPresent ? '出席' : '請假';
-        statusEl.setAttribute('style', importStatusStyle(nowPresent));
-      });
+  function attachToggleRow(row){
+    row.addEventListener('click', function(){
+      const nowPresent = row.dataset.present !== '1';
+      row.dataset.present = nowPresent ? '1' : '0';
+      const statusEl = row.querySelector('.import-toggle-status');
+      statusEl.textContent = nowPresent ? '出席' : '未選';
+      statusEl.setAttribute('style', importStatusStyle(nowPresent));
     });
+  }
+
+  function wireImportToggleRows(containerId){
+    document.querySelectorAll('#' + containerId + ' .import-toggle-row').forEach(attachToggleRow);
   }
 
   function showToast(msg){
