@@ -286,6 +286,14 @@
     flex-shrink:0; background:transparent; border:1px solid var(--line);
   }
   .guest-queue-remove:active{ background: rgba(255,255,255,0.06); }
+  .guest-queue-remove:disabled{ opacity:.5; }
+  .help-guest-referred{ margin-top:14px; }
+
+  .guest-cancel-link{
+    width:100%; font-size:12px; font-weight:700; color:var(--tertiary); text-decoration:underline;
+    text-align:center; padding:8px 0 0; background:transparent; border:none;
+  }
+  .guest-cancel-link:disabled{ opacity:.5; text-decoration:none; }
 
   .signup-switch-btn{
     font-size:11px; font-weight:700; color:var(--tertiary); padding:4px 10px;
@@ -469,6 +477,11 @@
           </div>
           <div class="signup-list" id="helpGuestList"></div>
           <button type="button" class="signup-submit" id="helpGuestSubmit" disabled>送出協助報名</button>
+
+          <div class="help-guest-referred">
+            <div class="edit-field-label">你協助報名的訪客</div>
+            <div class="signup-list" id="helpGuestReferredList"></div>
+          </div>
         </div>
       </div>
 
@@ -489,6 +502,7 @@
           <div class="edit-field-label">推薦人（選填，可從清單選或自己輸入）</div>
           <input type="text" id="signupReferrer" class="edit-input" list="signupReferrerList" placeholder="請輸入或選擇隊內推薦人，無則留空">
           <datalist id="signupReferrerList"></datalist>
+          <button type="button" class="guest-cancel-link" id="signupGuestCancelBtn">已經報名了？用這個姓名取消報名</button>
         </div>
 
         <button type="button" class="signup-submit" id="signupSubmit">送出報名</button>
@@ -1327,6 +1341,7 @@
         }).join('')
       : '<div class="signup-empty">尚未加入任何訪客</div>';
     submitBtn.disabled = helpGuestQueue.length === 0;
+    submitBtn.textContent = '送出協助報名';
   }
 
   function addHelpGuest(){
@@ -1380,6 +1395,95 @@
   }
   document.getElementById('helpGuestSubmit').addEventListener('click', submitHelpGuests);
 
+  // 列出「這個人推薦報名」的訪客，讓已報名的球員自己就能取消協助報名的
+  // 訪客，不用麻煩管理員。只認 type:'guest' 且 referrer 是自己，不會動到
+  // 任何球員（member 型別）的報名紀錄。
+  async function loadHelpGuestSignups(ev, currentName){
+    const listEl = document.getElementById('helpGuestReferredList');
+    listEl.innerHTML = '<div class="signup-empty">載入中…</div>';
+    try{
+      const result = await apiGet({ action:'getEventSignups', event_id: ev.id });
+      const referred = (result.signups || []).filter(function(s){
+        return s.type === 'guest' && s.referrer === currentName && (s.status === 'confirmed' || s.status === 'waitlist');
+      });
+      listEl.innerHTML = referred.length
+        ? referred.map(function(s){
+            return '<div class="guest-queue-row">' +
+              '<span>' + escapeHtml(s.guest_name) + (s.status === 'waitlist' ? '（候補）' : '') + '</span>' +
+              '<button type="button" class="guest-queue-remove" data-cancel-id="' + escapeHtml(s.id) + '">取消</button>' +
+            '</div>';
+          }).join('')
+        : '<div class="signup-empty">尚未協助任何訪客報名</div>';
+    } catch(e){
+      listEl.innerHTML = '<div class="signup-empty">讀取失敗，請稍後再試</div>';
+    }
+  }
+  document.getElementById('helpGuestReferredList').addEventListener('click', async function(e){
+    const btn = e.target.closest('[data-cancel-id]');
+    if(!btn || detailIndex === null) return;
+    btn.disabled = true;
+    btn.textContent = '取消中…';
+    try{
+      const result = await apiPost('cancelSignup', { id: btn.dataset.cancelId });
+      if(result && result.success){
+        showToast('已取消該訪客報名');
+        await refreshEvents();
+        if(detailIndex !== null) openEventDetail(detailIndex);
+        return;
+      }
+      showToast('取消失敗，請稍後再試');
+    } catch(err){
+      showToast('取消失敗，請稍後再試');
+    }
+    btn.disabled = false;
+    btn.textContent = '取消';
+  });
+
+  // 訪客報名不用登入，取消時只能靠自己輸入姓名去比對，安全起見一定要
+  // 只認 type:'guest' 的紀錄——不然有人輸入某個球員的姓名，就能把
+  // 那個球員（member 型別）已經確認的報名取消掉，這是絕對不能發生的。
+  async function cancelGuestByName(){
+    const nameInput = document.getElementById('signupGuestName');
+    const name = nameInput.value.trim();
+    if(!name){
+      nameInput.classList.add('invalid');
+      nameInput.focus();
+      showToast('請先輸入姓名');
+      return;
+    }
+    nameInput.classList.remove('invalid');
+    if(detailIndex === null) return;
+    const ev = EVENTS[detailIndex];
+    const btn = document.getElementById('signupGuestCancelBtn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '查詢中…';
+    try{
+      const result = await apiGet({ action:'getEventSignups', event_id: ev.id });
+      const match = (result.signups || []).find(function(s){
+        return s.type === 'guest' && s.guest_name === name && (s.status === 'confirmed' || s.status === 'waitlist');
+      });
+      if(!match){
+        showToast('找不到這個姓名的訪客報名紀錄');
+      } else {
+        const cancelResult = await apiPost('cancelSignup', { id: match.id });
+        if(cancelResult && cancelResult.success){
+          showToast('已取消報名');
+          nameInput.value = '';
+          await refreshEvents();
+          if(detailIndex !== null) openEventDetail(detailIndex);
+          return;
+        }
+        showToast('取消失敗，請稍後再試');
+      }
+    } catch(e){
+      showToast('取消失敗，請稍後再試');
+    }
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+  document.getElementById('signupGuestCancelBtn').addEventListener('click', cancelGuestByName);
+
   function openEventDetail(index, skipEntry){
     detailIndex = index;
     const ev = EVENTS[index];
@@ -1419,6 +1523,7 @@
       if(helpGuestQueueIndex !== index){ helpGuestQueue = []; helpGuestQueueIndex = index; }
       document.getElementById('helpGuestName').value = '';
       renderHelpGuestQueue();
+      loadHelpGuestSignups(ev, currentName);
     } else if(currentName){
       // 已登入、還沒報名這場：跳過選按鈕的步驟，直接顯示「以 X 身份報名」
       // ＋送出按鈕，開卡片後點一下就能報名完成。
