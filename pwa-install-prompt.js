@@ -42,15 +42,15 @@
   function content(){
     if (isInApp) {
       return {
-        title: '請用瀏覽器打開才能安裝',
-        sub: '點右上角「⋯」選單 → 選擇「在瀏覽器中開啟」，跳出去後就能加入主畫面。',
+        title: '請用瀏覽器打開加入主畫面，體驗全螢幕 App',
+        sub: '點擊「⋯」選單 → 選擇「在瀏覽器中開啟」，選擇分享圖示後再選「加入主畫面」。',
         install: false
       };
     }
     if (isIOS) {
       return {
         title: '加入主畫面，體驗全螢幕 App',
-        sub: '點下方工具列的分享圖示<span class="pwa-arrow-icon">⬆️</span>，再選「加入主畫面」。',
+        sub: '點下方工具列的分享圖示，再選「加入主畫面」。',
         install: false
       };
     }
