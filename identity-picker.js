@@ -216,7 +216,13 @@
   function renderGoogleButton(container, btnWrap, onCredential){
     if(!btnWrap) return;
     if(isBlockedForGoogle()){
-      btnWrap.innerHTML = '<div class="whoami-loading">App 內建瀏覽器無法使用 Google 登入，請改用 LINE 登入，或跳到瀏覽器開啟</div>';
+      // 直接藏起來，不留提示文字佔位——這個情境下 LINE 那顆本來就在
+      // 旁邊，不需要額外解釋，藏掉比留一段用不到的文字乾淨。連帶把
+      // 「或」分隔線也藏掉（它是 wrap 後面那個 sibling），不然只剩
+      // LINE 按鈕上面卻掛著一條「或」會很奇怪。
+      btnWrap.style.display = 'none';
+      var divider = btnWrap.nextElementSibling;
+      if(divider && divider.classList.contains('whoami-or-divider')) divider.style.display = 'none';
       return;
     }
     WhonextGis.onReady(function(){
