@@ -176,6 +176,9 @@
       <div class="wordmark">球員名冊</div>
     </div>
 
+    <div class="section-label"><span class="t">球員清單</span><span class="n" id="rosterCount">共 0 位</span></div>
+    <div class="member-list glass" id="rosterList"></div>
+
     <div class="month-nav">
       <button class="month-btn" id="prevBtn" onclick="stepMonth(-1)" aria-label="上一個月">‹</button>
       <div class="month-label">
@@ -251,6 +254,7 @@
   const DEFAULT_WEEKLY = 210;
   let currentMembers = [];
   let ALL_MEMBERS = [];
+  let ALL_PROFILES = [];
   let editingName = null;
   let sheetMode = 'edit';
   let currentMonth = null;
@@ -340,6 +344,62 @@
     } catch(e){
       // 讀取失敗就沿用快取（可能是空陣列），畫面稍後仍會顯示載入失敗的空狀態
     }
+  }
+
+  function loadCachedProfiles(){
+    const cached = getApiCache({ action:'getProfiles' });
+    if(cached) ALL_PROFILES = cached.profiles || [];
+    return !!cached;
+  }
+
+  async function refreshProfiles(){
+    try{
+      const result = await apiGet({ action:'getProfiles' });
+      setApiCache({ action:'getProfiles' }, result);
+      ALL_PROFILES = result.profiles || [];
+    } catch(e){
+      // 讀取失敗就沿用快取（可能是空陣列），畫面稍後仍會顯示載入失敗的空狀態
+    }
+  }
+
+  // 「球員清單」是身分主檔（profiles）跟月繳資料（members）合併顯示，
+  // 不是月繳名冊那種按月切換——一律顯示「目前」（有資料的最新一個月）
+  // 的錢包餘額，不受下面月份導覽影響，兩者是分開的兩件事。
+  function latestMonthlyBalance(name){
+    const ms = months();
+    if(!ms.length) return null;
+    const latest = ms[ms.length - 1];
+    const rec = ALL_MEMBERS.find(x=> String(x.month) === latest && x.name === name);
+    return rec ? (Number(rec.monthly_total_fee) || 0) : null;
+  }
+
+  function renderRoster(){
+    const list = document.getElementById('rosterList');
+    if(!list) return;
+    const rows = ALL_PROFILES.slice().sort((a, b)=> String(a.name).localeCompare(String(b.name)));
+    document.getElementById('rosterCount').textContent = '共 ' + rows.length + ' 位';
+
+    if(!rows.length){
+      list.innerHTML = '<div class="row"><div class="row-stat">尚無球員資料</div></div>';
+      return;
+    }
+
+    list.innerHTML = rows.map(function(p){
+      const registered = p.status === 'active';
+      const isAdmin = p.is_admin === true || p.is_admin === 'TRUE';
+      const balance = latestMonthlyBalance(p.name);
+      return '<div class="row">' +
+        '<div class="row-avatar">' + avatarInitial(p.name) + '</div>' +
+        '<div class="row-main">' +
+          '<div class="row-top">' +
+            '<div class="row-name">' + p.name + '</div>' +
+            '<div class="row-tag ' + (registered ? 'good' : 'warn') + '">' + (registered ? '已註冊' : '未註冊') + '</div>' +
+            (isAdmin ? '<div class="row-tag info">管理員</div>' : '') +
+          '</div>' +
+          '<div class="row-stat">' + (balance === null ? '本月無錢包紀錄' : '錢包餘額 $' + balance.toLocaleString()) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
   }
 
   function replaceMonthInAllMembers(m, updated){
@@ -650,17 +710,20 @@
   }
 
   (async function init(){
+    document.getElementById('rosterList').innerHTML = skeletonRowsHTML(5);
     document.getElementById('monthlyList').innerHTML = skeletonRowsHTML(5);
     document.getElementById('dropinList').innerHTML = skeletonRowsHTML(5);
 
     const hadCachedWeeks = loadCachedWeeks();
     loadCachedMembers();
+    if(loadCachedProfiles()) renderRoster();
     if(hadCachedWeeks){
       const cachedMs = months();
       if(cachedMs.length) renderMonth(cachedMs[cachedMs.length - 1]);
     }
 
-    await Promise.all([refreshWeeks(), refreshMembers()]);
+    await Promise.all([refreshWeeks(), refreshMembers(), refreshProfiles()]);
+    renderRoster();
     const ms = months();
     if(!ms.length){
       document.getElementById('monthLabel').textContent = '無資料';
