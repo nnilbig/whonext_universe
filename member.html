@@ -262,6 +262,7 @@
   const PREVIEW_COUNT = 4;
   let monthlyExpanded = false;
   let dropinExpanded = false;
+  let rosterExpanded = false;
 
   function splitNames(val){
     return String(val || '').split(',').map(s=>s.trim()).filter(Boolean);
@@ -384,7 +385,12 @@
       return;
     }
 
-    list.innerHTML = rows.map(function(p){
+    const visible = rosterExpanded ? rows : rows.slice(0, PREVIEW_COUNT);
+    const moreBtnHtml = rows.length > PREVIEW_COUNT
+      ? '<button type="button" class="more-row" id="rosterMoreBtn">' + (rosterExpanded ? '收合' : '顯示更多（還有 ' + (rows.length - PREVIEW_COUNT) + ' 位）') + '</button>'
+      : '';
+
+    const rowsHtml = visible.map(function(p){
       const registered = p.status === 'active';
       const isAdmin = p.is_admin === true || p.is_admin === 'TRUE';
       const balance = latestMonthlyBalance(p.name);
@@ -400,6 +406,10 @@
         '</div>' +
       '</div>';
     }).join('');
+
+    list.innerHTML = rowsHtml + moreBtnHtml;
+    const moreBtn = document.getElementById('rosterMoreBtn');
+    if(moreBtn) moreBtn.addEventListener('click', function(){ rosterExpanded = !rosterExpanded; renderRoster(); });
   }
 
   function replaceMonthInAllMembers(m, updated){
