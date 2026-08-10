@@ -110,16 +110,28 @@ function generateId(prefix) {
 // 信箱、而且這個 channel 有申請到 email 權限時才會有值，可能是空字串，
 // 呼叫端要自己處理「沒有 email」的情況。驗證失敗回傳 null。
 function verifyLineIdToken(idToken) {
-  if (!idToken) return null;
+  if (!idToken) {
+    Logger.log('verifyLineIdToken: 前端沒有送 idToken 過來（liff.getIDToken() 拿到空值）');
+    return null;
+  }
   const res = UrlFetchApp.fetch('https://api.line.me/oauth2/v2.1/verify', {
     method: 'post',
     payload: { id_token: idToken, client_id: LINE_CHANNEL_ID },
     muteHttpExceptions: true
   });
-  if (res.getResponseCode() !== 200) return null;
+  if (res.getResponseCode() !== 200) {
+    Logger.log('verifyLineIdToken: LINE verify 回傳 ' + res.getResponseCode() + '：' + res.getContentText());
+    return null;
+  }
   const info = JSON.parse(res.getContentText());
-  if (info.aud !== LINE_CHANNEL_ID) return null;
-  if (!info.sub) return null;
+  if (info.aud !== LINE_CHANNEL_ID) {
+    Logger.log('verifyLineIdToken: aud 不符，token 的 aud 是「' + info.aud + '」，設定的 LINE_CHANNEL_ID 是「' + LINE_CHANNEL_ID + '」');
+    return null;
+  }
+  if (!info.sub) {
+    Logger.log('verifyLineIdToken: verify 回傳沒有 sub：' + res.getContentText());
+    return null;
+  }
   return { sub: info.sub, name: info.name || '', picture: info.picture || '', email: info.email || '' };
 }
 
