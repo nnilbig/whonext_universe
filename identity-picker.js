@@ -112,21 +112,27 @@
   // 問，還可以直接略過。hideBack：從 nav「註冊」按鈕直接開這個畫面時
   // 不經過 renderStart，沒有上一步可回，就不顯示「‹」。
   function renderRegister(container, hideBack){
+    // in-app 瀏覽器裡 Google 整個用不了，與其顯示「選擇要用哪個帳號」
+    // 卻只有一個選項可點，不如直接跳過選擇的敘述、只給 LINE 註冊按鈕。
+    var googleBlocked = isBlockedForGoogle();
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-title">註冊</div>' +
-        '<div class="whoami-sub">選擇要用哪個帳號註冊，之後不管用哪一個登入都是同一個身份。</div>' +
-        '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
-        '<div class="whoami-or-divider">或</div>' +
+        (googleBlocked ? '' :
+          '<div class="whoami-sub">選擇要用哪個帳號註冊，之後不管用哪一個登入都是同一個身份。</div>' +
+          '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
+          '<div class="whoami-or-divider">或</div>') +
         '<button type="button" class="whoami-line-btn" id="wiLineRegisterBtn">使用 LINE 註冊</button>' +
         (hideBack ? '' : '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>') +
       '</div>';
 
     if(!hideBack) container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
 
-    renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), function(c, credential){
-      handleRegisterCredential(container, credential);
-    });
+    if(!googleBlocked){
+      renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), function(c, credential){
+        handleRegisterCredential(container, credential);
+      });
+    }
     container.querySelector('#wiLineRegisterBtn').addEventListener('click', function(){
       startLineFlow(container, 'register');
     });
