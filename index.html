@@ -188,6 +188,7 @@
     display:flex; align-items:center; justify-content:center;
     font-size:10.5px; font-weight:800; color:#000;
     background: var(--gold); border:2px solid #0a0a0a;
+    cursor:pointer;
   }
   .event-host-sep{ width:1px; height:14px; background:var(--line); flex-shrink:0; }
   .avatar-stack{ display:flex; margin-right:6px; }
@@ -196,6 +197,7 @@
     display:flex; align-items:center; justify-content:center;
     font-size:10.5px; font-weight:800; color:#000;
     border:2px solid #0a0a0a; margin-left:-8px;
+    cursor:pointer;
   }
   .avatar:first-child{ margin-left:0; }
   .avatar.n{ background: var(--n-accent); }
@@ -259,7 +261,7 @@
     display:flex; flex-wrap:wrap; gap:8px;
   }
   .detail-attendees-grid .avatar{
-    margin-left:0; cursor:default;
+    margin-left:0; cursor:pointer;
     width:44px; height:44px; font-size:15px;
   }
 
@@ -759,7 +761,7 @@
 
     const hostInfo = eventHostInfo(ev.title);
     const hostHTML = hostInfo
-      ? '<div class="avatar-host" title="發起人：' + hostInfo.name + '">' + avatarInitial(hostInfo.name) + '</div>' +
+      ? '<div class="avatar-host" title="發起人：' + escapeHtml(hostInfo.name) + '" data-name="發起人：' + escapeHtml(hostInfo.name) + '">' + avatarInitial(hostInfo.name) + '</div>' +
         '<div class="event-host-sep"></div>'
       : '';
 
@@ -769,8 +771,10 @@
 
     const shown = names.slice(0, 4);
     const extra = count - shown.length;
+    // 行動裝置沒有滑鼠 hover，title 顯示不出全名，所以頭像另外掛
+    // data-name，點擊時改用 toast 顯示（見 renderEvents 的點擊委派）。
     const avatarsHTML = shown.map(function(n, idx){
-      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '">' + avatarInitial(n) + '</div>';
+      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '" title="' + escapeHtml(n) + '" data-name="' + escapeHtml(n) + '">' + avatarInitial(n) + '</div>';
     }).join('') + (extra > 0 ? '<div class="avatar-more">+' + extra + '</div>' : '');
 
     let label = count + (attendance !== null ? ' 人出席' : ' 人已報名');
@@ -836,9 +840,17 @@
 
     list.querySelectorAll('.event-card').forEach(function(card){
       card.addEventListener('click', function(e){
-        if(e.target.closest('.event-status') || e.target.closest('.event-edit-btn')) return;
+        if(e.target.closest('.event-status') || e.target.closest('.event-edit-btn') || e.target.closest('[data-name]')) return;
         const skipEntry = !!e.target.closest('.event-cta-tag');
         openEventDetail(Number(card.dataset.index), skipEntry);
+      });
+    });
+
+    // 點頭像顯示全名（touch 裝置沒有 hover，title 這時候看不到）。
+    list.querySelectorAll('[data-name]').forEach(function(el){
+      el.addEventListener('click', function(e){
+        e.stopPropagation();
+        showToast(el.dataset.name);
       });
     });
 
@@ -1220,7 +1232,7 @@
     const names = Array.isArray(ev.signup_names) ? ev.signup_names : [];
     if(!names.length) return '<div class="detail-attendees-empty">尚無人報名</div>';
     return '<div class="detail-attendees-grid">' + names.map(function(n, idx){
-      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '" title="' + n + '">' + avatarInitial(n) + '</div>';
+      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '" title="' + escapeHtml(n) + '" data-name="' + escapeHtml(n) + '">' + avatarInitial(n) + '</div>';
     }).join('') + '</div>';
   }
 
@@ -1257,6 +1269,12 @@
   // 容器本身（不會被換掉）上用事件代理，不用每次重繪後重新綁定。
   document.getElementById('signupAsSelf').addEventListener('click', function(e){
     if(e.target && e.target.id === 'signupSwitchBtn') WhonextAuth.setPlayerName('');
+  });
+
+  // 點頭像顯示全名（touch 裝置沒有 hover，title 這時候看不到）。
+  document.getElementById('detailAttendees').addEventListener('click', function(e){
+    const el = e.target.closest('[data-name]');
+    if(el) showToast(el.dataset.name);
   });
 
   function renderMemberFields(currentName){
