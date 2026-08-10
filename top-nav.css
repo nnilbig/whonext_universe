@@ -26,7 +26,7 @@
 }
 .role-toggle-btn.active{ color: var(--label); }
 
-/* 有 Google 頭貼時是 <img>，沒有時是顯示姓名縮寫的 <span>——尺寸／
+/* 有 LINE 頭貼時是 <img>，沒有時是顯示姓名縮寫的 <span>——尺寸／
    邊框共用同一份規則，object-fit 只對 img 有效，span 不受影響。 */
 .nav-id-avatar{
   width:28px; height:28px; border-radius:50%; flex-shrink:0;

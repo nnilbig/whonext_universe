@@ -10,12 +10,14 @@
 // 還需要一個 profiles 分頁(一人一列的球員身分主檔,跟 members 那種每月覆寫的
 // 月繳名單分開),欄位標題:
 //   name, email, google_id, line_user_id, photo_url, referrer, registered_at, status, can_create_events, is_admin
-// status: legacy(舊名冊、還沒綁帳號) / active(已綁定 Google 或 LINE)
+// status: legacy(舊名冊、還沒綁帳號) / active(已綁定 LINE)
 // line_user_id 是 LINE 登入用的欄位，要手動加這個 column，沒有的話
 // lineLogin/registerLineProfile 會直接回錯誤，不會壞掉其他功能。
 // 既有球員名字可以用 gas/migrate_members_to_profiles.gs 批次匯入成 legacy 列
-// 管理員登入已經改成 Google email 驗證(比對 profiles.is_admin)，不再用帳密，
-// 舊的 auth 分頁/login action 已經移除，不用理它。
+// email/google_id 欄位是舊的 Google 登入留下來的歷史資料，現在只用 LINE
+// 登入，不會再寫入這兩欄，但保留舊資料不動——已經用 Google 註冊過的人
+// 只要用 LINE 拿一樣的暱稱再註冊一次，就會綁到同一筆 profile（見
+// registerLineProfile），不會變成兩筆重複資料。
 // ============================================
 
 const SHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
@@ -24,9 +26,6 @@ const MEMBERS_SHEET = 'members';
 const EVENTS_SHEET = 'events';
 const SIGNUPS_SHEET = 'signups';
 const PROFILES_SHEET = 'profiles';
-// 前端 identity-picker.js 用的同一組 Google OAuth Client ID，驗證 ID token
-// 時要確認 token 的 aud 等於這個值，不然任何 Google 專案簽出來的 token 都會過。
-const GOOGLE_CLIENT_ID = '702772011583-5g00roumo9mgruijtn3jhg525bot1cja.apps.googleusercontent.com';
 // 前端 LIFF SDK 用的 LIFF ID 是「{Channel ID}-{隨機碼}」，這裡只需要前面
 // 那段 Channel ID 來驗證 id_token 的 aud。LINE 的 verify endpoint 只吃
 // id_token + client_id 就能驗證簽章/效期，不像換 token 那樣需要 Channel
@@ -72,12 +71,6 @@ function doPost(e) {
     result = bulkSignupEvent(body.data);
   } else if (action === 'cancelSignup') {
     result = cancelSignup(body.data);
-  } else if (action === 'googleLogin') {
-    result = googleLogin(body.data);
-  } else if (action === 'googleAdminLogin') {
-    result = googleAdminLogin(body.data);
-  } else if (action === 'registerGoogleProfile') {
-    result = registerGoogleProfile(body.data);
   } else if (action === 'lineLogin') {
     result = lineLogin(body.data);
   } else if (action === 'registerLineProfile') {
@@ -101,24 +94,6 @@ function normalizeDateValue(val) {
 
 function generateId(prefix) {
   return prefix + '_' + Utilities.getUuid().replace(/-/g, '').slice(0, 10);
-}
-
-// 驗證前端 Google Identity Services 送來的 ID token(JWT)，不能只信任前端
-// 解出來的內容 —— 打 Google 官方的 tokeninfo endpoint，讓 Google 幫忙驗簽章
-// 跟過期時間，這邊只要再確認 aud 是我們自己的 Client ID、email 有驗證過即可。
-// 驗證失敗回傳 null。
-function verifyGoogleCredential(credential) {
-  if (!credential) return null;
-  const res = UrlFetchApp.fetch(
-    'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(credential),
-    { muteHttpExceptions: true }
-  );
-  if (res.getResponseCode() !== 200) return null;
-  const info = JSON.parse(res.getContentText());
-  if (info.aud !== GOOGLE_CLIENT_ID) return null;
-  if (info.email_verified !== 'true' && info.email_verified !== true) return null;
-  if (!info.email || !info.sub) return null;
-  return { email: info.email, name: info.name || '', picture: info.picture || '', sub: info.sub };
 }
 
 // 驗證前端 LIFF SDK(liff.getIDToken())送來的 ID token，打 LINE 官方的
@@ -288,24 +263,8 @@ function getProfiles() {
   return { profiles };
 }
 
-// email 比對 profiles，找到就回傳整列資料(物件)，找不到回傳 null。
-// googleLogin/googleAdminLogin 共用，避免各自重複讀表的邏輯。
-function findProfileByEmail(email) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PROFILES_SHEET);
-  const rows = sheet.getDataRange().getValues();
-  const headers = rows.shift();
-  const emailCol = headers.indexOf('email');
-
-  const row = rows.find(r => r[emailCol] && String(r[emailCol]).toLowerCase() === email.toLowerCase());
-  if (!row) return null;
-  const profile = {};
-  headers.forEach((h, i) => { profile[h] = row[i]; });
-  return profile;
-}
-
 // line_user_id 比對 profiles，找到就回傳整列資料(物件)，找不到回傳 null。
-// 跟 findProfileByEmail 對稱，只是換一個欄位比對。line_user_id 這個
-// column 還沒手動加進表格的話直接回傳 null，不要噴錯。
+// line_user_id 這個 column 還沒手動加進表格的話直接回傳 null，不要噴錯。
 function findProfileByLineId(lineUserId) {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PROFILES_SHEET);
   const rows = sheet.getDataRange().getValues();
@@ -320,31 +279,8 @@ function findProfileByLineId(lineUserId) {
   return profile;
 }
 
-// 「登入」用的 Google 快速登入：只認已經綁定過的帳號(email 對得到)，
-// 對不到就請前端導去「註冊」流程，不在這裡自動配對/建檔(那是註冊的事)。
-function googleLogin(data) {
-  const account = verifyGoogleCredential(data && data.credential);
-  if (!account) return { success: false, reason: 'invalid_token' };
-
-  const profile = findProfileByEmail(account.email);
-  if (profile) return { success: true, matched: true, profile: profile };
-  return { success: true, matched: false, account: account };
-}
-
-// 管理員登入：Google email 比對 profiles.is_admin，勾選格讀出來可能是
-// 布林 true 也可能是文字 'TRUE'，兩種都要認得。
-function googleAdminLogin(data) {
-  const account = verifyGoogleCredential(data && data.credential);
-  if (!account) return { success: false, reason: 'invalid_token' };
-
-  const profile = findProfileByEmail(account.email);
-  const isAdmin = !!profile && (profile.is_admin === true || profile.is_admin === 'TRUE');
-  if (!isAdmin) return { success: false, reason: 'not_admin' };
-  return { success: true, name: profile.name };
-}
-
 // 「登入」用的 LINE 快速登入：只認已經綁定過的帳號(line_user_id 對得到)，
-// 對不到就請前端導去「註冊」流程，邏輯跟 googleLogin 對稱。
+// 對不到就請前端導去「註冊」流程，不在這裡自動配對/建檔(那是註冊的事)。
 function lineLogin(data) {
   const account = verifyLineIdToken(data && data.idToken);
   if (!account) return { success: false, reason: 'invalid_token' };
@@ -447,64 +383,9 @@ function saveEvents(data) {
 
 // 註冊流程：使用者在「選擇暱稱」欄位手動挑/打了一個名字，這裡直接照那
 // 個名字判斷是綁定還是新建，不用像舊版那樣先讓使用者確認候選名單：
-//   - 名字剛好等於某筆還沒綁 Google 的 profiles.name(不限 status，舊名冊
-//     legacy 或已經用 LINE 註冊過的 active 都算——同一個人想「換一個
-//     管道也能登入」，不是只有第一次註冊才能綁) -> 綁定那一列
-//   - 沒對到 -> 開一筆全新的 profiles(status 直接是 active)
-// 兩種情況都重新驗證一次 token，不信任前端傳來的 email/google_id，避免
-// 竄改 request 冒充別人。
-function registerGoogleProfile(data) {
-  const account = verifyGoogleCredential(data && data.credential);
-  if (!account) return { success: false, reason: 'invalid_token' };
-  const name = String((data && data.name) || '').trim();
-  if (!name) return { success: false, reason: 'missing_name' };
-
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PROFILES_SHEET);
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const rows = sheet.getDataRange().getValues();
-  const nameCol = headers.indexOf('name');
-  const emailCol = headers.indexOf('email');
-
-  const alreadyBound = rows.slice(1).some(r => r[emailCol] && String(r[emailCol]).toLowerCase() === account.email.toLowerCase());
-  if (alreadyBound) return { success: false, reason: 'already_bound' };
-
-  let legacyRow = -1;
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][nameCol] === name && !rows[i][emailCol]) {
-      legacyRow = i + 1;
-      break;
-    }
-  }
-
-  const updates = { email: account.email, google_id: account.sub, photo_url: account.picture, registered_at: new Date(), status: 'active' };
-
-  if (legacyRow > 0) {
-    headers.forEach((h, i) => {
-      if (updates[h] !== undefined) sheet.getRange(legacyRow, i + 1).setValue(updates[h]);
-    });
-    return { success: true, profile: Object.assign({ name: name }, updates) };
-  }
-
-  // profiles.name 是整個系統拿來對應報名/賽事發起人的主鍵，同名會撞到別人
-  // 的資料，這裡擋掉並請使用者換個暱稱，不要靜默改名造成混淆。
-  const nameTaken = rows.slice(1).some(r => r[nameCol] === name);
-  if (nameTaken) return { success: false, reason: 'name_taken' };
-
-  const newRow = headers.map(h => {
-    if (h === 'name') return name;
-    if (updates[h] !== undefined) return updates[h];
-    if (h === 'can_create_events' || h === 'is_admin') return false;
-    return '';
-  });
-  sheet.getRange(sheet.getLastRow() + 1, 1, 1, headers.length).setValues([newRow]);
-
-  return { success: true, profile: Object.assign({ name: name }, updates) };
-}
-
-// 註冊流程（LINE 版），邏輯跟 registerGoogleProfile 對稱：
 //   - 名字剛好等於某筆還沒綁 LINE 的 profiles.name(不限 status，舊名冊
-//     legacy 或已經用 Google 註冊過的 active 都算——同一個人想「換一個
-//     管道也能登入」，不是只有第一次註冊才能綁) -> 綁定那一列
+//     legacy 或以前用 Google 註冊過、留有 email 的 active 都算——同一個
+//     人的舊資料想換成 LINE 繼續用，不是只有第一次註冊才能綁) -> 綁定那一列
 //   - 沒對到 -> 開一筆全新的 profiles(status 直接是 active)
 // LINE 的 email 不一定拿得到(沒申請 email 權限，或使用者沒綁信箱)，
 // photo_url/email 只有真的有值才寫入，不會用空字串蓋掉既有欄位。

@@ -109,7 +109,7 @@
     html += '<button type="button" class="role-toggle-btn" data-action="logout">登出</button>';
     toggle.innerHTML = html;
 
-    // 有綁定 Google 頭像照片就優先顯示，載入失敗（連結失效／被擋）就
+    // 有綁定 LINE 頭像照片就優先顯示，載入失敗（連結失效／被擋）就
     // 退回原本的姓名縮寫圓圈，不留一格空白圖示。
     var avatarImg = toggle.querySelector('img.nav-id-avatar');
     if(avatarImg){
