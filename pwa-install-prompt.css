@@ -26,7 +26,7 @@
   flex-shrink:0; width:42px; height:42px; border-radius:12px;
   background:#000; border:1px solid var(--line);
   display:flex; align-items:center; justify-content:center;
-  font-size:14px; font-weight:900; letter-spacing:-1px;
+  font-family:'Archivo Black', var(--sf); font-weight:400; font-size:13px; letter-spacing:0;
 }
 .pwa-prompt-badge .pwa-w{ color: var(--gold); }
 .pwa-prompt-badge .pwa-u{ color: var(--label); }
