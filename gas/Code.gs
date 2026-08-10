@@ -566,6 +566,11 @@ function registerLineProfile(data) {
   const customNameCol = headers.indexOf('custom_name');
   const lineIdCol = headers.indexOf('line_user_id');
   if (lineIdCol < 0) return { success: false, reason: 'missing_line_user_id_column' };
+  // player_id 是主鍵，這欄位如果不存在，headers.map() 寫新列時會靜默漏
+  // 寫這一格(不會噴錯)，後面 bindCustomName/linkProviderProfile 都靠這個
+  // 欄位找人，漏寫會變成「明明剛註冊，綁暱稱卻找不到 player_not_found」
+  // 這種難查的狀況——寧可在這裡直接擋掉，也不要默默建一筆壞資料。
+  if (headers.indexOf('player_id') < 0) return { success: false, reason: 'missing_player_id_column' };
 
   const alreadyBound = rows.slice(1).some(r => r[lineIdCol] && String(r[lineIdCol]) === String(account.sub));
   if (alreadyBound) return { success: false, reason: 'already_bound' };
@@ -611,6 +616,7 @@ function registerGoogleProfile(data) {
   const customNameCol = headers.indexOf('custom_name');
   const googleIdCol = headers.indexOf('google_id');
   if (googleIdCol < 0) return { success: false, reason: 'missing_google_id_column' };
+  if (headers.indexOf('player_id') < 0) return { success: false, reason: 'missing_player_id_column' };
 
   const alreadyBound = rows.slice(1).some(r => r[googleIdCol] && String(r[googleIdCol]) === String(account.sub));
   if (alreadyBound) return { success: false, reason: 'already_bound' };
