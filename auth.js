@@ -1,18 +1,34 @@
 (function(){
   var ROLE_KEY = 'whonext_role';
   var PLAYER_NAME_KEY = 'whonext_player_name';
+  var GUEST_NAME_KEY = 'whonext_guest_name';
+  var GOOGLE_CLIENT_ID = '702772011583-5g00roumo9mgruijtn3jhg525bot1cja.apps.googleusercontent.com';
   var IDLE_LIMIT_MS = 5 * 60 * 1000;
   var idleTimer = null;
 
   function getRole(){ return localStorage.getItem(ROLE_KEY) || 'player'; }
 
   function getPlayerName(){ return localStorage.getItem(PLAYER_NAME_KEY) || ''; }
+  function getGuestName(){ return localStorage.getItem(GUEST_NAME_KEY) || ''; }
 
   // 設定/清除目前綁定的球員身分，並同步更新 top nav 的頭像顯示，
-  // 讓正在看 profile.html 的頁面也能透過事件即時重繪。
+  // 讓正在看 profile.html 的頁面也能透過事件即時重繪。球員身分／訪客
+  // 身分互斥，設一個就把另一個清掉，避免 nav 同時顯示兩種身分。
   function setPlayerName(name){
     if(name) localStorage.setItem(PLAYER_NAME_KEY, name);
     else localStorage.removeItem(PLAYER_NAME_KEY);
+    if(name) localStorage.removeItem(GUEST_NAME_KEY);
+    updateNavRoleToggle();
+    document.dispatchEvent(new CustomEvent('whonext:playername-change'));
+  }
+
+  // 訪客身分：沒有綁定 Google 帳號、也不是 profiles 裡的正式球員，純粹
+  // 記住一個顯示名稱，跟球員身分共用同一個變動事件，讓各頁面重繪邏輯
+  // 不用另外再監聽一次。
+  function setGuestName(name){
+    if(name) localStorage.setItem(GUEST_NAME_KEY, name);
+    else localStorage.removeItem(GUEST_NAME_KEY);
+    if(name) localStorage.removeItem(PLAYER_NAME_KEY);
     updateNavRoleToggle();
     document.dispatchEvent(new CustomEvent('whonext:playername-change'));
   }
@@ -64,7 +80,8 @@
   }
 
   // Top nav 的「球員／管理員」切換鈕，反映目前角色的 active 狀態；
-  // 球員那顆按鈕如果已經綁定身分，改顯示頭像＋姓名取代「球員」文字。
+  // 球員那顆按鈕如果已經綁定身分（球員或訪客都算），改顯示頭像＋姓名
+  // 取代「登入」文字，兩者互斥所以只要挑一個顯示就好。
   function updateNavRoleToggle(){
     var isAdmin = getRole() === 'admin';
     document.querySelectorAll('#navRoleToggle .role-toggle-btn').forEach(function(btn){
@@ -72,7 +89,7 @@
     });
     var playerBtn = document.querySelector('#navRoleToggle .role-toggle-btn[data-role="player"]');
     if(playerBtn){
-      var name = getPlayerName();
+      var name = getPlayerName() || getGuestName();
       if(name){
         playerBtn.classList.add('has-identity');
         playerBtn.innerHTML = '<span class="nav-id-avatar">' + avatarInitial(name) + '</span><span class="nav-id-name">' + name + '</span>';
@@ -100,19 +117,18 @@
     if(overlay) overlay.classList.remove('open');
   }
 
-  // 管理員登入永遠從「Google 驗證」這步開始，帳密表單只是第二步，
-  // 每次重開都要重置，不然會停在上次登入到一半的畫面。
+  // 管理員登入用真的 Google 帳號，後端比對 email 是否在 profiles 的
+  // is_admin 名單內。每次重開都要重置成起始畫面，不然會停在上次沒登入
+  // 成功時顯示的錯誤訊息。
   function openAdminLogin(){
     closeNavLogin();
     var overlay = document.getElementById('adminLoginOverlay');
     if(!overlay) return;
     document.getElementById('adminLoginStart').style.display = '';
     document.getElementById('adminLoginVerifying').style.display = 'none';
-    document.getElementById('adminLoginForm').style.display = 'none';
-    document.getElementById('adminLoginUser').value = '';
-    document.getElementById('adminLoginPass').value = '';
     document.getElementById('adminLoginError').style.display = 'none';
     overlay.classList.add('open');
+    renderAdminGoogleButton();
   }
 
   function closeAdminLogin(){
@@ -120,48 +136,39 @@
     if(overlay) overlay.classList.remove('open');
   }
 
-  // 「使用 Google 繼續」目前還是假的（沒有真的 OAuth），驗證中轉場後
-  // 直接進到真正會打後端 login API 的帳密表單，實際登入判斷還是靠那步。
-  function startAdminGoogleVerify(){
-    document.getElementById('adminLoginStart').style.display = 'none';
-    document.getElementById('adminLoginVerifying').style.display = '';
-    setTimeout(function(){
-      document.getElementById('adminLoginVerifying').style.display = 'none';
-      document.getElementById('adminLoginForm').style.display = '';
-      var userInput = document.getElementById('adminLoginUser');
-      if(userInput) userInput.focus();
-    }, 500);
+  // 跟 identity-picker.js 同一套 GIS 按鈕邏輯，共用 backend.js 的
+  // WhonextGis 載入器，不用各自注入一次 script。
+  function renderAdminGoogleButton(){
+    var btnWrap = document.getElementById('adminGoogleBtnWrap');
+    if(!btnWrap || !window.WhonextGis) return;
+    WhonextGis.onReady(function(){
+      if(!document.body.contains(btnWrap)) return;
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: function(response){ submitAdminGoogleLogin(response.credential); }
+      });
+      btnWrap.innerHTML = '';
+      google.accounts.id.renderButton(btnWrap, { theme:'filled_black', shape:'pill', size:'large', text:'continue_with', width:240 });
+    });
   }
 
-  async function submitAdminLogin(){
-    var user = document.getElementById('adminLoginUser').value.trim();
-    var pass = document.getElementById('adminLoginPass').value;
-    var errorEl = document.getElementById('adminLoginError');
-    errorEl.style.display = 'none';
-    if(!user || !pass){
-      errorEl.textContent = '請輸入帳號密碼';
-      errorEl.style.display = 'block';
-      return;
-    }
-    var btn = document.getElementById('adminLoginSubmit');
-    btn.disabled = true;
-    btn.textContent = '登入中…';
+  async function submitAdminGoogleLogin(credential){
+    document.getElementById('adminLoginStart').style.display = 'none';
+    document.getElementById('adminLoginVerifying').style.display = '';
     try{
-      var result = await apiPost('login', { username: user, password: pass });
+      var result = await apiPost('googleAdminLogin', { credential: credential });
       if(result && result.success){
         setRole('admin');
         closeAdminLogin();
-      } else {
-        errorEl.textContent = '帳號或密碼錯誤';
-        errorEl.style.display = 'block';
+        return;
       }
     } catch(e){
-      errorEl.textContent = '無法連線後台，請稍後再試';
-      errorEl.style.display = 'block';
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '登入';
+      // 連線失敗也走下面同一套「顯示錯誤、回到起始畫面」處理
     }
+    document.getElementById('adminLoginVerifying').style.display = 'none';
+    document.getElementById('adminLoginStart').style.display = '';
+    document.getElementById('adminLoginError').style.display = 'block';
+    renderAdminGoogleButton();
   }
 
   // nav 上只剩「登入／頭像」這顆按鈕（管理員登入從我的錢包／我的活動
@@ -183,22 +190,18 @@
         setPlayerName('');
         return;
       }
+      if(getGuestName()){
+        setGuestName('');
+        return;
+      }
       openNavLogin();
     });
 
-    var googleBtn = document.getElementById('adminGoogleBtn');
-    if(googleBtn) googleBtn.addEventListener('click', startAdminGoogleVerify);
     var cancelStartBtn = document.getElementById('adminLoginCancelStart');
     if(cancelStartBtn) cancelStartBtn.addEventListener('click', closeAdminLogin);
-    var cancelBtn = document.getElementById('adminLoginCancel');
-    if(cancelBtn) cancelBtn.addEventListener('click', closeAdminLogin);
-    var submitBtn = document.getElementById('adminLoginSubmit');
-    if(submitBtn) submitBtn.addEventListener('click', submitAdminLogin);
     var overlay = document.getElementById('adminLoginOverlay');
     if(overlay){
       overlay.addEventListener('click', function(e){ if(e.target === overlay) closeAdminLogin(); });
-      var passInput = document.getElementById('adminLoginPass');
-      if(passInput) passInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') submitAdminLogin(); });
     }
 
     var navLoginOverlay = document.getElementById('navLoginOverlay');
@@ -207,10 +210,10 @@
     }
   }
 
-  // 選完身份（chooseIdentity 呼叫 setPlayerName）就把 nav 的登入 overlay
-  // 收起來，回到原本正在看的頁面，不用手動再關一次。
+  // 選完/建完身份（球員或訪客）就把 nav 的登入 overlay 收起來，回到原本
+  // 正在看的頁面，不用手動再關一次。
   document.addEventListener('whonext:playername-change', function(){
-    if(getPlayerName()) closeNavLogin();
+    if(getPlayerName() || getGuestName()) closeNavLogin();
   });
 
   document.addEventListener('DOMContentLoaded', function(){
@@ -223,6 +226,7 @@
   window.WhonextAuth = {
     ROLE_KEY: ROLE_KEY, getRole: getRole, setRole: setRole,
     getPlayerName: getPlayerName, setPlayerName: setPlayerName,
+    getGuestName: getGuestName, setGuestName: setGuestName,
     openAdminLogin: openAdminLogin
   };
 })();

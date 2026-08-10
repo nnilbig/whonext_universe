@@ -45,6 +45,33 @@ function avatarInitial(name){
 }
 
 // ---------------------------------------------------------------
+// Google Identity Services 共用載入器。identity-picker.js（球員登入／
+// 註冊）跟 auth.js（管理員登入）都要用到 GIS 的按鈕，共用同一份 script
+// 標籤跟 ready callback queue，避免兩邊各自注入一次。
+// ---------------------------------------------------------------
+window.WhonextGis = (function(){
+  var ready = false;
+  var queue = [];
+  function onReady(cb){
+    if(ready){ cb(); return; }
+    queue.push(cb);
+  }
+  if(!document.getElementById('google-identity-services')){
+    var s = document.createElement('script');
+    s.id = 'google-identity-services';
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = function(){
+      ready = true;
+      queue.forEach(function(cb){ cb(); });
+      queue = [];
+    };
+    document.head.appendChild(s);
+  }
+  return { onReady: onReady };
+})();
+
+// ---------------------------------------------------------------
 // 「我的錢包」餘額規則。members 表目前還沒有專門的餘額欄位，先直接
 // 把 monthly_total_fee 當作錢包餘額的數字來源；之後有專門的儲值／
 // 支付紀錄表時，這裡再換成真的加總算法。

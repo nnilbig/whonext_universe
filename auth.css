@@ -8,7 +8,6 @@ body.is-admin .admin-only.flex{ display:flex; }
 
 /* ---------- ADMIN LOGIN MODAL (shared, injected by top-nav.js) ---------- */
 .nav-login-title{ font-size:16px; font-weight:800; margin-bottom:16px; color:var(--label); }
-.nav-login-field-label{ font-size:11px; color:var(--tertiary); margin: 0 2px 6px; }
 .nav-login-input{
   width:100%; box-sizing:border-box;
   font-family: var(--sf-mono, monospace); font-size:16px; color: var(--label);
@@ -17,23 +16,18 @@ body.is-admin .admin-only.flex{ display:flex; }
   padding: 11px 14px; margin-bottom:14px;
 }
 .nav-login-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
-.nav-login-actions{ display:flex; gap:8px; margin-top:2px; }
-.nav-login-actions button{ flex:1; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px; }
-.nav-login-cancel{ background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--secondary); }
-.nav-login-submit{ background: var(--label); color:#000; }
-.nav-login-submit:disabled{ opacity:.5; }
 
 /* ---------- IDENTITY PICKER (shared, injected by identity-picker.js) ---------- */
 .whoami-card{ padding:20px; margin-bottom:10px; }
 .whoami-title{ font-size:14px; font-weight:800; margin-bottom:4px; }
 .whoami-sub{ font-size:12px; color:var(--secondary); margin-bottom:14px; line-height:1.5; }
 
-.gbtn{
-  width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
-  background:#fff; color:#1f1f1f; font-size:14px; font-weight:600;
-  padding:12px; border-radius:10px; border:1px solid #dadce0;
+.whoami-branch-row{ display:flex; gap:8px; }
+.whoami-branch-btn{
+  flex:1; font-size:13.5px; font-weight:700; padding:14px 0; border-radius:12px; text-align:center;
+  background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--label);
 }
-.gbtn:active{ background:#f7f7f7; }
+.whoami-branch-btn:active{ background: rgba(255,255,255,0.09); }
 
 .whoami-secondary-btn{
   display:block; width:100%; text-align:center;

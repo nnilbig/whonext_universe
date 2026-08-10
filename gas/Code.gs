@@ -9,15 +9,16 @@
 //   id, event_id, type, member_name, guest_name, referrer, status, created_at
 // 還需要一個 profiles 分頁(一人一列的球員身分主檔,跟 members 那種每月覆寫的
 // 月繳名單分開),欄位標題:
-//   name, email, google_id, photo_url, referrer, registered_at, status, can_create_events
+//   name, email, google_id, photo_url, referrer, registered_at, status, can_create_events, is_admin
 // status: legacy(舊名冊、還沒綁 Google 帳號) / active(已綁定)
 // 既有球員名字可以用 gas/migrate_members_to_profiles.gs 批次匯入成 legacy 列
+// 管理員登入已經改成 Google email 驗證(比對 profiles.is_admin)，不再用帳密，
+// 舊的 auth 分頁/login action 已經移除，不用理它。
 // ============================================
 
 const SHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
 const WEEKS_SHEET = 'weeks';
 const MEMBERS_SHEET = 'members';
-const AUTH_SHEET = 'auth';
 const EVENTS_SHEET = 'events';
 const SIGNUPS_SHEET = 'signups';
 const PROFILES_SHEET = 'profiles';
@@ -58,8 +59,6 @@ function doPost(e) {
     result = saveMembers(body.data);
   } else if (action === 'saveEvents') {
     result = saveEvents(body.data);
-  } else if (action === 'login') {
-    result = verifyLogin(body.data);
   } else if (action === 'signupEvent') {
     result = signupEvent(body.data);
   } else if (action === 'bulkSignupEvent') {
@@ -68,10 +67,10 @@ function doPost(e) {
     result = cancelSignup(body.data);
   } else if (action === 'googleLogin') {
     result = googleLogin(body.data);
-  } else if (action === 'bindGoogleProfile') {
-    result = bindGoogleProfile(body.data);
-  } else if (action === 'createGoogleProfile') {
-    result = createGoogleProfile(body.data);
+  } else if (action === 'googleAdminLogin') {
+    result = googleAdminLogin(body.data);
+  } else if (action === 'registerGoogleProfile') {
+    result = registerGoogleProfile(body.data);
   } else {
     result = { error: '未知的 action: ' + action };
   }
@@ -259,38 +258,42 @@ function getProfiles() {
   return { profiles };
 }
 
-// Google 登入比對邏輯(對齊 demo.html 的 gauth mock)：
-//   1. email 優先比對：token 的 email 已經綁在某筆 profiles 上 -> 直接登入。
-//   2. 既有名稱配對：email 沒對到，但 Google 顯示名稱剛好等於某筆還沒綁定
-//      (status=legacy 且沒有 email) 的 profiles.name -> 回傳候選名單，前端
-//      跳「是否綁定既有球員身份？」讓使用者手動確認，不自動綁定。
-//   3. 兩者都沒對到 -> 回傳 account 資料，前端走自動建檔。
+// email 比對 profiles，找到就回傳整列資料(物件)，找不到回傳 null。
+// googleLogin/googleAdminLogin 共用，避免各自重複讀表的邏輯。
+function findProfileByEmail(email) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PROFILES_SHEET);
+  const rows = sheet.getDataRange().getValues();
+  const headers = rows.shift();
+  const emailCol = headers.indexOf('email');
+
+  const row = rows.find(r => r[emailCol] && String(r[emailCol]).toLowerCase() === email.toLowerCase());
+  if (!row) return null;
+  const profile = {};
+  headers.forEach((h, i) => { profile[h] = row[i]; });
+  return profile;
+}
+
+// 「登入」用的 Google 快速登入：只認已經綁定過的帳號(email 對得到)，
+// 對不到就請前端導去「註冊」流程，不在這裡自動配對/建檔(那是註冊的事)。
 function googleLogin(data) {
   const account = verifyGoogleCredential(data && data.credential);
   if (!account) return { success: false, reason: 'invalid_token' };
 
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PROFILES_SHEET);
-  const rows = sheet.getDataRange().getValues();
-  const headers = rows.shift();
-  const nameCol = headers.indexOf('name');
-  const emailCol = headers.indexOf('email');
-  const statusCol = headers.indexOf('status');
+  const profile = findProfileByEmail(account.email);
+  if (profile) return { success: true, matched: true, profile: profile };
+  return { success: true, matched: false, account: account };
+}
 
-  const boundRow = rows.find(r => r[emailCol] && String(r[emailCol]).toLowerCase() === account.email.toLowerCase());
-  if (boundRow) {
-    const profile = {};
-    headers.forEach((h, i) => { profile[h] = boundRow[i]; });
-    return { success: true, matched: 'active', profile: profile, account: account };
-  }
+// 管理員登入：Google email 比對 profiles.is_admin，勾選格讀出來可能是
+// 布林 true 也可能是文字 'TRUE'，兩種都要認得。
+function googleAdminLogin(data) {
+  const account = verifyGoogleCredential(data && data.credential);
+  if (!account) return { success: false, reason: 'invalid_token' };
 
-  const candidates = rows
-    .filter(r => r[statusCol] === 'legacy' && !r[emailCol] && r[nameCol] === account.name)
-    .map(r => r[nameCol]);
-  if (candidates.length > 0) {
-    return { success: true, matched: 'legacy_candidates', candidates: candidates, account: account };
-  }
-
-  return { success: true, matched: 'none', account: account };
+  const profile = findProfileByEmail(account.email);
+  const isAdmin = !!profile && (profile.is_admin === true || profile.is_admin === 'TRUE');
+  if (!isAdmin) return { success: false, reason: 'not_admin' };
+  return { success: true, name: profile.name };
 }
 
 // -------- 寫入 --------
@@ -384,14 +387,18 @@ function saveEvents(data) {
   return { success: true, count: newRows.length, events: data };
 }
 
-// 把已驗證的 Google 帳號併進一筆既有的 legacy profiles 資料(googleLogin
-// 回傳的候選名單裡選一個)。重新驗證一次 token，不信任前端傳來的 email/
-// google_id，避免有人竄改 request 冒充綁定別人的帳號。
-function bindGoogleProfile(data) {
+// 註冊流程：使用者在「選擇暱稱」欄位手動挑/打了一個名字，這裡直接照那
+// 個名字判斷是綁定還是新建，不用像舊版那樣先讓使用者確認候選名單：
+//   - 名字剛好等於某筆還沒綁定(status=legacy 且沒有 email)的 profiles.name
+//     -> 綁定那一列
+//   - 沒對到 -> 開一筆全新的 profiles(status 直接是 active)
+// 兩種情況都重新驗證一次 token，不信任前端傳來的 email/google_id，避免
+// 竄改 request 冒充別人。
+function registerGoogleProfile(data) {
   const account = verifyGoogleCredential(data && data.credential);
   if (!account) return { success: false, reason: 'invalid_token' };
-  const legacyName = data && data.name;
-  if (!legacyName) return { success: false, reason: 'missing_name' };
+  const name = String((data && data.name) || '').trim();
+  if (!name) return { success: false, reason: 'missing_name' };
 
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PROFILES_SHEET);
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -400,53 +407,40 @@ function bindGoogleProfile(data) {
   const statusCol = headers.indexOf('status');
   const emailCol = headers.indexOf('email');
 
-  let targetRow = -1;
+  const alreadyBound = rows.slice(1).some(r => r[emailCol] && String(r[emailCol]).toLowerCase() === account.email.toLowerCase());
+  if (alreadyBound) return { success: false, reason: 'already_bound' };
+
+  let legacyRow = -1;
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][nameCol] === legacyName && rows[i][statusCol] === 'legacy' && !rows[i][emailCol]) {
-      targetRow = i + 1;
+    if (rows[i][nameCol] === name && rows[i][statusCol] === 'legacy' && !rows[i][emailCol]) {
+      legacyRow = i + 1;
       break;
     }
   }
-  if (targetRow < 0) return { success: false, reason: 'not_found' };
 
   const updates = { email: account.email, google_id: account.sub, photo_url: account.picture, registered_at: new Date(), status: 'active' };
-  headers.forEach((h, i) => {
-    if (updates[h] !== undefined) sheet.getRange(targetRow, i + 1).setValue(updates[h]);
-  });
 
-  return { success: true, profile: Object.assign({ name: legacyName }, updates) };
-}
-
-// 兩邊都沒對到，用 Google 提供的資料開一筆全新的 profiles(status 直接是
-// active，因為 Google 帳號本來就已經驗證過了，不用再走 legacy 綁定步驟)。
-function createGoogleProfile(data) {
-  const account = verifyGoogleCredential(data && data.credential);
-  if (!account) return { success: false, reason: 'invalid_token' };
-  if (!account.name) return { success: false, reason: 'missing_name' };
-
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PROFILES_SHEET);
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const rows = sheet.getDataRange().getValues();
-  const nameCol = headers.indexOf('name');
+  if (legacyRow > 0) {
+    headers.forEach((h, i) => {
+      if (updates[h] !== undefined) sheet.getRange(legacyRow, i + 1).setValue(updates[h]);
+    });
+    return { success: true, profile: Object.assign({ name: name }, updates) };
+  }
 
   // profiles.name 是整個系統拿來對應報名/賽事發起人的主鍵，同名會撞到別人
-  // 的資料，這裡擋掉並請使用者找管理員手動處理，不要靜默改名造成混淆。
-  const nameTaken = rows.slice(1).some(r => r[nameCol] === account.name);
+  // 的資料，這裡擋掉並請使用者換個暱稱，不要靜默改名造成混淆。
+  const nameTaken = rows.slice(1).some(r => r[nameCol] === name);
   if (nameTaken) return { success: false, reason: 'name_taken' };
 
   const newRow = headers.map(h => {
-    if (h === 'name') return account.name;
-    if (h === 'email') return account.email;
-    if (h === 'google_id') return account.sub;
-    if (h === 'photo_url') return account.picture;
-    if (h === 'registered_at') return new Date();
-    if (h === 'status') return 'active';
-    if (h === 'can_create_events') return false;
+    if (h === 'name') return name;
+    if (updates[h] !== undefined) return updates[h];
+    if (h === 'can_create_events' || h === 'is_admin') return false;
     return '';
   });
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, headers.length).setValues([newRow]);
 
-  return { success: true, profile: { name: account.name, email: account.email, google_id: account.sub, photo_url: account.picture, status: 'active' } };
+  return { success: true, profile: Object.assign({ name: name }, updates) };
 }
 
 // 賽事報名。用 LockService 避免多人同時報名時,名額判斷算錯(超賣)。
@@ -655,24 +649,6 @@ function cancelSignup(data) {
   } finally {
     lock.releaseLock();
   }
-}
-
-// -------- 登入驗證 --------
-
-function verifyLogin(data) {
-  const username = (data && data.username) ? String(data.username).trim() : '';
-  const password = (data && data.password) ? String(data.password) : '';
-  if (!username || !password) return { success: false };
-
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(AUTH_SHEET);
-  const rows = sheet.getDataRange().getValues();
-  const headers = rows.shift();
-  const userCol = headers.indexOf('username');
-  const passCol = headers.indexOf('password');
-  if (userCol < 0 || passCol < 0) return { success: false, error: 'auth 分頁欄位設定不正確' };
-
-  const matched = rows.some(r => String(r[userCol]).trim() === username && String(r[passCol]) === password);
-  return { success: matched };
 }
 
 // -------- 編輯器內測試用 --------
