@@ -57,6 +57,16 @@ window.WhonextGis = (function(){
     queue.push(cb);
   }
   if(!document.getElementById('google-identity-services')){
+    // 先把 accounts.google.com 的連線（DNS/TLS）預先建好，之後不管是
+    // script 本身還是按鈕渲染要用的 iframe，都不用重新握手，減少開登入
+    // 視窗時 Google 按鈕從佔位文字換成真的按鈕那一下的延遲／跳動。
+    ['preconnect', 'dns-prefetch'].forEach(function(rel){
+      var link = document.createElement('link');
+      link.rel = rel;
+      link.href = 'https://accounts.google.com';
+      if(rel === 'preconnect') link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    });
     var s = document.createElement('script');
     s.id = 'google-identity-services';
     s.src = 'https://accounts.google.com/gsi/client';

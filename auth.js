@@ -80,26 +80,28 @@
   }
 
   // Top nav 的「球員／管理員」切換鈕，反映目前角色的 active 狀態；
-  // 球員那顆按鈕如果已經綁定身分（球員或訪客都算），改顯示頭像＋姓名
-  // 取代「登入」文字，兩者互斥所以只要挑一個顯示就好。
+  // 球員那兩顆按鈕沒登入時是「註冊」「登入」；已經綁定身分（球員或
+  // 訪客都算）後，「登入」那顆換成頭像＋姓名（點一下跳去我的活動，
+  // 不會登出），「註冊」那顆借位變成「登出」。
   function updateNavRoleToggle(){
     var isAdmin = getRole() === 'admin';
     document.querySelectorAll('#navRoleToggle .role-toggle-btn').forEach(function(btn){
       btn.classList.toggle('active', (btn.dataset.role === 'admin') === isAdmin);
     });
     var name = getPlayerName() || getGuestName();
-    // 已經綁定身分後「註冊」按鈕沒有意義，先收起來，只留「登入」那顆
-    // 換成頭像＋姓名（點一下登出），跟原本單顆按鈕的邏輯一樣。
-    var registerBtn = document.querySelector('#navRoleToggle .role-toggle-btn[data-entry="register"]');
-    if(registerBtn) registerBtn.style.display = name ? 'none' : '';
-    var loginBtn = document.querySelector('#navRoleToggle .role-toggle-btn[data-entry="login"]');
-    if(loginBtn){
+    var secondaryBtn = document.getElementById('navSecondaryBtn');
+    if(secondaryBtn){
+      secondaryBtn.dataset.entry = name ? 'logout' : 'register';
+      secondaryBtn.textContent = name ? '登出' : '註冊';
+    }
+    var primaryBtn = document.getElementById('navPrimaryBtn');
+    if(primaryBtn){
       if(name){
-        loginBtn.classList.add('has-identity');
-        loginBtn.innerHTML = '<span class="nav-id-avatar">' + avatarInitial(name) + '</span><span class="nav-id-name">' + name + '</span>';
+        primaryBtn.classList.add('has-identity');
+        primaryBtn.innerHTML = '<span class="nav-id-avatar">' + avatarInitial(name) + '</span><span class="nav-id-name">' + name + '</span>';
       } else {
-        loginBtn.classList.remove('has-identity');
-        loginBtn.textContent = '登入';
+        primaryBtn.classList.remove('has-identity');
+        primaryBtn.textContent = '登入';
       }
     }
   }
@@ -177,12 +179,13 @@
     renderAdminGoogleButton();
   }
 
-  // nav 上是「註冊」「登入／頭像」兩顆按鈕（管理員登入從我的錢包／我的
-  // 活動的登入選單「我是管理員」進去，見 identity-picker.js）。點下去：
+  // nav 上是「註冊／登出」「登入／頭像」兩顆按鈕（管理員登入從我的錢包／
+  // 我的活動的登入選單「我是管理員」進去，見 identity-picker.js）。點下去：
   // 如果目前正在看管理員視角，只是切回球員視角，已經綁定的球員身分
-  // 保留，不用重選；如果本來就是球員身分且已經綁定身分（頭像狀態），
-  // 點一下直接登出清空身分；還沒登入的話依照按到的是「註冊」還是
-  // 「登入」，直接開對應畫面（此時「註冊」按鈕還在，「登入」還是文字）。
+  // 保留，不用重選；已經綁定身分時，「登入」那顆變頭像，點一下是跳去
+  // 我的活動（profile.html），不會登出——登出要點旁邊借位變成「登出」
+  // 的那顆按鈕；還沒登入的話依照按到的是「註冊」還是「登入」，直接開
+  // 對應畫面。
   function wireNavRoleToggle(){
     var toggle = document.getElementById('navRoleToggle');
     if(!toggle) return;
@@ -193,15 +196,17 @@
         setRole('player');
         return;
       }
-      if(getPlayerName()){
-        setPlayerName('');
+      var entry = btn.dataset.entry;
+      if(entry === 'logout'){
+        if(getPlayerName()) setPlayerName('');
+        else setGuestName('');
         return;
       }
-      if(getGuestName()){
-        setGuestName('');
+      if(entry === 'login' && (getPlayerName() || getGuestName())){
+        window.location.href = 'profile.html';
         return;
       }
-      openNavLogin(btn.dataset.entry);
+      openNavLogin(entry);
     });
 
     var cancelStartBtn = document.getElementById('adminLoginCancelStart');
