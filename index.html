@@ -271,15 +271,22 @@
     color: var(--warn); border:1px solid rgba(231,161,90,0.4); background: rgba(231,161,90,0.1);
   }
 
-  .signup-self-note{ font-size:13px; color:var(--secondary); padding: 4px 2px; margin-bottom:2px; }
+  .signup-self-note{ font-size:13px; color:var(--secondary); padding: 4px 2px; margin-bottom:2px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .signup-self-note b{ color:var(--label); font-weight:800; }
   .signup-cancel-btn:disabled{ opacity:.5; }
+
+  .signup-switch-btn{
+    font-size:11px; font-weight:700; color:var(--tertiary); padding:4px 10px;
+    border:1px solid var(--line); border-radius:999px; flex-shrink:0; background:transparent;
+  }
+  .signup-switch-btn:active{ background: rgba(255,255,255,0.06); }
 
   .signup-submit{
     width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px;
     background: var(--label); color:#000; margin-top:auto;
   }
   .signup-submit:disabled{ opacity:.5; }
+  .signup-submit.verified{ background: var(--gold); }
 
   .signup-entry-row{ display:flex; gap:8px; }
   .signup-entry-btn{
@@ -1131,9 +1138,15 @@
   // 選別人）；沒登入就在表單裡直接放登入流程。
   // 訪客模式不需要登入，輸入姓名＋選推薦人（目前的會員名單）就能報名。
   function signupAsSelfHTML(name){
-    if(name) return '<div class="signup-self-note">以 <b>' + name + '</b> 身份報名</div>';
+    if(name) return '<div class="signup-self-note">以 <b>' + name + '</b> 身份報名' +
+      '<button type="button" class="signup-switch-btn" id="signupSwitchBtn">換人</button></div>';
     return '<div id="signupWhoami"></div>';
   }
+  // 換人按鈕在 signupAsSelf 容器裡，內容每次都靠 innerHTML 重繪，掛在
+  // 容器本身（不會被換掉）上用事件代理，不用每次重繪後重新綁定。
+  document.getElementById('signupAsSelf').addEventListener('click', function(e){
+    if(e.target && e.target.id === 'signupSwitchBtn') WhonextAuth.setPlayerName('');
+  });
 
   function renderMemberFields(currentName){
     document.getElementById('signupAsSelf').innerHTML = signupAsSelfHTML(currentName);
@@ -1153,6 +1166,7 @@
     document.getElementById('signupGuestFields').style.display = mode === 'guest' ? '' : 'none';
     if(mode === 'member') renderMemberFields('');
     else document.getElementById('signupGuestName').classList.remove('invalid');
+    updateSubmitGate();
   }
   document.getElementById('signupModeMemberBtn').addEventListener('click', function(){ setSignupTab('member'); });
   document.getElementById('signupModeGuestBtn').addEventListener('click', function(){ setSignupTab('guest'); });
@@ -1187,6 +1201,31 @@
     return { disabled:false, label:'送出報名' };
   }
 
+  // 「送出報名」是否能按，除了賽事本身的名額/開放狀態，還要看目前選的
+  // 分頁：球員模式沒登入的話，表單裡顯示的是登入/註冊流程，不是報名
+  // 欄位，這時候按鈕要鎖住＋換字，不能讓人點了才用 toast 說「請先登入」。
+  function updateSubmitGate(statusMeta){
+    if(detailIndex === null) return;
+    const submitBtn = document.getElementById('signupSubmit');
+    const signupState = signupButtonMeta(statusMeta || eventStatusMeta(EVENTS[detailIndex]));
+    if(signupState.disabled){
+      submitBtn.disabled = true;
+      submitBtn.textContent = signupState.label;
+      submitBtn.classList.remove('verified');
+      return;
+    }
+    const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+    if(signupMode === 'member' && !currentName){
+      submitBtn.disabled = true;
+      submitBtn.textContent = '請先登入或建立帳號';
+      submitBtn.classList.remove('verified');
+    } else {
+      submitBtn.disabled = false;
+      submitBtn.textContent = signupMode === 'member' ? '確認送出報名' : '送出報名';
+      submitBtn.classList.toggle('verified', signupMode === 'member');
+    }
+  }
+
   function openEventDetail(index, skipEntry){
     detailIndex = index;
     const ev = EVENTS[index];
@@ -1200,9 +1239,6 @@
     document.getElementById('signupGuestName').value = '';
     document.getElementById('signupGuestName').classList.remove('invalid');
     const signupState = signupButtonMeta(statusMeta);
-    const submitBtn = document.getElementById('signupSubmit');
-    submitBtn.disabled = signupState.disabled;
-    submitBtn.textContent = signupState.label;
     const entryBtn = document.getElementById('signupEntryBtn');
     entryBtn.disabled = signupState.disabled;
     entryBtn.textContent = signupState.disabled ? signupState.label : '我要報名';
@@ -1249,6 +1285,7 @@
       document.getElementById('eventSignupSection').style.display = 'none';
     }
 
+    updateSubmitGate(statusMeta);
     document.getElementById('eventDetailOverlay').classList.add('open');
   }
 
