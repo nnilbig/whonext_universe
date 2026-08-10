@@ -154,7 +154,31 @@
   // ---------------------------------------------------------------
   var LINE_PENDING_KEY = 'wu_line_oauth_pending';
 
+  // LINE/FB/IG/WeChat 這些 App 內建瀏覽器打開的頁面，不是透過真正的
+  // liff.line.me 進站連結載入，liff.login() 缺少必要的頁面情境，導頁流程
+  // 會直接失敗（實測：LINE 內建瀏覽器點登入會錯誤，同一支手機開一般瀏覽器
+  // 的無痕分頁就正常）。這種環境下不要嘗試 liff.login()，直接請使用者
+  // 先跳出去用真正的瀏覽器開啟。
+  function isInAppBrowser(){
+    var ua = navigator.userAgent || '';
+    return /Line\//i.test(ua) || /FBAN|FBAV/i.test(ua) || /Instagram/i.test(ua) || /MicroMessenger/i.test(ua);
+  }
+
+  function renderOpenInBrowserNotice(container, backTo){
+    container.innerHTML =
+      '<div class="whoami-card glass">' +
+        '<div class="whoami-title">請用瀏覽器打開才能登入</div>' +
+        '<div class="whoami-sub">目前是在 App 內建瀏覽器開啟，LINE 登入沒辦法在這裡完成。點右上角「⋯」選單 → 選擇「在瀏覽器中開啟」，跳出去後再重新登入。</div>' +
+        '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>' +
+      '</div>';
+    container.querySelector('#wiBackBtn').addEventListener('click', function(){ (backTo || renderStart)(container); });
+  }
+
   function startLineFlow(container, mode, name){
+    if(isInAppBrowser()){
+      renderOpenInBrowserNotice(container, mode === 'register' ? renderRegister : renderLoginMenu);
+      return;
+    }
     renderVerifying(container, 'LINE 登入中…');
     sessionStorage.setItem(LINE_PENDING_KEY, JSON.stringify({ mode: mode, name: name || '' }));
     WhonextLiff.ensureReady(function(){
