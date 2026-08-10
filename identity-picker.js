@@ -1,9 +1,9 @@
 (function(){
   // 「球員登入」入口分成「註冊」／「登入」兩支，我的活動／我的錢包／nav
   // 共用同一份畫面跟邏輯，避免各處各刻一份之後跑掉。
-  //   註冊：三步——(1) 選 Google 或 LINE 當註冊方式、按下一步 (2) 用選好
-  //         的方式完成驗證，這步不用先打暱稱，後端會先用顯示名稱頂著
-  //         建檔 (3) 問要不要順便綁定舊球員暱稱，輸入暱稱送出或直接按
+  //   註冊：兩步——(1) 直接顯示 Google／LINE 按鈕（跟登入同一種畫面結構），
+  //         點哪個就用哪個驗證，不用先打暱稱，後端會先用顯示名稱頂著
+  //         建檔 (2) 問要不要順便綁定舊球員暱稱，輸入暱稱送出或直接按
   //         「略過」都會馬上進畫面——略過的話 custom_name 先掛顯示名稱，
   //         之後可以在個人頁補綁真正的舊暱稱。
   //   登入：已經綁過 Google 或 LINE 帳號的人一鍵登入；沒綁過的話會被
@@ -105,64 +105,31 @@
     }).catch(function(){ return []; });
   }
 
-  // 步驟一：選註冊方式。hideBack：從 nav「註冊」按鈕直接開這個畫面時
+  // 註冊：直接顯示 Google 按鈕跟 LINE 按鈕，跟 renderLoginMenu 同一種
+  // 結構，點哪個就用哪個驗證，不用先選方式、按下一步。這裡不用先打
+  // 暱稱——後端註冊時沒收到暱稱會自動用 Google/LINE 的顯示名稱頂著
+  // 建檔（is_bound:false），暱稱綁定挪到下一步(renderNicknamePrompt)
+  // 問，還可以直接略過。hideBack：從 nav「註冊」按鈕直接開這個畫面時
   // 不經過 renderStart，沒有上一步可回，就不顯示「‹」。
   function renderRegister(container, hideBack){
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-title">註冊</div>' +
         '<div class="whoami-sub">選擇要用哪個帳號註冊，之後不管用哪一個登入都是同一個身份。</div>' +
-        '<div class="whoami-method-row">' +
-          '<button type="button" class="whoami-method-btn" id="wiMethodGoogle" data-method="google">Google</button>' +
-          '<button type="button" class="whoami-method-btn" id="wiMethodLine" data-method="line">LINE</button>' +
-        '</div>' +
-        '<button type="button" class="whoami-primary-btn" id="wiRegisterNextBtn" disabled>下一步</button>' +
+        '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
+        '<div class="whoami-or-divider">或</div>' +
+        '<button type="button" class="whoami-line-btn" id="wiLineRegisterBtn">使用 LINE 註冊</button>' +
         (hideBack ? '' : '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>') +
       '</div>';
 
     if(!hideBack) container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
 
-    var selectedMethod = '';
-    var methodBtns = container.querySelectorAll('.whoami-method-btn');
-    var nextBtn = container.querySelector('#wiRegisterNextBtn');
-    methodBtns.forEach(function(btn){
-      btn.addEventListener('click', function(){
-        selectedMethod = btn.dataset.method;
-        methodBtns.forEach(function(b){ b.classList.toggle('selected', b === btn); });
-        nextBtn.disabled = false;
-      });
+    renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), function(c, credential){
+      handleRegisterCredential(container, credential);
     });
-    nextBtn.addEventListener('click', function(){
-      if(!selectedMethod) return;
-      renderRegisterAuth(container, selectedMethod);
+    container.querySelector('#wiLineRegisterBtn').addEventListener('click', function(){
+      startLineFlow(container, 'register');
     });
-  }
-
-  // 步驟二：用選好的方式驗證身分。這裡不用先打暱稱——後端註冊時沒收到
-  // 暱稱會自動用 Google/LINE 的顯示名稱頂著建檔（is_bound:false），暱稱
-  // 綁定挪到下一步(renderNicknamePrompt)問，還可以直接略過。
-  function renderRegisterAuth(container, provider){
-    container.innerHTML =
-      '<div class="whoami-card glass">' +
-        '<div class="whoami-title">註冊</div>' +
-        '<div class="whoami-sub">' + (provider === 'google' ? '點下方按鈕用 Google 帳號完成驗證。' : '點下方按鈕用 LINE 帳號完成驗證。') + '</div>' +
-        (provider === 'google'
-          ? '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>'
-          : '<button type="button" class="whoami-line-btn" id="wiLineRegisterBtn">使用 LINE 註冊</button>') +
-        '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>' +
-      '</div>';
-
-    container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderRegister(container); });
-
-    if(provider === 'google'){
-      renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), function(c, credential){
-        handleRegisterCredential(container, credential);
-      });
-    } else {
-      container.querySelector('#wiLineRegisterBtn').addEventListener('click', function(){
-        startLineFlow(container, 'register');
-      });
-    }
   }
 
   function handleRegisterCredential(container, credential){

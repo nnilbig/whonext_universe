@@ -44,14 +44,6 @@ body.is-admin .admin-only.flex{ display:flex; }
 }
 .whoami-primary-btn:disabled{ opacity:0.4; }
 
-/* ---------- 註冊方式選擇（見 identity-picker.js 的 renderRegister） ---------- */
-.whoami-method-row{ display:flex; gap:8px; margin-bottom:14px; }
-.whoami-method-btn{
-  flex:1; font-size:13.5px; font-weight:700; padding:14px 0; border-radius:12px; text-align:center;
-  background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--label);
-}
-.whoami-method-btn.selected{ border-color: var(--gold); background: var(--gold-bg); color: var(--gold); }
-
 /* ---------- LINE 登入按鈕（跟 Google 按鈕併排用，見 identity-picker.js） ---------- */
 .whoami-or-divider{ text-align:center; font-size:11px; color:var(--tertiary); margin:10px 0; }
 .whoami-line-btn{
