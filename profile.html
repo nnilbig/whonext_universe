@@ -139,20 +139,15 @@
     width:44px; height:44px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
     font-family: var(--sf-mono); font-weight:800; font-size:13px;
-    border:2px solid var(--gold); background: var(--gold-bg); color: var(--gold);
+    border:2px solid var(--line); background: rgba(255,255,255,0.04); color: var(--tertiary);
   }
   .tc-badge.locked{ border-color: var(--line); background: rgba(255,255,255,0.04); color: var(--tertiary); }
-  .tc-badge.bronze{ border-color: var(--bronze); background: var(--bronze-bg); color: var(--bronze); }
-  .tc-badge.silver{ border-color: var(--silver); background: var(--silver-bg); color: var(--silver); }
-  .tc-badge.gold{ border-color: var(--gold); background: var(--gold-bg); color: var(--gold); }
-  .tc-badge.diamond{ border-color: var(--diamond); background: var(--diamond-bg); color: var(--diamond); }
+  .tc-badge.n{ border-color: var(--n-accent); background: var(--n-bg); color: var(--n-accent); }
+  .tc-badge.e{ border-color: var(--e-accent); background: var(--e-bg); color: var(--e-accent); }
+  .tc-badge.x{ border-color: var(--x-accent); background: var(--x-bg); color: var(--x-accent); }
+  .tc-badge.t{ border-color: var(--t-accent); background: var(--t-bg); color: var(--t-accent); }
   .tc-label{ font-size:10.5px; color:var(--secondary); text-align:center; line-height:1.3; }
   .tc-item.locked .tc-label{ color: var(--tertiary); }
-  .tc-grid.standalone{ border-top:none; margin-top:0; padding-top:0; }
-
-  /* ---- WHO朋引伴徽章（同系列用獎牌色階區分等級）---- */
-  .friend-badge-card{ padding:20px; margin-top:8px; }
-  .friend-badge-title{ font-size:13px; font-weight:700; color:var(--label); margin-bottom:14px; }
 
   /* ---- 管理員：球員名冊預覽 ---- */
   .roster-manage-link{
@@ -334,6 +329,18 @@
     { threshold: 35, label: '核心球員' },
     { threshold: 45, label: '傳奇球星' }
   ];
+  // WHO朋引伴徽章：推薦人次達到門檻解鎖，跟出席里程碑一起放在同一個
+  // 里程碑格子裡（見 renderYearOverview），不是另外開一張卡片。
+  const FRIEND_BADGES = [
+    { threshold: 1, label: '社群新星' },
+    { threshold: 5, label: '糾團達人' },
+    { threshold: 15, label: '萬人迷' },
+    { threshold: 25, label: '外交官' }
+  ];
+  // 里程碑徽章顏色跟隊名 N-E-X-T 對齊，同系列內每個門檻各自照順序
+  // 從 n/e/x/t 循環取色（跟卡片列表頭像疊圖同一套配色邏輯），不用
+  // gold/silver 那種獎牌色階。
+  const BADGE_COLOR_CLASSES = ['n', 'e', 'x', 't'];
   let yoExpanded = false;
 
   function yearAttendedCount(name){
@@ -347,13 +354,34 @@
       }).length;
   }
 
+  // 跟 renderSeasonRank 算法一致，取這個人「今年」實際被推薦的人次
+  // （不套用榜單那個 >=3 才上榜的篩選，徽章門檻最低只要 1 人次）。
+  function yearReferralCount(name){
+    const monthsSet = [...new Set(ALL_WEEKS.map(monthOfWeek))].sort();
+    if(!monthsSet.length) return 0;
+    const year = monthsSet[monthsSet.length - 1].slice(0,4);
+    const yearWeeks = ALL_WEEKS.filter(function(w){ return monthOfWeek(w).slice(0,4) === year; });
+    const entry = computeFriendBoard(yearWeeks).find(function(p){ return p.name === name; });
+    return entry ? entry.value : 0;
+  }
+
+  function badgeItemHTML(label, threshold, got, colorIdx){
+    const colorCls = BADGE_COLOR_CLASSES[colorIdx % BADGE_COLOR_CLASSES.length];
+    return '<div class="tc-item' + (got ? '' : ' locked') + '">' +
+      '<div class="tc-badge' + (got ? ' ' + colorCls : ' locked') + '">' + threshold + '</div>' +
+      '<div class="tc-label">' + label + '</div>' +
+    '</div>';
+  }
+
   function renderYearOverview(name){
     const attended = yearAttendedCount(name);
-    const earned = MILESTONES.filter(function(m){ return attended >= m.threshold; });
+    const referrals = yearReferralCount(name);
+    const earnedAttend = MILESTONES.filter(function(m){ return attended >= m.threshold; });
+    const earnedFriend = FRIEND_BADGES.filter(function(b){ return referrals >= b.threshold; });
     const next = MILESTONES.find(function(m){ return attended < m.threshold; });
 
     document.getElementById('yoAttended').textContent = attended;
-    document.getElementById('yoBadgeCount').textContent = earned.length;
+    document.getElementById('yoBadgeCount').textContent = earnedAttend.length + earnedFriend.length;
 
     if(next){
       document.getElementById('yoMilestoneLabel').innerHTML = '距離下一個里程碑「<b>' + next.label + '</b>」還差 ' + (next.threshold - attended) + ' 場';
@@ -366,13 +394,13 @@
       document.getElementById('yoProgressCount').textContent = attended + ' 場';
     }
 
-    document.getElementById('tcGrid').innerHTML = MILESTONES.map(function(m){
-      const got = attended >= m.threshold;
-      return '<div class="tc-item' + (got ? '' : ' locked') + '">' +
-        '<div class="tc-badge' + (got ? '' : ' locked') + '">' + m.threshold + '</div>' +
-        '<div class="tc-label">' + m.label + '</div>' +
-      '</div>';
+    const attendBadgesHTML = MILESTONES.map(function(m, idx){
+      return badgeItemHTML(m.label, m.threshold, attended >= m.threshold, idx);
     }).join('');
+    const friendBadgesHTML = FRIEND_BADGES.map(function(b, idx){
+      return badgeItemHTML(b.label, b.threshold, referrals >= b.threshold, idx);
+    }).join('');
+    document.getElementById('tcGrid').innerHTML = attendBadgesHTML + friendBadgesHTML;
   }
 
   document.getElementById('yoToggleBtn').addEventListener('click', function(){
@@ -580,27 +608,6 @@
     return ranks;
   }
 
-  // WHO朋引伴徽章：推薦人次達到門檻就解鎖，同系列用獎牌色階（銅／銀／
-  // 金／鑽）區分等級，跟里程碑徽章（都同一個金色）刻意做出區別。
-  const FRIEND_BADGES = [
-    { threshold: 1,  label: '社群新星', cls: 'bronze' },
-    { threshold: 5,  label: '糾團達人', cls: 'silver' },
-    { threshold: 15, label: '萬人迷',   cls: 'gold' },
-    { threshold: 25, label: '外交官',   cls: 'diamond' }
-  ];
-  function friendBadgeGridHTML(referralCount){
-    return '<div class="friend-badge-card glass">' +
-      '<div class="friend-badge-title">WHO朋引伴徽章</div>' +
-      '<div class="tc-grid standalone">' + FRIEND_BADGES.map(function(b){
-        const got = referralCount >= b.threshold;
-        return '<div class="tc-item' + (got ? '' : ' locked') + '">' +
-          '<div class="tc-badge' + (got ? ' ' + b.cls : ' locked') + '">' + b.threshold + '</div>' +
-          '<div class="tc-label">' + b.label + '</div>' +
-        '</div>';
-      }).join('') + '</div>' +
-    '</div>';
-  }
-
   function renderSeasonRank(name){
     const el = document.getElementById('seasonRankBody');
     const monthsSet = [...new Set(ALL_WEEKS.map(monthOfWeek))].sort();
@@ -610,14 +617,9 @@
     }
     const year = monthsSet[monthsSet.length - 1].slice(0,4);
     const yearWeeks = ALL_WEEKS.filter(w=> monthOfWeek(w).slice(0,4) === year);
-    // 徽章解鎖看實際推薦人次（門檻最低 1），上榜清單另外篩到 >=3 人次
-    // 才算，兩件事分開算，不要互相影響。
-    const rawList = computeFriendBoard(yearWeeks);
-    const referralCount = (rawList.find(p=> p.name === name) || {}).value || 0;
-    const list = rawList.filter(p=> p.value >= 3);
+    const list = computeFriendBoard(yearWeeks).filter(p=> p.value >= 3);
     const ranks = computeRanks(list);
     const idx = list.findIndex(p=> p.name === name);
-    const badgeGrid = friendBadgeGridHTML(referralCount);
 
     if(idx < 0){
       el.innerHTML = '<div class="season-card glass">' +
@@ -625,7 +627,7 @@
           '<div class="t">' + year + ' WHO朋引伴</div>' +
           '<div class="s">尚未上榜，累積WHO朋引伴人次即可上榜</div>' +
         '</div>' +
-      '</div>' + badgeGrid;
+      '</div>';
       return;
     }
     el.innerHTML = '<div class="season-card glass">' +
@@ -634,7 +636,7 @@
         '<div class="t">' + year + ' WHO朋引伴</div>' +
         '<div class="s">累計WHO朋引伴 ' + list[idx].value + ' 人次</div>' +
       '</div>' +
-    '</div>' + badgeGrid;
+    '</div>';
   }
 
   // ---------------------------------------------------------------
