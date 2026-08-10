@@ -1748,8 +1748,8 @@
     if(e.target.id === 'eventDetailOverlay') closeEventDetail();
   });
 
-  // 遮罩至少停留 1 秒再淡出，快取秒開時也不會一閃而過。
-  const BRAND_MASK_MIN_MS = 1000;
+  // 遮罩至少停留 1.5 秒再淡出，快取秒開時也不會一閃而過。
+  const BRAND_MASK_MIN_MS = 1500;
   const brandMaskShownAt = Date.now();
   function hideBrandMask(){
     const mask = document.getElementById('brandMask');
