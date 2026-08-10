@@ -389,7 +389,9 @@
   </div>
 
   <div class="auth-overlay" id="eventEditOverlay">
-    <div class="auth-box detail-box">
+    <div class="modal-box-wrap">
+      <button type="button" class="modal-close-btn" id="eventEditCloseBtn" aria-label="關閉">×</button>
+      <div class="auth-box detail-box">
       <div class="edit-title" id="eventEditTitleLabel">編輯賽事</div>
 
       <div id="eventEditTemplateWrap">
@@ -453,11 +455,14 @@
         <button type="button" class="edit-cancel" id="eventEditCancel">取消</button>
         <button type="button" class="edit-save" id="eventEditSave">儲存</button>
       </div>
+      </div>
     </div>
   </div>
 
   <div class="auth-overlay" id="eventDetailOverlay">
-    <div class="auth-box detail-box">
+    <div class="modal-box-wrap">
+      <button type="button" class="modal-close-btn" id="eventDetailCloseBtn" aria-label="關閉">×</button>
+      <div class="auth-box detail-box">
       <div class="detail-scroll">
         <div class="edit-title" id="detailTitle"></div>
         <div class="detail-meta" id="detailMeta"></div>
@@ -470,16 +475,16 @@
         <button type="button" class="signup-cancel-btn" id="signupCancelBtn" disabled>取消報名</button>
 
         <div class="help-guest-section">
-          <div class="edit-field-label">協助訪客報名</div>
+          <div class="edit-field-label">推薦球友報名</div>
           <div class="guest-add-row">
-            <input type="text" id="helpGuestName" class="edit-input" placeholder="輸入訪客姓名">
+            <input type="text" id="helpGuestName" class="edit-input" placeholder="輸入球友姓名">
             <button type="button" class="guest-add-btn" id="helpGuestAdd">新增</button>
           </div>
           <div class="signup-list" id="helpGuestList"></div>
-          <button type="button" class="signup-submit" id="helpGuestSubmit" disabled>送出協助報名</button>
+          <button type="button" class="signup-submit" id="helpGuestSubmit" disabled>送出球友報名</button>
 
           <div class="help-guest-referred">
-            <div class="edit-field-label">你協助報名的訪客</div>
+            <div class="edit-field-label">你推薦報名的球友</div>
             <div class="signup-list" id="helpGuestReferredList"></div>
           </div>
         </div>
@@ -506,6 +511,7 @@
         </div>
 
         <button type="button" class="signup-submit" id="signupSubmit">送出報名</button>
+      </div>
       </div>
     </div>
   </div>
@@ -1192,7 +1198,7 @@
 
   let detailIndex = null;
   let signupMode = 'member';
-  // 已報名者「協助訪客報名」的暫存名單：逐一輸入、加進清單，最後一次
+  // 已報名者「推薦球友報名」的暫存名單：逐一輸入、加進清單，最後一次
   // 送出（每筆各自打 signupEvent，因為要帶 referrer，跟 bulkSignupEvent
   // 不同）。只在切換到不同賽事時重置，同一場重繪（例如身分變動）不清空。
   let helpGuestQueue = [];
@@ -1339,9 +1345,9 @@
             '<button type="button" class="guest-queue-remove" data-remove="' + i + '">移除</button>' +
           '</div>';
         }).join('')
-      : '<div class="signup-empty">尚未加入任何訪客</div>';
+      : '';
     submitBtn.disabled = helpGuestQueue.length === 0;
-    submitBtn.textContent = '送出協助報名';
+    submitBtn.textContent = '送出球友報名';
   }
 
   function addHelpGuest(){
@@ -1364,7 +1370,7 @@
     renderHelpGuestQueue();
   });
 
-  // 逐一 signupEvent（而不是 bulkSignupEvent）是因為協助報名要帶
+  // 逐一 signupEvent（而不是 bulkSignupEvent）是因為推薦球友報名要帶
   // referrer（自動 = 自己），bulkSignupEvent 只認 member 型別、沒有
   // referrer 欄位，不適合這裡的訪客報名情境。
   async function submitHelpGuests(){
@@ -1381,22 +1387,22 @@
       const okCount = results.filter(function(r){ return r && r.success; }).length;
       const failCount = results.length - okCount;
       showToast(okCount
-        ? '已協助 ' + okCount + ' 位訪客報名' + (failCount ? '，' + failCount + ' 位失敗' : '')
-        : '協助報名失敗，請稍後再試');
+        ? '已推薦 ' + okCount + ' 位球友報名' + (failCount ? '，' + failCount + ' 位失敗' : '')
+        : '推薦球友報名失敗，請稍後再試');
       helpGuestQueue = [];
       await refreshEvents();
       if(detailIndex !== null) openEventDetail(detailIndex);
       return;
     } catch(e){
-      showToast('協助報名失敗，請稍後再試');
+      showToast('推薦球友報名失敗，請稍後再試');
     }
     btn.disabled = false;
-    btn.textContent = '送出協助報名';
+    btn.textContent = '送出球友報名';
   }
   document.getElementById('helpGuestSubmit').addEventListener('click', submitHelpGuests);
 
-  // 列出「這個人推薦報名」的訪客，讓已報名的球員自己就能取消協助報名的
-  // 訪客，不用麻煩管理員。只認 type:'guest' 且 referrer 是自己，不會動到
+  // 列出「這個人推薦報名」的球友，讓已報名的球員自己就能取消推薦報名的
+  // 球友，不用麻煩管理員。只認 type:'guest' 且 referrer 是自己，不會動到
   // 任何球員（member 型別）的報名紀錄。
   async function loadHelpGuestSignups(ev, currentName){
     const listEl = document.getElementById('helpGuestReferredList');
@@ -1413,7 +1419,7 @@
               '<button type="button" class="guest-queue-remove" data-cancel-id="' + escapeHtml(s.id) + '">取消</button>' +
             '</div>';
           }).join('')
-        : '<div class="signup-empty">尚未協助任何訪客報名</div>';
+        : '';
     } catch(e){
       listEl.innerHTML = '<div class="signup-empty">讀取失敗，請稍後再試</div>';
     }
@@ -1426,7 +1432,7 @@
     try{
       const result = await apiPost('cancelSignup', { id: btn.dataset.cancelId });
       if(result && result.success){
-        showToast('已取消該訪客報名');
+        showToast('已取消該球友報名');
         await refreshEvents();
         if(detailIndex !== null) openEventDetail(detailIndex);
         return;
@@ -1699,11 +1705,13 @@
   document.getElementById('eventEditCancel').addEventListener('click', closeEventEdit);
   document.getElementById('eventEditSave').addEventListener('click', saveEventEdit);
   document.getElementById('eventEditDelete').addEventListener('click', deleteCurrentEvent);
+  document.getElementById('eventEditCloseBtn').addEventListener('click', closeEventEdit);
   document.getElementById('eventEditOverlay').addEventListener('click', function(e){
     if(e.target.id === 'eventEditOverlay') closeEventEdit();
   });
 
   document.getElementById('signupSubmit').addEventListener('click', submitSignup);
+  document.getElementById('eventDetailCloseBtn').addEventListener('click', closeEventDetail);
   document.getElementById('eventDetailOverlay').addEventListener('click', function(e){
     if(e.target.id === 'eventDetailOverlay') closeEventDetail();
   });
