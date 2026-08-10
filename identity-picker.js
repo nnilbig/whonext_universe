@@ -211,7 +211,12 @@
       if(!document.body.contains(btnWrap)) return; // 使用者已經切到別的畫面
       google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
-        callback: function(response){ onCredential(container, response.credential); }
+        callback: function(response){ onCredential(container, response.credential); },
+        // 舊的按鈕流程靠彈窗 + postMessage 把憑證傳回來，Chrome 預設政策
+        // (COOP、封鎖第三方 cookie)常常會擋掉這個 postMessage，導致
+        // callback 收不到憑證、註冊/登入卡住或直接失敗。改用 FedCM
+        // 走瀏覽器原生機制，不靠彈窗中繼。
+        use_fedcm_for_button: true
       });
       btnWrap.innerHTML = '';
       google.accounts.id.renderButton(btnWrap, { theme:'filled_black', shape:'pill', size:'large', text:'continue_with', width:240 });
