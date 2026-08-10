@@ -241,12 +241,15 @@
   // 字串，兩種都要認得。頭像看這次是用哪個 provider 登入決定要顯示
   // photo_url(Google) 還是 avatar_url(LINE)，不是另外存一個「目前頭像」
   // 欄位——同一個 player 兩邊都綁的話，換一種方式登入頭像就會跟著換。
-  // custom_name 才是 signups/members 等其他表拿來對應球員的鍵值，不是
-  // line_display_name。
+  // 這裡存進 WhonextAuth 的名字（拿去給 nav 顯示、報名/錢包比對用）優先
+  // 用 bound_name（已經接回舊資料的話，這才是穩定的歷史鍵值），還沒
+  // 綁定的話才退回 custom_name（註冊當下自動頂上去的顯示名稱）——兩者
+  // 是分開的欄位，不要混用，見 gas/Code.gs 開頭的欄位說明。
   function finishLogin(container, player, provider){
     const isAdmin = player.is_admin === true || player.is_admin === 'TRUE';
     const photo = provider === 'google' ? player.photo_url : player.avatar_url;
-    WhonextAuth.setPlayerName(player.custom_name, isAdmin, photo, player.player_id);
+    const name = player.bound_name || player.custom_name;
+    WhonextAuth.setPlayerName(name, isAdmin, photo, player.player_id);
   }
 
   // ---------------------------------------------------------------
@@ -259,14 +262,19 @@
   // ---------------------------------------------------------------
   var LINE_PENDING_KEY = 'wu_line_oauth_pending';
 
-  // LINE/FB/IG/WeChat 這些 App 內建瀏覽器打開的頁面，不是透過真正的
-  // liff.line.me 進站連結載入，liff.login() 缺少必要的頁面情境，導頁流程
-  // 會直接失敗（實測：LINE 內建瀏覽器點登入會錯誤，同一支手機開一般瀏覽器
-  // 的無痕分頁就正常）。這種環境下不要嘗試 liff.login()，直接請使用者
-  // 先跳出去用真正的瀏覽器開啟。
-  function isInAppBrowser(){
+  // FB/IG/WeChat 這些跟 LINE 無關的 App 內建瀏覽器，LIFF 完全用不上，
+  // 一律擋。LINE 自己的內建瀏覽器不能只看 UA 有沒有 Line/ 就擋——正常
+  // 透過 https://liff.line.me/... 連結進站，本來就是在 LINE 內建瀏覽器
+  // 裡開啟，liff.login() 完全沒問題；只有「野生網址被貼到 LINE 對話裡
+  // 直接開」才會缺少 LIFF 啟動所需的頁面情境而失敗。這兩種情況 UA 一模
+  // 一樣，只能等 liff.init() 跑完後用 WhonextLiff.isInClient() 分辨
+  // （見 startLineFlow），這裡的 isNonLineInAppBrowser 只先擋「LINE 以外」的。
+  function isNonLineInAppBrowser(){
     var ua = navigator.userAgent || '';
-    return /Line\//i.test(ua) || /FBAN|FBAV/i.test(ua) || /Instagram/i.test(ua) || /MicroMessenger/i.test(ua);
+    return /FBAN|FBAV/i.test(ua) || /Instagram/i.test(ua) || /MicroMessenger/i.test(ua);
+  }
+  function isLineUa(){
+    return /Line\//i.test(navigator.userAgent || '');
   }
 
   function renderOpenInBrowserNotice(container, backTo){
@@ -279,12 +287,16 @@
     container.querySelector('#wiBackBtn').addEventListener('click', function(){ (backTo || renderStart)(container); });
   }
 
+  function lineFlowBackTo(mode){
+    return mode === 'register' ? renderRegister : mode === 'link' ? function(c){ renderBindPanel(c); } : renderLoginMenu;
+  }
+
   // mode 是 'register'/'login'/'link'。'link' 是已登入狀態下在帳號綁定
   // 面板多綁 LINE，這種情況 name 用不到、linkPlayerId 才是要綁到哪個
   // player_id，見 renderBindPanel。
   function startLineFlow(container, mode, name, linkPlayerId){
-    if(isInAppBrowser()){
-      renderOpenInBrowserNotice(container, mode === 'register' ? renderRegister : mode === 'link' ? function(c){ renderBindPanel(c); } : renderLoginMenu);
+    if(isNonLineInAppBrowser()){
+      renderOpenInBrowserNotice(container, lineFlowBackTo(mode));
       return;
     }
     renderVerifying(container, 'LINE 登入中…');
@@ -293,7 +305,16 @@
       if(!document.body.contains(container)) return;
       if(!WhonextLiff.isReady()){
         sessionStorage.removeItem(LINE_PENDING_KEY);
-        renderError(container, '無法連線 LINE，請稍後再試', mode === 'register' ? renderRegister : mode === 'link' ? function(c){ renderBindPanel(c); } : renderLoginMenu);
+        renderError(container, '無法連線 LINE，請稍後再試', lineFlowBackTo(mode));
+        return;
+      }
+      // 只有「在 LINE 內建瀏覽器裡，但不是透過真的 liff.line.me 連結啟動」
+      // 才擋——isInClient() 判斷的是「這是不是真的 LIFF 啟動」，不是單純
+      // UA 有沒有 Line/（正常從 liff.line.me 進站，UA 一樣有 Line/，但
+      // isInClient() 會是 true，不該擋）。
+      if(isLineUa() && !WhonextLiff.isInClient()){
+        sessionStorage.removeItem(LINE_PENDING_KEY);
+        renderOpenInBrowserNotice(container, lineFlowBackTo(mode));
         return;
       }
       if(WhonextLiff.isLoggedIn()){

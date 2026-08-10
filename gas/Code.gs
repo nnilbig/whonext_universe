@@ -9,9 +9,9 @@
 //   id, event_id, type, member_name, guest_name, referrer, status, created_at
 // 還需要一個 players 分頁(一人一列的球員身分主檔,跟 members 那種每月覆寫的
 // 月繳名單分開),欄位標題:
-//   player_id, custom_name, email, google_id, google_display_name,
-//   photo_url, line_user_id, line_display_name, avatar_url, referrer,
-//   is_bound, can_create_events, is_admin, created_at
+//   player_id, custom_name, bound_name, email, google_id,
+//   google_display_name, photo_url, line_user_id, line_display_name,
+//   avatar_url, referrer, is_bound, can_create_events, is_admin, created_at
 // player_id 才是真正的主鍵——一個 UUID(Utilities.getUuid())，註冊當下
 // 產生一次、永不變動，其他表以後要關聯球員也是用這個，不是用
 // google_id/line_user_id(那兩個只是「目前綁定了哪些登入方式」)。故意
@@ -23,15 +23,17 @@
 //   綁——見 linkProviderProfile。頭像要顯示哪一張由「這次用哪個
 //   provider 登入」決定(photo_url 或 avatar_url)，不是另外存一個「目前
 //   頭像」。
-//   custom_name：只拿來比對/綁定用的鍵值，是 members/signups 等其他表
-//     拿來對應球員的鍵值(還沒遷移成 player_id 之前，全部都还是用這個)，
-//     跟 google_display_name/line_display_name 這兩個「provider 目前的
-//     真實顯示名稱」是分開的三個欄位，不會互相覆蓋——custom_name 註冊
-//     當下就會填好(沒特別選就先用顯示名稱頂著)，同名會被擋掉(見
-//     registerLineProfile/registerGoogleProfile)。
-//   is_bound：是否已完成舊資料綁定，目前註冊當下就一定會填 custom_name，
-//     所以新建的列一律是 true；保留這個欄位是因為之後如果改成「先登入、
-//     再另外綁舊資料」的兩步式流程，這裡就能派上用場。
+//   custom_name 跟 bound_name 是兩個不同用途、故意分開的欄位：
+//     custom_name 是「目前顯示用的暱稱」，註冊當下就會填好(沒特別選就先
+//       用 Google/LINE 顯示名稱頂著)，之後如果做了改名功能，改的是這個
+//       欄位，同名會被擋掉(見 registerLineProfile/registerGoogleProfile)。
+//     bound_name 是「真正拿去比對 members/signups 舊資料的鍵值」，只有
+//       綁定舊資料時才會寫入(見 bindCustomName)，寫入後就固定不再變，
+//       就算之後 custom_name 改名也不會影響舊資料的對應關係。
+//     兩者故意不互相覆蓋——custom_name 可以自由改而不動到歷史資料的
+//     對應，bound_name 一旦綁定就是穩定的歷史鍵值。
+//   is_bound：bound_name 是否已經填好(已完成舊資料綁定)。新註冊的列
+//     一律是 false，只有 bindCustomName 成功之後才會變 true。
 // line_user_id/google_id 這兩個 column 沒加的話對應的 login/register
 // action 會直接回錯誤，不會壞掉其他功能。
 // 加綁第二個 provider(例如已經用 LINE 註冊過的人想再多綁 Gmail)一定要
@@ -394,9 +396,10 @@ function googleLogin(data) {
 // 給球員清單(member.html)、手動建活動的出席名單(index.html)這種需要
 // 列出「還沒註冊過的舊球員」的畫面用——players 表本身不會有「還沒綁定」
 // 的佔位列，所以這裡改成即時從 members 撈全部出現過的姓名，再對照
-// players.custom_name 補上是否已綁定/大頭貼/管理員等資訊。custom_name
-// 已綁定但可能還沒出現在 members 裡的人(例如剛註冊、還沒繳過月費)也會
-// 被列進去。
+// players.bound_name(不是 custom_name——custom_name 只是顯示用的暱稱，
+// 還沒綁定舊資料的人也會有，不代表「這個歷史姓名已經被認領」)補上是否
+// 已綁定/大頭貼/管理員等資訊。bound_name 已綁定但可能還沒出現在 members
+// 裡的人(例如剛註冊、還沒繳過月費)也會被列進去。
 function getRoster() {
   const membersSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(MEMBERS_SHEET);
   const memberRows = membersSheet.getDataRange().getValues();
@@ -410,15 +413,15 @@ function getRoster() {
   if (playersSheet) {
     const playerRows = playersSheet.getDataRange().getValues();
     const playerHeaders = playerRows.shift();
-    const customNameCol = playerHeaders.indexOf('custom_name');
-    if (customNameCol >= 0) {
+    const boundNameCol = playerHeaders.indexOf('bound_name');
+    if (boundNameCol >= 0) {
       playerRows.forEach(r => {
-        const customName = r[customNameCol];
-        if (!customName) return;
-        allNames.add(String(customName));
+        const boundName = r[boundNameCol];
+        if (!boundName) return;
+        allNames.add(String(boundName));
         const entry = {};
         playerHeaders.forEach((h, i) => { entry[h] = r[i]; });
-        boundByName[String(customName)] = entry;
+        boundByName[String(boundName)] = entry;
       });
     }
   }
@@ -548,11 +551,12 @@ function pickUniqueCustomName(rows, customNameCol, desired) {
 // 註冊流程：驗證 Google/LINE 身分就直接建一筆新的 players(player_id 是
 // 主鍵，這個 LINE 帳號不可能已經有列卻沒被 lineLogin 比對到)：
 //   - 這個 LINE 帳號(line_user_id)已經有列 -> already_bound，請改用「登入」
-//   - 前端有帶暱稱(data.name，使用者自己選擇要綁)且撞到別人在用的名字
-//     -> name_taken，換一個
-//   - 都沒問題 -> 新增一列。有帶暱稱就直接綁(is_bound:true)；沒帶暱稱
-//     的話用 LINE 顯示名稱頂著(is_bound:false)，之後可以用 bindCustomName
-//     補真正要綁的暱稱。
+//   - 前端有帶暱稱(data.name，使用者自己選擇要綁)且撞到別人已經綁走的
+//     bound_name -> name_taken，換一個
+//   - 都沒問題 -> 新增一列。有帶暱稱的話 custom_name/bound_name 都設成
+//     這個名字、is_bound:true(等於註冊當下就順便綁了)；沒帶暱稱的話
+//     custom_name 用 LINE 顯示名稱頂著、bound_name 留空、is_bound:false，
+//     之後可以用 bindCustomName 補真正要綁的暱稱。
 // 「已經用 Google 註冊過的人想再多綁 LINE」不是這裡處理——那要先登入，
 // 到「帳號綁定」面板用 linkProviderProfile，不是靠同名自動合併(同名
 // 自動合併等於任何人都能打別人的暱稱去「認領」別人的帳號)。
@@ -564,6 +568,7 @@ function registerLineProfile(data) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const rows = sheet.getDataRange().getValues();
   const customNameCol = headers.indexOf('custom_name');
+  const boundNameCol = headers.indexOf('bound_name');
   const lineIdCol = headers.indexOf('line_user_id');
   if (lineIdCol < 0) return { success: false, reason: 'missing_line_user_id_column' };
   // player_id 是主鍵，這欄位如果不存在，headers.map() 寫新列時會靜默漏
@@ -576,22 +581,25 @@ function registerLineProfile(data) {
   if (alreadyBound) return { success: false, reason: 'already_bound' };
 
   const typedName = String((data && data.name) || '').trim();
-  let name;
+  let customName, boundName = '', isBound = false;
   if (typedName) {
-    const nameTaken = rows.slice(1).some(r => r[customNameCol] === typedName);
+    const nameTaken = boundNameCol >= 0 && rows.slice(1).some(r => r[boundNameCol] === typedName);
     if (nameTaken) return { success: false, reason: 'name_taken' };
-    name = typedName;
+    customName = typedName;
+    boundName = typedName;
+    isBound = true;
   } else {
-    name = pickUniqueCustomName(rows, customNameCol, account.name);
+    customName = pickUniqueCustomName(rows, customNameCol, account.name);
   }
 
   const updates = {
     player_id: Utilities.getUuid(),
     line_user_id: account.sub,
     line_display_name: account.name || '',
-    custom_name: name,
+    custom_name: customName,
+    bound_name: boundName,
     avatar_url: account.picture || '',
-    is_bound: !!typedName,
+    is_bound: isBound,
     can_create_events: false,
     is_admin: false,
     created_at: new Date()
@@ -604,8 +612,8 @@ function registerLineProfile(data) {
 }
 
 // 註冊流程（Google 版），邏輯跟 registerLineProfile 對稱，只是換一組
-// 欄位(google_id/email/photo_url)寫入，同一套 player_id/custom_name
-// 規則（含「沒帶暱稱就用顯示名稱頂著」）。
+// 欄位(google_id/email/photo_url)寫入，同一套 player_id/custom_name/
+// bound_name 規則（含「沒帶暱稱就用顯示名稱頂著」）。
 function registerGoogleProfile(data) {
   const account = verifyGoogleCredential(data && data.credential);
   if (!account) return { success: false, reason: 'invalid_token' };
@@ -614,6 +622,7 @@ function registerGoogleProfile(data) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const rows = sheet.getDataRange().getValues();
   const customNameCol = headers.indexOf('custom_name');
+  const boundNameCol = headers.indexOf('bound_name');
   const googleIdCol = headers.indexOf('google_id');
   if (googleIdCol < 0) return { success: false, reason: 'missing_google_id_column' };
   if (headers.indexOf('player_id') < 0) return { success: false, reason: 'missing_player_id_column' };
@@ -622,13 +631,15 @@ function registerGoogleProfile(data) {
   if (alreadyBound) return { success: false, reason: 'already_bound' };
 
   const typedName = String((data && data.name) || '').trim();
-  let name;
+  let customName, boundName = '', isBound = false;
   if (typedName) {
-    const nameTaken = rows.slice(1).some(r => r[customNameCol] === typedName);
+    const nameTaken = boundNameCol >= 0 && rows.slice(1).some(r => r[boundNameCol] === typedName);
     if (nameTaken) return { success: false, reason: 'name_taken' };
-    name = typedName;
+    customName = typedName;
+    boundName = typedName;
+    isBound = true;
   } else {
-    name = pickUniqueCustomName(rows, customNameCol, account.name);
+    customName = pickUniqueCustomName(rows, customNameCol, account.name);
   }
 
   const updates = {
@@ -637,8 +648,9 @@ function registerGoogleProfile(data) {
     email: account.email || '',
     google_display_name: account.name || '',
     photo_url: account.picture || '',
-    custom_name: name,
-    is_bound: !!typedName,
+    custom_name: customName,
+    bound_name: boundName,
+    is_bound: isBound,
     can_create_events: false,
     is_admin: false,
     created_at: new Date()
@@ -651,8 +663,11 @@ function registerGoogleProfile(data) {
 }
 
 // 註冊當下略過暱稱綁定的人，之後在「要不要綁定暱稱」畫面補真正要用的
-// 舊資料暱稱。只認 player_id（前端已登入才知道這個值），custom_name
-// 撞到別人（不是自己這個 player_id）在用的名字就擋掉。
+// 舊資料暱稱——寫的是 bound_name，不是 custom_name，兩者故意分開(見
+// 檔案開頭欄位說明)：bound_name 才是 members/signups 比對用的鍵值，
+// 一綁定就固定，不會因為 custom_name 之後改名而跟著變動。只認
+// player_id（前端已登入才知道這個值），bound_name 撞到別人（不是自己
+// 這個 player_id）已經綁走的名字就擋掉。
 function bindCustomName(data) {
   const playerId = String((data && data.player_id) || '').trim();
   const name = String((data && data.name) || '').trim();
@@ -662,17 +677,18 @@ function bindCustomName(data) {
   const target = findPlayerRowByField('player_id', playerId);
   if (!target) return { success: false, reason: 'player_not_found' };
 
-  const customNameCol = target.headers.indexOf('custom_name');
+  const boundNameCol = target.headers.indexOf('bound_name');
+  if (boundNameCol < 0) return { success: false, reason: 'missing_bound_name_column' };
   const rows = target.sheet.getDataRange().getValues();
   rows.shift();
   const playerIdCol = target.headers.indexOf('player_id');
-  const nameTaken = rows.some(r => r[customNameCol] === name && String(r[playerIdCol]) !== playerId);
+  const nameTaken = rows.some(r => r[boundNameCol] === name && String(r[playerIdCol]) !== playerId);
   if (nameTaken) return { success: false, reason: 'name_taken' };
 
-  target.sheet.getRange(target.rowIndex, customNameCol + 1).setValue(name);
+  target.sheet.getRange(target.rowIndex, boundNameCol + 1).setValue(name);
   const isBoundCol = target.headers.indexOf('is_bound');
   if (isBoundCol >= 0) target.sheet.getRange(target.rowIndex, isBoundCol + 1).setValue(true);
-  target.player.custom_name = name;
+  target.player.bound_name = name;
   target.player.is_bound = true;
 
   return { success: true, profile: target.player };

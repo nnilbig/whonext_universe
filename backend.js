@@ -128,6 +128,12 @@ window.WhonextLiff = (function(){
     },
     isReady: function(){ return ready; },
     isLoggedIn: function(){ return ready && liff.isLoggedIn(); },
+    // true 只代表「這是真的透過 liff.line.me/... 連結啟動的 LIFF session」，
+    // 跟「UA 裡有沒有 Line/」是兩件事——把一般網址貼到 LINE 對話裡開啟，
+    // UA 一樣會有 Line/，但這裡會是 false。identity-picker.js 靠這個分辨
+    // 「正常 LIFF 進站、應該放行」還是「野生網址在 LINE 內建瀏覽器打開、
+    // 要請使用者跳出去」，不能只看 UA。
+    isInClient: function(){ return ready && liff.isInClient(); },
     // redirectUri 網域一定要跟 LIFF app 註冊的網域相同，這裡直接帶目前
     // 頁面網址，這樣不管從哪一頁點登入，LINE 授權完都會導回同一頁，
     // 不用像傳統 OAuth code flow 那樣另外弄一個固定的 callback 頁。
