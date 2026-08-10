@@ -212,11 +212,6 @@
       <div id="personalContent" style="display:none">
 
         <div class="section-label-row">
-          <div class="section-label">帳號綁定</div>
-        </div>
-        <div id="bindPanelContainer"></div>
-
-        <div class="section-label-row">
           <div class="section-label">年度總覽</div>
         </div>
         <div class="yo-card glass" id="yoToggleBtn">
@@ -329,7 +324,6 @@
   document.addEventListener('whonext:playername-change', function(){
     if(!getPlayerName()){
       document.getElementById('whoamiContainer').innerHTML = '';
-      document.getElementById('bindPanelContainer').innerHTML = '';
     }
     renderPersonalView();
   });
@@ -731,12 +725,6 @@
 
     whoamiContainer.style.display = 'none';
     content.style.display = '';
-
-    // 只在第一次（容器還是空的）才渲染，避免資料重新整理時把使用者
-    // 正在操作的綁定流程（例如 Google 按鈕載入中）整個重繪回原狀；
-    // 綁定成功後 identity-picker.js 自己會重繪這個容器，不需要靠這裡。
-    const bindPanelContainer = document.getElementById('bindPanelContainer');
-    if(bindPanelContainer && !bindPanelContainer.childElementCount) WhonextIdentityPicker.renderBindPanel(bindPanelContainer);
 
     historyExpanded = false;
     historyFullyExpanded = false;
