@@ -1,28 +1,41 @@
 (function(){
   var ROLE_KEY = 'whonext_role';
   var PLAYER_NAME_KEY = 'whonext_player_name';
-  var GOOGLE_CLIENT_ID = '702772011583-5g00roumo9mgruijtn3jhg525bot1cja.apps.googleusercontent.com';
+  var IS_ADMIN_KEY = 'whonext_player_is_admin';
   var IDLE_LIMIT_MS = 5 * 60 * 1000;
   var idleTimer = null;
 
+  // 管理員身分不再另外登入，直接看目前綁定的球員本人在 profiles 裡的
+  // is_admin——「管理員視角」只是同一個人切換看到的畫面（見 setRole）。
   function getRole(){ return localStorage.getItem(ROLE_KEY) || 'player'; }
+  function getPlayerIsAdmin(){ return localStorage.getItem(IS_ADMIN_KEY) === '1'; }
 
   function getPlayerName(){ return localStorage.getItem(PLAYER_NAME_KEY) || ''; }
 
   // 設定/清除目前綁定的球員身分，並同步更新 top nav 的頭像顯示，
-  // 讓正在看 profile.html 的頁面也能透過事件即時重繪。
-  function setPlayerName(name){
-    if(name) localStorage.setItem(PLAYER_NAME_KEY, name);
-    else localStorage.removeItem(PLAYER_NAME_KEY);
-    updateNavRoleToggle();
+  // 讓正在看 profile.html 的頁面也能透過事件即時重繪。isAdmin 來自
+  // 登入/註冊回傳的 profile.is_admin，換身分或登出一律重置回球員
+  // 視角，管理員視角要重新點一次「管理員」才會切換過去。
+  function setPlayerName(name, isAdmin){
+    if(name){
+      localStorage.setItem(PLAYER_NAME_KEY, name);
+      localStorage.setItem(IS_ADMIN_KEY, isAdmin ? '1' : '0');
+    } else {
+      localStorage.removeItem(PLAYER_NAME_KEY);
+      localStorage.removeItem(IS_ADMIN_KEY);
+    }
+    setRole('player');
     document.dispatchEvent(new CustomEvent('whonext:playername-change'));
   }
 
+  // 只有目前綁定的球員本人具備 is_admin 才能真的切到管理員視角，
+  // 就算 localStorage 被亂改成 admin，這裡還是會被拉回 player。
   function setRole(role){
-    localStorage.setItem(ROLE_KEY, role);
+    var next = (role === 'admin' && getPlayerIsAdmin()) ? 'admin' : 'player';
+    localStorage.setItem(ROLE_KEY, next);
     applyAdminClass();
     updateNavRoleToggle();
-    if(role === 'admin') resetIdleTimer();
+    if(next === 'admin') resetIdleTimer();
     else clearIdleTimer();
   }
 
@@ -64,56 +77,38 @@
     document.body.classList.toggle('is-admin', getRole() === 'admin');
   }
 
-  // Top nav 的兩顆按鈕依目前狀態切換：
-  //   管理員視角：左邊顯示「管理員」badge，右邊「登出」——不管點哪顆都是
-  //   結束管理員視角（跟 wireNavRoleToggle 的 admin 分支一致）。
-  //   沒綁定球員身分：「註冊」「登入」。
-  //   已綁定球員身分：頭像＋姓名（點一下跳去我的活動）排在左邊、
-  //   「登出」排在右邊（用 CSS order 换位，見 top-nav.css）。
+  // Top nav 的身分區塊整個從狀態重繪，比較好處理三種情況：
+  //   沒登入：「註冊」「登入」。
+  //   已登入、不是管理員：頭像＋姓名（點一下跳去我的活動）、「登出」。
+  //   已登入、是管理員：頭像＋姓名、「管理員」（切換管理員視角，目前
+  //   在管理員視角就反白）、「登出」——順序照這樣排，不用另外用 CSS
+  //   order 換位。
   function updateNavRoleToggle(){
-    var isAdmin = getRole() === 'admin';
     var toggle = document.getElementById('navRoleToggle');
-    var secondaryBtn = document.getElementById('navSecondaryBtn');
-    var primaryBtn = document.getElementById('navPrimaryBtn');
+    if(!toggle) return;
+    var name = getPlayerName();
 
-    if(isAdmin){
-      if(toggle) toggle.classList.remove('identity-active');
-      if(secondaryBtn){
-        secondaryBtn.classList.add('active');
-        secondaryBtn.textContent = '管理員';
-      }
-      if(primaryBtn){
-        primaryBtn.classList.remove('has-identity');
-        primaryBtn.textContent = '登出';
-      }
+    if(!name){
+      toggle.innerHTML =
+        '<button type="button" class="role-toggle-btn" data-action="register">註冊</button>' +
+        '<button type="button" class="role-toggle-btn" data-action="login">登入</button>';
       return;
     }
 
-    if(secondaryBtn) secondaryBtn.classList.remove('active');
-    if(primaryBtn) primaryBtn.classList.remove('active');
-
-    var name = getPlayerName();
-    if(toggle) toggle.classList.toggle('identity-active', !!name);
-    if(secondaryBtn){
-      secondaryBtn.dataset.entry = name ? 'logout' : 'register';
-      secondaryBtn.textContent = name ? '登出' : '註冊';
+    var html = '<button type="button" class="role-toggle-btn has-identity" data-action="identity">' +
+      '<span class="nav-id-avatar">' + avatarInitial(name) + '</span><span class="nav-id-name">' + name + '</span>' +
+    '</button>';
+    if(getPlayerIsAdmin()){
+      html += '<button type="button" class="role-toggle-btn' + (getRole() === 'admin' ? ' active' : '') + '" data-action="admin-toggle">管理員</button>';
     }
-    if(primaryBtn){
-      if(name){
-        primaryBtn.classList.add('has-identity');
-        primaryBtn.innerHTML = '<span class="nav-id-avatar">' + avatarInitial(name) + '</span><span class="nav-id-name">' + name + '</span>';
-      } else {
-        primaryBtn.classList.remove('has-identity');
-        primaryBtn.textContent = '登入';
-      }
-    }
+    html += '<button type="button" class="role-toggle-btn" data-action="logout">登出</button>';
+    toggle.innerHTML = html;
   }
 
   // 球員登入用 identity-picker.js 同一套流程，塞進 nav 自己的 overlay，
   // 留在目前頁面完成登入，不用跳去 profile.html。nav 上「註冊」「登入」
   // 兩顆按鈕分別直接開對應畫面，不用先經過起始選擇畫面。
   function openNavLogin(entry){
-    closeAdminLogin();
     var overlay = document.getElementById('navLoginOverlay');
     var container = document.getElementById('navLoginContainer');
     if(!overlay || !container || !window.WhonextIdentityPicker) return;
@@ -128,95 +123,29 @@
     if(overlay) overlay.classList.remove('open');
   }
 
-  // 管理員登入用真的 Google 帳號，後端比對 email 是否在 profiles 的
-  // is_admin 名單內。每次重開都要重置成起始畫面，不然會停在上次沒登入
-  // 成功時顯示的錯誤訊息。
-  function openAdminLogin(){
-    closeNavLogin();
-    var overlay = document.getElementById('adminLoginOverlay');
-    if(!overlay) return;
-    document.getElementById('adminLoginStart').style.display = '';
-    document.getElementById('adminLoginVerifying').style.display = 'none';
-    document.getElementById('adminLoginError').style.display = 'none';
-    overlay.classList.add('open');
-    renderAdminGoogleButton();
-  }
-
-  function closeAdminLogin(){
-    var overlay = document.getElementById('adminLoginOverlay');
-    if(overlay) overlay.classList.remove('open');
-  }
-
-  // 跟 identity-picker.js 同一套 GIS 按鈕邏輯，共用 backend.js 的
-  // WhonextGis 載入器，不用各自注入一次 script。
-  function renderAdminGoogleButton(){
-    var btnWrap = document.getElementById('adminGoogleBtnWrap');
-    if(!btnWrap || !window.WhonextGis) return;
-    WhonextGis.onReady(function(){
-      if(!document.body.contains(btnWrap)) return;
-      google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: function(response){ submitAdminGoogleLogin(response.credential); }
-      });
-      btnWrap.innerHTML = '';
-      google.accounts.id.renderButton(btnWrap, { theme:'filled_black', shape:'pill', size:'large', text:'continue_with', width:240 });
-    });
-  }
-
-  async function submitAdminGoogleLogin(credential){
-    document.getElementById('adminLoginStart').style.display = 'none';
-    document.getElementById('adminLoginVerifying').style.display = '';
-    try{
-      var result = await apiPost('googleAdminLogin', { credential: credential });
-      if(result && result.success){
-        setRole('admin');
-        closeAdminLogin();
-        return;
-      }
-    } catch(e){
-      // 連線失敗也走下面同一套「顯示錯誤、回到起始畫面」處理
-    }
-    document.getElementById('adminLoginVerifying').style.display = 'none';
-    document.getElementById('adminLoginStart').style.display = '';
-    document.getElementById('adminLoginError').style.display = 'block';
-    renderAdminGoogleButton();
-  }
-
-  // nav 上是「註冊／登出」「登入／頭像」兩顆按鈕（管理員登入從我的錢包／
-  // 我的活動的登入選單「我是管理員」進去，見 identity-picker.js）。點下去：
-  // 如果目前正在看管理員視角，只是切回球員視角，已經綁定的球員身分
-  // 保留，不用重選；已經綁定身分時，「登入」那顆變頭像，點一下是跳去
-  // 我的活動（profile.html），不會登出——登出要點旁邊借位變成「登出」
-  // 的那顆按鈕；還沒登入的話依照按到的是「註冊」還是「登入」，直接開
-  // 對應畫面。
+  // 管理員不再另外登入——直接點「管理員」在目前已登入的球員身分上切換
+  // 視角，是不是真的有權限看 setRole() 裡的 getPlayerIsAdmin() 守著。
   function wireNavRoleToggle(){
     var toggle = document.getElementById('navRoleToggle');
     if(!toggle) return;
     toggle.addEventListener('click', function(e){
       var btn = e.target.closest('.role-toggle-btn');
       if(!btn) return;
-      if(getRole() === 'admin'){
-        setRole('player');
+      var action = btn.dataset.action;
+      if(action === 'admin-toggle'){
+        setRole(getRole() === 'admin' ? 'player' : 'admin');
         return;
       }
-      var entry = btn.dataset.entry;
-      if(entry === 'logout'){
+      if(action === 'logout'){
         setPlayerName('');
         return;
       }
-      if(entry === 'login' && getPlayerName()){
+      if(action === 'identity'){
         window.location.href = 'profile.html';
         return;
       }
-      openNavLogin(entry);
+      openNavLogin(action);
     });
-
-    var cancelStartBtn = document.getElementById('adminLoginCancelStart');
-    if(cancelStartBtn) cancelStartBtn.addEventListener('click', closeAdminLogin);
-    var overlay = document.getElementById('adminLoginOverlay');
-    if(overlay){
-      overlay.addEventListener('click', function(e){ if(e.target === overlay) closeAdminLogin(); });
-    }
 
     var navLoginOverlay = document.getElementById('navLoginOverlay');
     if(navLoginOverlay){
@@ -231,15 +160,15 @@
   });
 
   document.addEventListener('DOMContentLoaded', function(){
-    applyAdminClass();
-    updateNavRoleToggle();
+    // 用 setRole 重新驗證一次，而不是直接信任 localStorage 存的值——
+    // 萬一目前綁定的球員身分已經不是管理員了，這裡會被拉回 player。
+    setRole(getRole());
     wireNavRoleToggle();
-    if(getRole() === 'admin') resetIdleTimer();
   });
 
   window.WhonextAuth = {
     ROLE_KEY: ROLE_KEY, getRole: getRole, setRole: setRole,
     getPlayerName: getPlayerName, setPlayerName: setPlayerName,
-    openAdminLogin: openAdminLogin, closeNavLogin: closeNavLogin
+    getPlayerIsAdmin: getPlayerIsAdmin
   };
 })();

@@ -6,8 +6,7 @@ body.is-admin .admin-only.flex{ display:flex; }
 /* ---------- NAV IDENTITY (shared across pages) ---------- */
 .nav-role{ margin-left:auto; display:flex; align-items:center; gap:8px; }
 
-/* ---------- ADMIN LOGIN MODAL (shared, injected by top-nav.js) ---------- */
-.nav-login-title{ font-size:16px; font-weight:800; margin-bottom:16px; color:var(--label); }
+/* ---------- NAV LOGIN INPUT (shared, used by identity-picker.js) ---------- */
 .nav-login-input{
   width:100%; box-sizing:border-box;
   font-family: var(--sf-mono, monospace); font-size:16px; color: var(--label);
@@ -34,10 +33,6 @@ body.is-admin .admin-only.flex{ display:flex; }
   font-size:12.5px; font-weight:700; color:var(--secondary);
   padding:12px 0 2px;
 }
-/* 管理員登入跟訪客登入是完全不同性質的入口，拉開明顯距離＋加一條分隔線，
-   避免看起來像同一組選項，誤點。 */
-.whoami-admin-btn{ margin-top:14px; padding-top:16px; border-top:1px solid var(--line); }
-
 /* 固定高度（不只 min-height），佔位文字換成 Google 按鈕時容器尺寸
    不會變，卡片／視窗不會跟著跳動，只有按鈕本身淡入淡出的差別。 */
 .whoami-google-btn-wrap{ display:flex; align-items:center; justify-content:center; height:44px; overflow:hidden; }

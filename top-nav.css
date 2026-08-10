@@ -16,17 +16,15 @@
 .nav-title .eyebrow{ font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary); text-transform:uppercase; }
 .nav-title h1{ margin:1px 0 0; font-size:20px; font-weight:800; letter-spacing:-.01em; }
 
-.role-toggle{ display:flex; align-items:center; gap:16px; }
+/* gap 縮小一點是為了管理員視角三顆按鈕（頭像／管理員／登出）擠得下，
+   非管理員時只有一到兩顆，看起來一樣寬鬆。 */
+.role-toggle{ display:flex; align-items:center; gap:10px; }
 .role-toggle-btn{
   display:flex; align-items:center; gap:7px;
   font-size:13px; font-weight:700; color: var(--tertiary);
+  white-space:nowrap;
 }
 .role-toggle-btn.active{ color: var(--label); }
-/* 已登入（球員／訪客）時，頭像＋名字要排在登出按鈕左邊，
-   讓登出永遠貼著身分顯示的右側，不用動 DOM 順序（未登入時
-   維持「註冊／登入」原本的排列）。 */
-.role-toggle.identity-active #navSecondaryBtn{ order:2; }
-.role-toggle.identity-active #navPrimaryBtn{ order:1; }
 
 .nav-id-avatar{
   width:28px; height:28px; border-radius:50%; flex-shrink:0;
