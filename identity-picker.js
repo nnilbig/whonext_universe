@@ -148,26 +148,31 @@
     });
   }
 
-  // 步驟三：問要不要順便綁定舊球員暱稱。輸入暱稱送出(bindCustomName)或
-  // 按「略過」都會呼叫 finishLogin 直接進畫面——略過的話 profile.custom_name
-  // 已經是後端自動頂上去的顯示名稱，不是空的，所以報名/錢包這些功能
-  // 馬上就能用，只是還沒接回舊資料而已，之後可以再補綁。
+  // 步驟二：問要不要順便綁定舊球員暱稱。先把 getLegacyNicknames（讀
+  // getRoster 撈出來的球員 name）讀完，下拉選單才會一開始就有選項，
+  // 不會先顯示空的、選單打開才慢慢補資料。輸入暱稱送出(bindCustomName)
+  // 或按「略過」都會呼叫 finishLogin 直接進畫面——略過的話
+  // profile.custom_name 已經是後端自動頂上去的顯示名稱，不是空的，所以
+  // 報名/錢包這些功能馬上就能用，只是還沒接回舊資料而已，之後可以再補綁。
   function renderNicknamePrompt(container, profile, provider){
+    container.innerHTML = '<div class="whoami-card glass"><div class="whoami-spinner-wrap"><div class="whoami-spinner"></div></div></div>';
+    getLegacyNicknames().then(function(names){
+      if(!document.body.contains(container)) return;
+      renderNicknamePromptForm(container, profile, provider, names);
+    });
+  }
+
+  function renderNicknamePromptForm(container, profile, provider, names){
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-title">要順便綁定舊球員身份嗎？</div>' +
         '<div class="whoami-sub">如果你是舊球員，輸入以前用的暱稱就能接回報名/錢包紀錄；不是的話可以先略過，之後在個人頁也能補綁。</div>' +
         '<input type="text" id="wiBindNickname" class="nav-login-input" list="wiBindNicknameList" placeholder="輸入或選擇舊暱稱" autocomplete="off">' +
-        '<datalist id="wiBindNicknameList"></datalist>' +
+        '<datalist id="wiBindNicknameList">' + names.map(function(n){ return '<option value="' + n + '">'; }).join('') + '</datalist>' +
         '<div class="auth-error" id="wiBindNicknameError" style="display:none">請先輸入暱稱</div>' +
         '<button type="button" class="whoami-primary-btn" id="wiBindNicknameBtn">綁定暱稱</button>' +
         '<button type="button" class="whoami-secondary-btn" id="wiSkipBindBtn">略過，直接使用</button>' +
       '</div>';
-
-    getLegacyNicknames().then(function(names){
-      const listEl = container.querySelector('#wiBindNicknameList');
-      if(listEl) listEl.innerHTML = names.map(function(n){ return '<option value="' + n + '">'; }).join('');
-    });
 
     container.querySelector('#wiBindNicknameBtn').addEventListener('click', function(){
       const nameInput = container.querySelector('#wiBindNickname');
