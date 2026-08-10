@@ -2,6 +2,7 @@
   var ROLE_KEY = 'whonext_role';
   var PLAYER_NAME_KEY = 'whonext_player_name';
   var IS_ADMIN_KEY = 'whonext_player_is_admin';
+  var PHOTO_KEY = 'whonext_player_photo';
   var IDLE_LIMIT_MS = 5 * 60 * 1000;
   var idleTimer = null;
 
@@ -11,18 +12,22 @@
   function getPlayerIsAdmin(){ return localStorage.getItem(IS_ADMIN_KEY) === '1'; }
 
   function getPlayerName(){ return localStorage.getItem(PLAYER_NAME_KEY) || ''; }
+  function getPlayerPhoto(){ return localStorage.getItem(PHOTO_KEY) || ''; }
 
   // 設定/清除目前綁定的球員身分，並同步更新 top nav 的頭像顯示，
-  // 讓正在看 profile.html 的頁面也能透過事件即時重繪。isAdmin 來自
-  // 登入/註冊回傳的 profile.is_admin，換身分或登出一律重置回球員
-  // 視角，管理員視角要重新點一次「管理員」才會切換過去。
-  function setPlayerName(name, isAdmin){
+  // 讓正在看 profile.html 的頁面也能透過事件即時重繪。isAdmin／photoUrl
+  // 都來自登入/註冊回傳的 profile（is_admin、photo_url），換身分或登出
+  // 一律重置回球員視角，管理員視角要重新點一次「管理員」才會切換過去。
+  function setPlayerName(name, isAdmin, photoUrl){
     if(name){
       localStorage.setItem(PLAYER_NAME_KEY, name);
       localStorage.setItem(IS_ADMIN_KEY, isAdmin ? '1' : '0');
+      if(photoUrl) localStorage.setItem(PHOTO_KEY, photoUrl);
+      else localStorage.removeItem(PHOTO_KEY);
     } else {
       localStorage.removeItem(PLAYER_NAME_KEY);
       localStorage.removeItem(IS_ADMIN_KEY);
+      localStorage.removeItem(PHOTO_KEY);
     }
     setRole('player');
     document.dispatchEvent(new CustomEvent('whonext:playername-change'));
@@ -96,13 +101,31 @@
     }
 
     var html = '<button type="button" class="role-toggle-btn has-identity" data-action="identity">' +
-      '<span class="nav-id-avatar">' + avatarInitial(name) + '</span><span class="nav-id-name">' + name + '</span>' +
+      navAvatarHTML(name) + '<span class="nav-id-name">' + name + '</span>' +
     '</button>';
     if(getPlayerIsAdmin()){
       html += '<button type="button" class="role-toggle-btn' + (getRole() === 'admin' ? ' active' : '') + '" data-action="admin-toggle">管理員</button>';
     }
     html += '<button type="button" class="role-toggle-btn" data-action="logout">登出</button>';
     toggle.innerHTML = html;
+
+    // 有綁定 Google 頭像照片就優先顯示，載入失敗（連結失效／被擋）就
+    // 退回原本的姓名縮寫圓圈，不留一格空白圖示。
+    var avatarImg = toggle.querySelector('img.nav-id-avatar');
+    if(avatarImg){
+      avatarImg.addEventListener('error', function(){
+        var fallback = document.createElement('span');
+        fallback.className = 'nav-id-avatar';
+        fallback.textContent = avatarInitial(name);
+        avatarImg.replaceWith(fallback);
+      }, { once:true });
+    }
+  }
+
+  function navAvatarHTML(name){
+    var photo = getPlayerPhoto();
+    if(photo) return '<img class="nav-id-avatar" src="' + photo + '" referrerpolicy="no-referrer" alt="">';
+    return '<span class="nav-id-avatar">' + avatarInitial(name) + '</span>';
   }
 
   // 球員登入用 identity-picker.js 同一套流程，塞進 nav 自己的 overlay，
@@ -169,6 +192,6 @@
   window.WhonextAuth = {
     ROLE_KEY: ROLE_KEY, getRole: getRole, setRole: setRole,
     getPlayerName: getPlayerName, setPlayerName: setPlayerName,
-    getPlayerIsAdmin: getPlayerIsAdmin
+    getPlayerIsAdmin: getPlayerIsAdmin, getPlayerPhoto: getPlayerPhoto
   };
 })();

@@ -182,10 +182,11 @@
   }
 
   // is_admin 存在 sheet 裡可能是布林值也可能是核取方塊讀出來的 'TRUE'
-  // 字串，兩種都要認得。
+  // 字串，兩種都要認得。photo_url 是註冊當下存的 Google 大頭貼連結，
+  // nav 會優先顯示這張照片，沒有的話才退回姓名縮寫圓圈。
   function finishLogin(container, profile){
     const isAdmin = profile.is_admin === true || profile.is_admin === 'TRUE';
-    WhonextAuth.setPlayerName(profile.name, isAdmin);
+    WhonextAuth.setPlayerName(profile.name, isAdmin, profile.photo_url);
   }
 
   window.WhonextIdentityPicker = { render: render, renderLoginMenu: renderLoginMenu, renderRegister: renderRegister };
