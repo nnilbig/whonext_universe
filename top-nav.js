@@ -25,7 +25,10 @@
     var loginOverlay = document.createElement('div');
     loginOverlay.className = 'auth-overlay';
     loginOverlay.id = 'navLoginOverlay';
-    loginOverlay.innerHTML = '<div class="auth-box"><div id="navLoginContainer"></div></div>';
+    // shell-only：.auth-box 只留寬度/置中/縮放動畫這個「外殼」，玻璃卡片
+    // 外觀讓給裡面 identity-picker.js 畫的 .whoami-card.glass 自己顯示，
+    // 不然兩層都畫玻璃背景，視覺上會疊出兩層卡片。
+    loginOverlay.innerHTML = '<div class="auth-box shell-only"><div id="navLoginContainer"></div></div>';
     document.body.appendChild(loginOverlay);
   }
 

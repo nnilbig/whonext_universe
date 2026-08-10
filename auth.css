@@ -128,6 +128,9 @@ body.is-admin .admin-only.flex{ display:flex; }
   transition: transform .15s ease;
 }
 .auth-overlay.open .auth-box{ transform: scale(1); }
+/* shell-only：只當外殼(寬度/置中/縮放動畫)，不畫玻璃背景/邊框/padding，
+   讓裡面的 .whoami-card.glass 自己當唯一一層卡片（見 top-nav.js）。 */
+.auth-box.shell-only{ background:none; backdrop-filter:none; -webkit-backdrop-filter:none; border:none; padding:0; }
 
 /* 關閉用的 X：放在 auth-box 外層的 wrap 上，不是 auth-box 自己的
    子元素，這樣 auth-box 本身內容再長、要捲動，X 都不會被捲走。
