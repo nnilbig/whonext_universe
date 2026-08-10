@@ -1196,6 +1196,10 @@
     btn.textContent = '刪除賽事';
   }
 
+  // 暫時隱藏「訪客報名」入口（球員登入／訪客報名分頁的訪客那個分頁）：
+  // 只影響 UI 是否顯示分頁切換，底下的訪客報名/取消邏輯完全沒動，
+  // 之後要復原只要把這個開關改回 true 就好。
+  const GUEST_SIGNUP_ENABLED = false;
   let detailIndex = null;
   let signupMode = 'member';
   // 已報名者「推薦球友報名」的暫存名單：逐一輸入、加進清單，最後一次
@@ -1281,7 +1285,7 @@
   document.getElementById('signupEntryBtn').addEventListener('click', function(){
     document.getElementById('signupEntryRow').style.display = 'none';
     document.getElementById('eventSignupSection').style.display = '';
-    document.getElementById('signupModeToggle').style.display = '';
+    document.getElementById('signupModeToggle').style.display = GUEST_SIGNUP_ENABLED ? '' : 'none';
     setSignupTab('member');
   });
 
@@ -1545,7 +1549,7 @@
       // 直接展開球員報名／訪客報名的選擇。
       document.getElementById('signupEntryRow').style.display = 'none';
       document.getElementById('eventSignupSection').style.display = '';
-      document.getElementById('signupModeToggle').style.display = '';
+      document.getElementById('signupModeToggle').style.display = GUEST_SIGNUP_ENABLED ? '' : 'none';
       setSignupTab('member');
     } else {
       // 未登入：先顯示單一「我要報名」按鈕，點了才展開球員報名／訪客報名的選擇。
