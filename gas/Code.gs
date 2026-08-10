@@ -9,22 +9,26 @@
 //   id, event_id, type, member_name, guest_name, referrer, status, created_at
 // 還需要一個 players 分頁(一人一列的球員身分主檔,跟 members 那種每月覆寫的
 // 月繳名單分開),欄位標題:
-//   player_id, custom_name, email, google_id, photo_url, line_user_id,
-//   line_display_name, avatar_url, referrer, is_bound, can_create_events,
-//   is_admin, created_at
+//   player_id, custom_name, email, google_id, google_display_name,
+//   photo_url, line_user_id, line_display_name, avatar_url, referrer,
+//   is_bound, can_create_events, is_admin, created_at
 // player_id 才是真正的主鍵——一個 UUID(Utilities.getUuid())，註冊當下
 // 產生一次、永不變動，其他表以後要關聯球員也是用這個，不是用
 // google_id/line_user_id(那兩個只是「目前綁定了哪些登入方式」)。故意
 // 不用循序數字，Apps Script 沒有跨併發請求的原子遞增，循序 ID 也容易被
 // 列舉猜測。
-//   google_id / email / photo_url 是 Google 那組綁定欄位，
-//   line_user_id / line_display_name / avatar_url 是 LINE 那組，兩組
-//   互相獨立、都可以是空的，但一個 player_id 兩組都可以同時綁——見
-//   linkProviderProfile。頭像要顯示哪一張由「這次用哪個 provider
-//   登入」決定(photo_url 或 avatar_url)，不是另外存一個「目前頭像」。
-//   custom_name：綁定的本名/綽號，是 members/signups 等其他表拿來對應
-//     球員的鍵值(還沒遷移成 player_id 之前，全部都还是用這個)，註冊當下
-//     就會填好，同名會被擋掉(見 registerLineProfile/registerGoogleProfile)。
+//   google_id / email / google_display_name / photo_url 是 Google 那組
+//   綁定欄位，line_user_id / line_display_name / avatar_url 是 LINE
+//   那組，兩組互相獨立、都可以是空的，但一個 player_id 兩組都可以同時
+//   綁——見 linkProviderProfile。頭像要顯示哪一張由「這次用哪個
+//   provider 登入」決定(photo_url 或 avatar_url)，不是另外存一個「目前
+//   頭像」。
+//   custom_name：只拿來比對/綁定用的鍵值，是 members/signups 等其他表
+//     拿來對應球員的鍵值(還沒遷移成 player_id 之前，全部都还是用這個)，
+//     跟 google_display_name/line_display_name 這兩個「provider 目前的
+//     真實顯示名稱」是分開的三個欄位，不會互相覆蓋——custom_name 註冊
+//     當下就會填好(沒特別選就先用顯示名稱頂著)，同名會被擋掉(見
+//     registerLineProfile/registerGoogleProfile)。
 //   is_bound：是否已完成舊資料綁定，目前註冊當下就一定會填 custom_name，
 //     所以新建的列一律是 true；保留這個欄位是因為之後如果改成「先登入、
 //     再另外綁舊資料」的兩步式流程，這裡就能派上用場。
@@ -426,7 +430,7 @@ function getRoster() {
       is_bound: !!bound,
       line_user_id: bound ? bound.line_user_id : '',
       google_id: bound ? bound.google_id : '',
-      display_name: bound ? bound.line_display_name : '',
+      display_name: bound ? (bound.line_display_name || bound.google_display_name || '') : '',
       avatar_url: bound ? bound.avatar_url : '',
       is_admin: bound ? bound.is_admin : false,
       can_create_events: bound ? bound.can_create_events : false
@@ -625,6 +629,7 @@ function registerGoogleProfile(data) {
     player_id: Utilities.getUuid(),
     google_id: account.sub,
     email: account.email || '',
+    google_display_name: account.name || '',
     photo_url: account.picture || '',
     custom_name: name,
     is_bound: !!typedName,
@@ -695,7 +700,7 @@ function linkProviderProfile(data) {
   if (!target) return { success: false, reason: 'player_not_found' };
 
   const updates = provider === 'google'
-    ? { google_id: account.sub, email: account.email || '', photo_url: account.picture || '' }
+    ? { google_id: account.sub, email: account.email || '', google_display_name: account.name || '', photo_url: account.picture || '' }
     : { line_user_id: account.sub, line_display_name: account.name || '', avatar_url: account.picture || '' };
 
   Object.keys(updates).forEach(h => {

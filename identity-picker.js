@@ -403,7 +403,7 @@
         '<div class="whoami-title">帳號綁定</div>' +
         '<div class="whoami-sub">Gmail、LINE 都可以綁，之後不管用哪一個登入都是同一個身份。</div>' +
         '<div class="whoami-bind-row">' +
-          '<div><div class="whoami-bind-label">Gmail</div><div class="whoami-bind-sub">' + (player.email || '尚未綁定') + '</div></div>' +
+          '<div><div class="whoami-bind-label">Gmail</div><div class="whoami-bind-sub">' + (player.google_display_name || '尚未綁定') + '</div></div>' +
           (player.google_id ? '<div class="whoami-bind-status">已綁定 ✓</div>' : '<div id="wiBindGoogleWrap"><button type="button" class="whoami-bind-btn" id="wiBindGoogleBtn">綁定</button></div>') +
         '</div>' +
         '<div class="whoami-bind-row">' +
