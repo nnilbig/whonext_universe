@@ -275,6 +275,18 @@
   .signup-self-note b{ color:var(--label); font-weight:800; }
   .signup-cancel-btn:disabled{ opacity:.5; }
 
+  .help-guest-section{ margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
+  .help-guest-section .signup-submit{ margin-top:10px; }
+  .guest-queue-row{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:9px 12px; border-radius:12px; background: rgba(255,255,255,0.04); border:1px solid var(--line);
+  }
+  .guest-queue-remove{
+    font-size:11px; font-weight:700; color:var(--tertiary); padding:3px 9px; border-radius:999px;
+    flex-shrink:0; background:transparent; border:1px solid var(--line);
+  }
+  .guest-queue-remove:active{ background: rgba(255,255,255,0.06); }
+
   .signup-switch-btn{
     font-size:11px; font-weight:700; color:var(--tertiary); padding:4px 10px;
     border:1px solid var(--line); border-radius:999px; flex-shrink:0; background:transparent;
@@ -303,6 +315,10 @@
     flex:1; font-size:12px; font-weight:700; padding:8px 0; border-radius:999px; color:var(--tertiary);
   }
   .signup-mode-toggle button.active{ background: var(--card-strong); color: var(--label); }
+  /* 這裡上面已經有「球員報名／訪客報名」分頁標題，登入元件自己的
+     whoami-title 會重複寫一次「球員登入」，在這個彈窗裡隱藏掉就好，
+     不動 identity-picker.js 本身（profile.html/finance.html 還是要顯示）。 */
+  #signupWhoami .whoami-title{ display:none; }
 
   .signup-list{ display:flex; flex-direction:column; gap:6px; }
   .signup-empty{ font-size:12.5px; color:var(--tertiary); padding: 4px 2px; }
@@ -444,6 +460,16 @@
       <div id="selfSignedSection" style="display:none">
         <div class="self-signed-note">你已經報名這場了</div>
         <button type="button" class="signup-cancel-btn" id="signupCancelBtn" disabled>取消報名</button>
+
+        <div class="help-guest-section">
+          <div class="edit-field-label">協助訪客報名</div>
+          <div class="guest-add-row">
+            <input type="text" id="helpGuestName" class="edit-input" placeholder="輸入訪客姓名">
+            <button type="button" class="guest-add-btn" id="helpGuestAdd">新增</button>
+          </div>
+          <div class="signup-list" id="helpGuestList"></div>
+          <button type="button" class="signup-submit" id="helpGuestSubmit" disabled>送出協助報名</button>
+        </div>
       </div>
 
       <div class="signup-entry-row" id="signupEntryRow">
@@ -452,7 +478,7 @@
 
       <div id="eventSignupSection" style="display:none">
         <div class="signup-mode-toggle" id="signupModeToggle" style="display:none">
-          <button type="button" class="active" data-mode="member" id="signupModeMemberBtn">球員登入</button>
+          <button type="button" class="active" data-mode="member" id="signupModeMemberBtn">球員報名</button>
           <button type="button" data-mode="guest" id="signupModeGuestBtn">訪客報名</button>
         </div>
         <div id="signupMemberFields">
@@ -1152,6 +1178,11 @@
 
   let detailIndex = null;
   let signupMode = 'member';
+  // 已報名者「協助訪客報名」的暫存名單：逐一輸入、加進清單，最後一次
+  // 送出（每筆各自打 signupEvent，因為要帶 referrer，跟 bulkSignupEvent
+  // 不同）。只在切換到不同賽事時重置，同一場重繪（例如身分變動）不清空。
+  let helpGuestQueue = [];
+  let helpGuestQueueIndex = null;
 
   function currentMemberNames(){
     const cached = getApiCache({ action:'getMembers' });
@@ -1212,7 +1243,7 @@
     }
   }
 
-  // 未登入、還在「訪客報名」分頁選擇畫面時用的 tab 切換（球員登入／訪客報名）。
+  // 未登入、還在「訪客報名」分頁選擇畫面時用的 tab 切換（球員報名／訪客報名）。
   // 已登入的人不會看到這組 tab，直接跳過這一步。
   function setSignupTab(mode){
     signupMode = mode;
@@ -1265,6 +1296,7 @@
     const submitBtn = document.getElementById('signupSubmit');
     const signupState = signupButtonMeta(statusMeta || eventStatusMeta(EVENTS[detailIndex]));
     if(signupState.disabled){
+      submitBtn.style.display = '';
       submitBtn.disabled = true;
       submitBtn.textContent = signupState.label;
       submitBtn.classList.remove('verified');
@@ -1272,15 +1304,81 @@
     }
     const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
     if(signupMode === 'member' && !currentName){
-      submitBtn.disabled = true;
-      submitBtn.textContent = '請先登入或建立帳號';
-      submitBtn.classList.remove('verified');
+      // 球員模式沒登入時整個按鈕藏起來（表單裡本來就顯示登入/註冊流程了，
+      // 不需要一個鎖住的按鈕再提示一次要先登入）。
+      submitBtn.style.display = 'none';
     } else {
+      submitBtn.style.display = '';
       submitBtn.disabled = false;
       submitBtn.textContent = signupMode === 'member' ? '確認送出報名' : '送出報名';
       submitBtn.classList.toggle('verified', signupMode === 'member');
     }
   }
+
+  function renderHelpGuestQueue(){
+    const listEl = document.getElementById('helpGuestList');
+    const submitBtn = document.getElementById('helpGuestSubmit');
+    listEl.innerHTML = helpGuestQueue.length
+      ? helpGuestQueue.map(function(name, i){
+          return '<div class="guest-queue-row">' +
+            '<span>' + escapeHtml(name) + '</span>' +
+            '<button type="button" class="guest-queue-remove" data-remove="' + i + '">移除</button>' +
+          '</div>';
+        }).join('')
+      : '<div class="signup-empty">尚未加入任何訪客</div>';
+    submitBtn.disabled = helpGuestQueue.length === 0;
+  }
+
+  function addHelpGuest(){
+    const input = document.getElementById('helpGuestName');
+    const name = input.value.trim();
+    if(!name) return;
+    if(helpGuestQueue.indexOf(name) === -1) helpGuestQueue.push(name);
+    input.value = '';
+    input.focus();
+    renderHelpGuestQueue();
+  }
+  document.getElementById('helpGuestAdd').addEventListener('click', addHelpGuest);
+  document.getElementById('helpGuestName').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); addHelpGuest(); }
+  });
+  document.getElementById('helpGuestList').addEventListener('click', function(e){
+    const btn = e.target.closest('[data-remove]');
+    if(!btn) return;
+    helpGuestQueue.splice(Number(btn.dataset.remove), 1);
+    renderHelpGuestQueue();
+  });
+
+  // 逐一 signupEvent（而不是 bulkSignupEvent）是因為協助報名要帶
+  // referrer（自動 = 自己），bulkSignupEvent 只認 member 型別、沒有
+  // referrer 欄位，不適合這裡的訪客報名情境。
+  async function submitHelpGuests(){
+    if(!helpGuestQueue.length || detailIndex === null) return;
+    const ev = EVENTS[detailIndex];
+    const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+    const btn = document.getElementById('helpGuestSubmit');
+    btn.disabled = true;
+    btn.textContent = '送出中…';
+    try{
+      const results = await Promise.all(helpGuestQueue.map(function(name){
+        return apiPost('signupEvent', { event_id: ev.id, type:'guest', guest_name: name, referrer: currentName });
+      }));
+      const okCount = results.filter(function(r){ return r && r.success; }).length;
+      const failCount = results.length - okCount;
+      showToast(okCount
+        ? '已協助 ' + okCount + ' 位訪客報名' + (failCount ? '，' + failCount + ' 位失敗' : '')
+        : '協助報名失敗，請稍後再試');
+      helpGuestQueue = [];
+      await refreshEvents();
+      if(detailIndex !== null) openEventDetail(detailIndex);
+      return;
+    } catch(e){
+      showToast('協助報名失敗，請稍後再試');
+    }
+    btn.disabled = false;
+    btn.textContent = '送出協助報名';
+  }
+  document.getElementById('helpGuestSubmit').addEventListener('click', submitHelpGuests);
 
   function openEventDetail(index, skipEntry){
     detailIndex = index;
@@ -1318,6 +1416,9 @@
       cancelBtn.textContent = '取消報名';
       cancelBtn.disabled = true;
       loadDetailSelfSignup(ev, currentName);
+      if(helpGuestQueueIndex !== index){ helpGuestQueue = []; helpGuestQueueIndex = index; }
+      document.getElementById('helpGuestName').value = '';
+      renderHelpGuestQueue();
     } else if(currentName){
       // 已登入、還沒報名這場：跳過選按鈕的步驟，直接顯示「以 X 身份報名」
       // ＋送出按鈕，開卡片後點一下就能報名完成。
@@ -1330,13 +1431,13 @@
       renderMemberFields(currentName);
     } else if(skipEntry && !signupState.disabled){
       // 從卡片上的「我要報名」標籤點進來：跳過中間的入口按鈕，
-      // 直接展開球員登入／訪客報名的選擇。
+      // 直接展開球員報名／訪客報名的選擇。
       document.getElementById('signupEntryRow').style.display = 'none';
       document.getElementById('eventSignupSection').style.display = '';
       document.getElementById('signupModeToggle').style.display = '';
       setSignupTab('member');
     } else {
-      // 未登入：先顯示單一「我要報名」按鈕，點了才展開球員登入／訪客報名的選擇。
+      // 未登入：先顯示單一「我要報名」按鈕，點了才展開球員報名／訪客報名的選擇。
       document.getElementById('signupEntryRow').style.display = '';
       document.getElementById('eventSignupSection').style.display = 'none';
     }
