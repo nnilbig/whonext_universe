@@ -82,10 +82,7 @@
     font-size:13px; font-weight:700; max-width:88px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  .logout-btn{
-    font-size:11.5px; font-weight:700; padding:6px 12px; border-radius:999px; flex-shrink:0;
-    background: rgba(233,90,90,0.14); color:#E95A5A; border:1px solid rgba(233,90,90,0.3);
-  }
+  .id-widget-btn{ display:flex; align-items:center; gap:8px; }
 
   .wrap{
     max-width: 640px; margin:0 auto; width:100%;
@@ -629,15 +626,16 @@
   }
 
   // 右上角身分識別：未登入顯示「登入」按鈕；登入後顯示頭像＋名稱，
-  // 旁邊放一顆隨時可按的「登出」按鈕，不用再開選單才能登出。
+  // 點一下直接登出，不用另外放一顆登出按鈕。
   function renderIdentityWidget(){
     const widget = document.getElementById('identityWidget');
     if(loggedInName){
       widget.innerHTML =
-        '<div class="id-avatar">' + avatarInitial(loggedInName) + '</div>' +
-        '<div class="id-name">' + loggedInName + '</div>' +
-        '<button type="button" class="logout-btn" id="logoutBtn">登出</button>';
-      document.getElementById('logoutBtn').addEventListener('click', logoutGauth);
+        '<button type="button" class="id-widget-btn" id="idWidgetBtn">' +
+          '<div class="id-avatar">' + avatarInitial(loggedInName) + '</div>' +
+          '<div class="id-name">' + loggedInName + '</div>' +
+        '</button>';
+      document.getElementById('idWidgetBtn').addEventListener('click', logoutGauth);
     } else {
       widget.innerHTML = '<button type="button" class="login-btn" id="loginBtn">登入</button>';
       document.getElementById('loginBtn').addEventListener('click', function(){
