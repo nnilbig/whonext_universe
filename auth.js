@@ -87,28 +87,34 @@
     document.querySelectorAll('#navRoleToggle .role-toggle-btn').forEach(function(btn){
       btn.classList.toggle('active', (btn.dataset.role === 'admin') === isAdmin);
     });
-    var playerBtn = document.querySelector('#navRoleToggle .role-toggle-btn[data-role="player"]');
-    if(playerBtn){
-      var name = getPlayerName() || getGuestName();
+    var name = getPlayerName() || getGuestName();
+    // 已經綁定身分後「註冊」按鈕沒有意義，先收起來，只留「登入」那顆
+    // 換成頭像＋姓名（點一下登出），跟原本單顆按鈕的邏輯一樣。
+    var registerBtn = document.querySelector('#navRoleToggle .role-toggle-btn[data-entry="register"]');
+    if(registerBtn) registerBtn.style.display = name ? 'none' : '';
+    var loginBtn = document.querySelector('#navRoleToggle .role-toggle-btn[data-entry="login"]');
+    if(loginBtn){
       if(name){
-        playerBtn.classList.add('has-identity');
-        playerBtn.innerHTML = '<span class="nav-id-avatar">' + avatarInitial(name) + '</span><span class="nav-id-name">' + name + '</span>';
+        loginBtn.classList.add('has-identity');
+        loginBtn.innerHTML = '<span class="nav-id-avatar">' + avatarInitial(name) + '</span><span class="nav-id-name">' + name + '</span>';
       } else {
-        playerBtn.classList.remove('has-identity');
-        playerBtn.textContent = '登入';
+        loginBtn.classList.remove('has-identity');
+        loginBtn.textContent = '登入';
       }
     }
   }
 
   // 球員登入用 identity-picker.js 同一套流程，塞進 nav 自己的 overlay，
-  // 留在目前頁面完成登入，不用跳去 profile.html。每次重開都重繪起始畫面。
-  function openNavLogin(){
+  // 留在目前頁面完成登入，不用跳去 profile.html。nav 上「註冊」「登入」
+  // 兩顆按鈕分別直接開對應畫面，不用先經過起始選擇畫面。
+  function openNavLogin(entry){
     closeAdminLogin();
     var overlay = document.getElementById('navLoginOverlay');
     var container = document.getElementById('navLoginContainer');
     if(!overlay || !container || !window.WhonextIdentityPicker) return;
     container.innerHTML = '';
-    WhonextIdentityPicker.render(container);
+    if(entry === 'register') WhonextIdentityPicker.renderRegister(container, true);
+    else WhonextIdentityPicker.renderLoginMenu(container, true);
     overlay.classList.add('open');
   }
 
@@ -171,11 +177,12 @@
     renderAdminGoogleButton();
   }
 
-  // nav 上只剩「登入／頭像」這顆按鈕（管理員登入從我的錢包／我的活動
-  // 的登入選單「我是管理員」進去，見 identity-picker.js）。點這顆按鈕：
+  // nav 上是「註冊」「登入／頭像」兩顆按鈕（管理員登入從我的錢包／我的
+  // 活動的登入選單「我是管理員」進去，見 identity-picker.js）。點下去：
   // 如果目前正在看管理員視角，只是切回球員視角，已經綁定的球員身分
   // 保留，不用重選；如果本來就是球員身分且已經綁定身分（頭像狀態），
-  // 點一下直接登出清空身分；還沒登入才會打開登入選單。
+  // 點一下直接登出清空身分；還沒登入的話依照按到的是「註冊」還是
+  // 「登入」，直接開對應畫面（此時「註冊」按鈕還在，「登入」還是文字）。
   function wireNavRoleToggle(){
     var toggle = document.getElementById('navRoleToggle');
     if(!toggle) return;
@@ -194,7 +201,7 @@
         setGuestName('');
         return;
       }
-      openNavLogin();
+      openNavLogin(btn.dataset.entry);
     });
 
     var cancelStartBtn = document.getElementById('adminLoginCancelStart');

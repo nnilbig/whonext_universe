@@ -21,7 +21,7 @@
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-title">球員登入</div>' +
-        '<div class="whoami-sub">還沒綁過 Google 帳號就先「註冊」；已經註冊過的話直接「登入」。</div>' +
+        '<div class="whoami-sub">快速綁定 Google 帳號「註冊」；已經註冊過的話直接「登入」。</div>' +
         '<div class="whoami-branch-row">' +
           '<button type="button" class="whoami-branch-btn" id="wiRegisterBtn">註冊</button>' +
           '<button type="button" class="whoami-branch-btn" id="wiLoginBtn">登入</button>' +
@@ -34,7 +34,9 @@
   // ---------------------------------------------------------------
   // 登入
   // ---------------------------------------------------------------
-  function renderLoginMenu(container){
+  // hideBack：從 nav「登入」按鈕直接開這個畫面時不經過 renderStart，
+  // 沒有上一步可回，就不顯示「‹」。
+  function renderLoginMenu(container, hideBack){
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-title">登入</div>' +
@@ -42,11 +44,11 @@
         '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
         '<button type="button" class="whoami-secondary-btn" id="wiGuestBtn">訪客登入</button>' +
         '<button type="button" class="whoami-secondary-btn" id="wiAdminBtn">管理員登入</button>' +
-        '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>' +
+        (hideBack ? '' : '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>') +
       '</div>';
     container.querySelector('#wiGuestBtn').addEventListener('click', function(){ renderGuestForm(container, ''); });
     container.querySelector('#wiAdminBtn').addEventListener('click', function(){ WhonextAuth.openAdminLogin(); });
-    container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
+    if(!hideBack) container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
     renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), handleLoginCredential);
   }
 
@@ -95,7 +97,9 @@
     }).catch(function(){ return []; });
   }
 
-  function renderRegister(container){
+  // hideBack：從 nav「註冊」按鈕直接開這個畫面時不經過 renderStart，
+  // 沒有上一步可回，就不顯示「‹」。
+  function renderRegister(container, hideBack){
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-title">註冊</div>' +
@@ -105,7 +109,7 @@
         '<div class="auth-error" id="wiNicknameError" style="display:none">請先輸入暱稱，再綁定 Google 帳號</div>' +
         '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
         '<button type="button" class="whoami-secondary-btn" id="wiGuestInsteadBtn">不註冊，以訪客登入</button>' +
-        '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>' +
+        (hideBack ? '' : '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>') +
       '</div>';
 
     getLegacyNicknames().then(function(names){
@@ -117,7 +121,7 @@
       const nameInput = container.querySelector('#wiNickname');
       renderGuestForm(container, nameInput ? nameInput.value.trim() : '');
     });
-    container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
+    if(!hideBack) container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
 
     renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), function(c, credential){
       const nameInput = container.querySelector('#wiNickname');
@@ -214,5 +218,5 @@
     WhonextAuth.setPlayerName(name);
   }
 
-  window.WhonextIdentityPicker = { render: render };
+  window.WhonextIdentityPicker = { render: render, renderLoginMenu: renderLoginMenu, renderRegister: renderRegister };
 })();
