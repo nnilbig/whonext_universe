@@ -42,6 +42,15 @@ body.is-admin .admin-only.flex{ display:flex; }
   background: var(--label); color:#000; margin-top:4px;
 }
 
+/* ---------- LINE 登入按鈕（跟 Google 按鈕併排用，見 identity-picker.js） ---------- */
+.whoami-or-divider{ text-align:center; font-size:11px; color:var(--tertiary); margin:10px 0; }
+.whoami-line-btn{
+  width:100%; display:flex; align-items:center; justify-content:center;
+  background:#06C755; color:#fff; font-size:14px; font-weight:700;
+  padding:12px; border-radius:999px;
+}
+.whoami-line-btn:active{ filter:brightness(0.94); }
+
 .whoami-account-list{
   display:flex; gap:14px; overflow-x:auto; scrollbar-width:none;
   padding: 2px 2px 4px; margin-bottom:12px;

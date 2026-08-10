@@ -42,12 +42,15 @@
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-title">登入</div>' +
-        '<div class="whoami-sub">用已經綁定過的 Google 帳號登入。</div>' +
+        '<div class="whoami-sub">用已經綁定過的 Google 或 LINE 帳號登入。</div>' +
         '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
+        '<div class="whoami-or-divider">或</div>' +
+        '<button type="button" class="whoami-line-btn" id="wiLineLoginBtn">使用 LINE 登入</button>' +
         (hideBack ? '' : '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>') +
       '</div>';
     if(!hideBack) container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
     renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), handleLoginCredential);
+    container.querySelector('#wiLineLoginBtn').addEventListener('click', function(){ startLineFlow(container, 'login'); });
   }
 
   function handleLoginCredential(container, credential){
@@ -70,6 +73,18 @@
       '<div class="whoami-card glass">' +
         '<div class="whoami-title">這個 Google 帳號還沒註冊</div>' +
         '<div class="whoami-sub">「' + account.name + '」（' + account.email + '）還沒綁定過球員身份，要先完成註冊才能登入。</div>' +
+        '<button type="button" class="whoami-primary-btn" id="wiGoRegisterBtn">前往註冊</button>' +
+        '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>' +
+      '</div>';
+    container.querySelector('#wiGoRegisterBtn').addEventListener('click', function(){ renderRegister(container); });
+    container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
+  }
+
+  function renderNotRegisteredLine(container, account){
+    container.innerHTML =
+      '<div class="whoami-card glass">' +
+        '<div class="whoami-title">這個 LINE 帳號還沒註冊</div>' +
+        '<div class="whoami-sub">「' + (account.name || 'LINE 使用者') + '」還沒綁定過球員身份，要先完成註冊才能登入。</div>' +
         '<button type="button" class="whoami-primary-btn" id="wiGoRegisterBtn">前往註冊</button>' +
         '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>' +
       '</div>';
@@ -104,8 +119,10 @@
         '<div class="whoami-sub">選擇你的暱稱（可以從名單挑，也可以直接輸入新的），再綁定 Google 帳號完成註冊。</div>' +
         '<input type="text" id="wiNickname" class="nav-login-input" list="wiNicknameList" placeholder="輸入或選擇暱稱" autocomplete="off">' +
         '<datalist id="wiNicknameList"></datalist>' +
-        '<div class="auth-error" id="wiNicknameError" style="display:none">請先輸入暱稱，再綁定 Google 帳號</div>' +
+        '<div class="auth-error" id="wiNicknameError" style="display:none">請先輸入暱稱，再綁定帳號</div>' +
         '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
+        '<div class="whoami-or-divider">或</div>' +
+        '<button type="button" class="whoami-line-btn" id="wiLineRegisterBtn">使用 LINE 綁定</button>' +
         (hideBack ? '' : '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>') +
       '</div>';
 
@@ -116,16 +133,27 @@
 
     if(!hideBack) container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
 
-    renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), function(c, credential){
+    function readNicknameOrFlagError(){
       const nameInput = container.querySelector('#wiNickname');
       const name = nameInput ? nameInput.value.trim() : '';
       if(!name){
         const err = container.querySelector('#wiNicknameError');
         if(err) err.style.display = 'block';
         if(nameInput) nameInput.focus();
-        return;
       }
+      return name;
+    }
+
+    renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), function(c, credential){
+      const name = readNicknameOrFlagError();
+      if(!name) return;
       handleRegisterCredential(container, credential, name);
+    });
+
+    container.querySelector('#wiLineRegisterBtn').addEventListener('click', function(){
+      const name = readNicknameOrFlagError();
+      if(!name) return;
+      startLineFlow(container, 'register', name);
     });
   }
 
@@ -188,6 +216,83 @@
     const isAdmin = profile.is_admin === true || profile.is_admin === 'TRUE';
     WhonextAuth.setPlayerName(profile.name, isAdmin, profile.photo_url);
   }
+
+  // ---------------------------------------------------------------
+  // LINE 登入／註冊。LIFF 的登入是導頁流程（liff.login() 會整頁導去 LINE
+  // 的授權畫面，同網域內導回來），不是像 Google 那樣在頁面裡直接拿到結果，
+  // 所以要先把「使用者原本想做什麼」存進 sessionStorage，導回來後（頁面
+  // 整個重新載入、原本的 container 已經不在了）才有辦法接著跑完剩下的
+  // 驗證流程。如果使用者本來就已經是 LIFF 登入狀態（SDK 把先前登入的憑證
+  // 存起來了），就完全不用跳出去，原地驗證完成即可。
+  // ---------------------------------------------------------------
+  var LINE_PENDING_KEY = 'wu_line_oauth_pending';
+
+  function startLineFlow(container, mode, name){
+    renderVerifying(container, 'LINE 登入中…');
+    sessionStorage.setItem(LINE_PENDING_KEY, JSON.stringify({ mode: mode, name: name || '' }));
+    WhonextLiff.ensureReady(function(){
+      if(!document.body.contains(container)) return;
+      if(!WhonextLiff.isReady()){
+        sessionStorage.removeItem(LINE_PENDING_KEY);
+        renderError(container, '無法連線 LINE，請稍後再試', mode === 'register' ? renderRegister : renderLoginMenu);
+        return;
+      }
+      if(WhonextLiff.isLoggedIn()){
+        sessionStorage.removeItem(LINE_PENDING_KEY);
+        finishLineAuth(container, mode, name, WhonextLiff.getIDToken());
+      } else {
+        WhonextLiff.login(window.location.href);
+      }
+    });
+  }
+
+  function finishLineAuth(container, mode, name, idToken){
+    const action = mode === 'register' ? 'registerLineProfile' : 'lineLogin';
+    const payload = mode === 'register' ? { idToken: idToken, name: name } : { idToken: idToken };
+    apiPost(action, payload).then(function(result){
+      if(!document.body.contains(container)) return;
+      if(mode === 'login' && result && result.success && result.matched === false){
+        renderNotRegisteredLine(container, result.account);
+        return;
+      }
+      if(!result || !result.success){
+        const msg = result && result.reason === 'name_taken' ? '這個暱稱已經有人用了，換一個看看'
+          : result && result.reason === 'already_bound' ? '這個 LINE 帳號已經註冊過了，改用「登入」即可'
+          : 'LINE 驗證失敗，請稍後再試';
+        renderError(container, msg, mode === 'register' ? renderRegister : renderLoginMenu);
+        return;
+      }
+      finishLogin(container, result.profile);
+    }).catch(function(){
+      if(document.body.contains(container)) renderError(container, '無法連線後台，請稍後再試', mode === 'register' ? renderRegister : renderLoginMenu);
+    });
+  }
+
+  // 從 LINE 導回來後（整頁重新載入）接著跑完剩下的登入／註冊流程，把 nav
+  // 的登入 overlay 打開、顯示驗證中狀態，體驗上跟原本在同一頁點按鈕一致。
+  document.addEventListener('DOMContentLoaded', function(){
+    var pendingRaw = sessionStorage.getItem(LINE_PENDING_KEY);
+    if(!pendingRaw) return;
+    sessionStorage.removeItem(LINE_PENDING_KEY);
+    var pending;
+    try{ pending = JSON.parse(pendingRaw); } catch(e){ return; }
+
+    var overlay = document.getElementById('navLoginOverlay');
+    var container = document.getElementById('navLoginContainer');
+    if(!overlay || !container) return;
+    container.innerHTML = '';
+    overlay.classList.add('open');
+    renderVerifying(container, 'LINE 登入中…');
+
+    WhonextLiff.ensureReady(function(){
+      if(!document.body.contains(container)) return;
+      if(!WhonextLiff.isReady() || !WhonextLiff.isLoggedIn()){
+        renderError(container, 'LINE 登入失敗，請重新嘗試', renderStart);
+        return;
+      }
+      finishLineAuth(container, pending.mode, pending.name, WhonextLiff.getIDToken());
+    });
+  });
 
   window.WhonextIdentityPicker = { render: render, renderLoginMenu: renderLoginMenu, renderRegister: renderRegister };
 })();

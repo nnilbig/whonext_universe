@@ -82,6 +82,61 @@ window.WhonextGis = (function(){
 })();
 
 // ---------------------------------------------------------------
+// LINE LIFF SDK 共用載入器，跟 WhonextGis 對稱：identity-picker.js 需要
+// 用到（點了「使用 LINE 登入/註冊」，或從 LINE 導回來要接續驗證）才動態
+// 載入 script + liff.init()，不在每個頁面都預先載入。LIFF ID 裡「-」
+// 前面那段數字就是 LINE Login channel 的 Channel ID，後端驗證 id_token
+// 的 aud 也是用同一個值（見 gas/Code.gs 的 LINE_CHANNEL_ID）。
+// ---------------------------------------------------------------
+window.WhonextLiff = (function(){
+  var LIFF_ID = '2011057691-idAgcBj9';
+  var ready = false;
+  var failed = false;
+  var queue = [];
+
+  function flush(){
+    var cbs = queue; queue = [];
+    cbs.forEach(function(cb){ cb(); });
+  }
+
+  function load(){
+    if (document.getElementById('line-liff-sdk')) return;
+    var s = document.createElement('script');
+    s.id = 'line-liff-sdk';
+    s.src = 'https://static.line-scdn.net/liff/edge/2/sdk.js';
+    s.onload = function(){
+      liff.init({ liffId: LIFF_ID }).then(function(){
+        ready = true;
+        flush();
+      }).catch(function(){
+        failed = true;
+        flush();
+      });
+    };
+    s.onerror = function(){ failed = true; flush(); };
+    document.head.appendChild(s);
+  }
+
+  return {
+    // cb 會在 SDK 載入＋liff.init() 完成後才執行；init 失敗（例如沒網路）
+    // 也會呼叫一次 cb，呼叫方要用 isReady() 判斷要不要往下走，不要假設
+    // 呼叫到就代表成功。
+    ensureReady: function(cb){
+      if (ready || failed) { cb(); return; }
+      queue.push(cb);
+      load();
+    },
+    isReady: function(){ return ready; },
+    isLoggedIn: function(){ return ready && liff.isLoggedIn(); },
+    // redirectUri 網域一定要跟 LIFF app 註冊的網域相同，這裡直接帶目前
+    // 頁面網址，這樣不管從哪一頁點登入，LINE 授權完都會導回同一頁，
+    // 不用像傳統 OAuth code flow 那樣另外弄一個固定的 callback 頁。
+    login: function(redirectUri){ if (ready) liff.login({ redirectUri: redirectUri }); },
+    getIDToken: function(){ return ready ? liff.getIDToken() : null; }
+  };
+})();
+
+// ---------------------------------------------------------------
 // 「我的錢包」餘額規則。members 表目前還沒有專門的餘額欄位，先直接
 // 把 monthly_total_fee 當作錢包餘額的數字來源；之後有專門的儲值／
 // 支付紀錄表時，這裡再換成真的加總算法。
