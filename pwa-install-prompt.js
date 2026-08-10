@@ -25,6 +25,14 @@
   var last = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
   if (Date.now() - last < COOLDOWN_MS) return;
 
+  // 這是多頁面網站，每切一頁都是重新載入、重新跑這支 script，
+  // 只靠 7 天的「已關閉」冷卻不夠 —— 使用者只要沒點 X、繼續逛，
+  // 每跳一頁就會再跳出來一次。這裡加一個「這個瀏覽階段（分頁）
+  // 已經跳過了」的旗標，同一次造訪最多跳一次，下次重開瀏覽器
+  // /分頁才會再有機會看到。
+  var SESSION_KEY = 'wu_pwa_prompt_shown_session';
+  if (sessionStorage.getItem(SESSION_KEY)) return;
+
   var deferredPrompt = null;
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault();
@@ -104,5 +112,6 @@
     });
   }
 
+  sessionStorage.setItem(SESSION_KEY, '1');
   setTimeout(render, 1600);
 })();
