@@ -175,19 +175,13 @@
 <script src="identity-picker.js"></script>
 <script src="bottom-nav.js"></script>
 <script>
+  // 出勤MVP／臨打MVP 先移除，只留 WHO朋引伴這個榜（renderBoard 目前也
+  // 只讀 BOARDS.friend，之後要復原榜單再把 attend/dropin 兩個 board
+  // 定義＋ applyBoardData 裡對應的 computeAttendBoard/computeDropinBoard
+  // 呼叫一起加回來）。
   const BOARDS = {
     friend: {
       title: 'WHO朋引伴', unit: 'WHO朋引伴累計人次', valueSuffix: '',
-      month: [],
-      year: []
-    },
-    attend: {
-      title: '出勤MVP', unit: '出席場次數', valueSuffix: '',
-      month: [],
-      year: []
-    },
-    dropin: {
-      title: '臨打MVP', unit: '臨打參與場次數', valueSuffix: '',
       month: [],
       year: []
     }
@@ -340,20 +334,6 @@
     });
     return tally(referrers);
   }
-  function computeAttendBoard(weeks){
-    const names = [];
-    weeks.forEach(w=> splitNames(w.present_names).forEach(n=> names.push(n)));
-    return tally(names);
-  }
-  function computeDropinBoard(weeks){
-    const names = [];
-    weeks.forEach(w=> splitNames(w.dropin_names).forEach(entry=>{
-      const name = parseDropinEntry(entry).name;
-      if(!isPlaceholderName(name)) names.push(name);
-    }));
-    return tally(names);
-  }
-
   function applyBoardData(weeks){
     const monthsSet = [...new Set(weeks.map(monthOfWeek))].sort();
     if(!monthsSet.length) return;
@@ -365,10 +345,6 @@
 
     BOARDS.friend.month = computeFriendBoard(monthWeeks);
     BOARDS.friend.year = computeFriendBoard(yearWeeks).filter(p=> p.value >= 3);
-    BOARDS.attend.month = computeAttendBoard(monthWeeks);
-    BOARDS.attend.year = computeAttendBoard(yearWeeks);
-    BOARDS.dropin.month = computeDropinBoard(monthWeeks);
-    BOARDS.dropin.year = computeDropinBoard(yearWeeks);
     renderBoard();
   }
 
