@@ -33,6 +33,10 @@
 //       就算之後 custom_name 改名也不會影響舊資料的對應關係。
 //     兩者故意不互相覆蓋——custom_name 可以自由改而不動到歷史資料的
 //     對應，bound_name 一旦綁定就是穩定的歷史鍵值。
+//     同一個 bound_name 最多允許兩列共用：一列用 google_id 綁的、一列用
+//     line_id 綁的(同一人跨帳號連結前，分別用兩個 provider 各自綁了同一
+//     個舊暱稱)。已跨帳號連結(google_id 和 line_id 都有)的列視為佔滿兩
+//     個名額，見 bindCustomName/playerProviderSlots_。
 //   is_bound：bound_name 是否已經填好(已完成舊資料綁定)。新註冊的列
 //     一律是 false，只有 bindCustomName 成功之後才會變 true。
 // line_user_id/google_id 這兩個 column 沒加的話對應的 login/register
@@ -667,6 +671,19 @@ function registerGoogleProfile(data) {
 // 一綁定就固定，不會因為 custom_name 之後改名而跟著變動。只認
 // player_id（前端已登入才知道這個值），bound_name 撞到別人（不是自己
 // 這個 player_id）已經綁走的名字就擋掉。
+// 同一個 bound_name 最多只能被兩列佔用：一列用 google_id 綁的、一列用
+// line_id 綁的(同一個人在跨帳號連結之前，用兩個 provider 分別註冊、各自
+// 綁了同一個舊暱稱)。已經跨帳號連結(google_id 和 line_id 都有)的列視為
+// 一次佔滿兩個名額，不能再讓任何其他列共用同一個 bound_name。
+function playerProviderSlots_(row, googleIdCol, lineIdCol) {
+  const hasGoogle = googleIdCol >= 0 && !!row[googleIdCol];
+  const hasLine = lineIdCol >= 0 && !!row[lineIdCol];
+  if (hasGoogle && hasLine) return ['google', 'line'];
+  if (hasGoogle) return ['google'];
+  if (hasLine) return ['line'];
+  return [];
+}
+
 function bindCustomName(data) {
   const playerId = String((data && data.player_id) || '').trim();
   const name = String((data && data.name) || '').trim();
@@ -678,10 +695,21 @@ function bindCustomName(data) {
 
   const boundNameCol = target.headers.indexOf('bound_name');
   if (boundNameCol < 0) return { success: false, reason: 'missing_bound_name_column' };
+  const googleIdCol = target.headers.indexOf('google_id');
+  const lineIdCol = target.headers.indexOf('line_user_id');
   const rows = target.sheet.getDataRange().getValues();
   rows.shift();
   const playerIdCol = target.headers.indexOf('player_id');
-  const nameTaken = rows.some(r => r[boundNameCol] === name && String(r[playerIdCol]) !== playerId);
+
+  const selfSlots = (target.player.google_id && target.player.line_user_id) ? ['google', 'line']
+    : target.player.google_id ? ['google']
+    : target.player.line_user_id ? ['line'] : [];
+  const takenSlots = [];
+  rows.forEach(r => {
+    if (r[boundNameCol] !== name || String(r[playerIdCol]) === playerId) return;
+    takenSlots.push(...playerProviderSlots_(r, googleIdCol, lineIdCol));
+  });
+  const nameTaken = selfSlots.some(slot => takenSlots.includes(slot)) || takenSlots.length + selfSlots.length > 2;
   if (nameTaken) return { success: false, reason: 'name_taken' };
 
   target.sheet.getRange(target.rowIndex, boundNameCol + 1).setValue(name);
