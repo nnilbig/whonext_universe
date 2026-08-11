@@ -82,14 +82,13 @@
   .season-body .t{ font-size:13.5px; font-weight:700; margin-bottom:3px; }
   .season-body .s{ font-size:11.5px; color:var(--tertiary); }
 
-  /* ---- 年度總覽（點整張卡片展開看所有里程碑）---- */
-  .yo-card{ padding:20px; margin-bottom:8px; cursor:pointer; }
+  /* ---- 年度總覽（下方「查看更多」展開看所有里程碑）---- */
+  .yo-card{ padding:20px; margin-bottom:8px; }
   .yo-stats{ display:flex; align-items:center; margin-bottom:18px; }
   .yo-stat{ flex:1; text-align:center; min-width:0; }
   .yo-stat-value{ font-family: var(--sf-mono); font-size:24px; font-weight:800; line-height:1; margin-bottom:4px; }
   .yo-stat-label{ font-size:11px; color:var(--tertiary); }
   .yo-stat-sep{ width:1px; height:32px; background:var(--line); flex-shrink:0; }
-  .yo-chevron{ flex-shrink:0; margin-left:6px; font-size:12px; color:var(--tertiary); }
   .yo-milestone{ border-top:1px solid var(--line); padding-top:16px; }
   .yo-milestone-label{ font-size:12px; color:var(--secondary); margin-bottom:8px; }
   .yo-milestone-label b{ color:var(--gold); font-weight:800; }
@@ -97,7 +96,11 @@
   .yo-progress-fill{ height:100%; border-radius:999px; background: var(--gold); }
   .yo-progress-count{ font-size:11px; color:var(--tertiary); font-family: var(--sf-mono); text-align:right; }
   .tc-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:18px 8px; margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
-  .tc-item{ display:flex; flex-direction:column; align-items:center; gap:7px; }
+  .tc-item{ display:flex; flex-direction:column; align-items:center; gap:7px; cursor:pointer; }
+  .more-btn{
+    display:block; width:100%; text-align:center; font-size:12.5px; font-weight:700;
+    color:var(--secondary); padding: 4px 0 22px;
+  }
   .tc-badge{
     width:44px; height:44px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
@@ -154,12 +157,11 @@
         <div class="section-label-row">
           <div class="section-label">年度總覽</div>
         </div>
-        <div class="yo-card glass" id="yoToggleBtn">
+        <div class="yo-card glass">
           <div class="yo-stats">
             <div class="yo-stat"><div class="yo-stat-value" id="yoAttended">0</div><div class="yo-stat-label">參加活動</div></div>
             <div class="yo-stat-sep"></div>
             <div class="yo-stat"><div class="yo-stat-value" id="yoBadgeCount">0</div><div class="yo-stat-label">里程碑</div></div>
-            <div class="yo-chevron" id="yoChevron">↓</div>
           </div>
           <div class="yo-milestone">
             <div class="yo-milestone-label" id="yoMilestoneLabel"></div>
@@ -168,6 +170,7 @@
           </div>
           <div class="tc-grid" id="tcGrid" style="display:none"></div>
         </div>
+        <button type="button" class="more-btn" id="yoMoreBtn">查看更多 ↓</button>
 
         <div class="section-label-row">
           <div class="section-label">報名中活動</div>
@@ -325,9 +328,13 @@
     return (0.4 + 0.6 * (levelIdx / (levelCount - 1))).toFixed(2);
   }
 
-  function badgeItemHTML(label, threshold, got, levelIdx, levelCount, seriesColor){
+  // data-desc：點這個徽章時 toast 顯示的條件說明，未解鎖顯示還差多少，
+  // 已解鎖顯示門檻本身，不用另外開說明彈窗。
+  function badgeItemHTML(label, threshold, current, unit, levelIdx, levelCount, seriesColor){
+    const got = current >= threshold;
     const style = got ? ' style="--tc-alpha:' + badgeTierAlpha(levelIdx, levelCount) + '"' : '';
-    return '<div class="tc-item' + (got ? '' : ' locked') + '">' +
+    const desc = label + '：' + (got ? '已解鎖' : '還差 ' + (threshold - current) + ' ' + unit) + '（門檻 ' + threshold + ' ' + unit + '）';
+    return '<div class="tc-item' + (got ? '' : ' locked') + '" data-desc="' + desc + '">' +
       '<div class="tc-badge' + (got ? ' ' + seriesColor : ' locked') + '"' + style + '>' + threshold + '</div>' +
       '<div class="tc-label">' + label + '</div>' +
     '</div>';
@@ -355,18 +362,24 @@
     }
 
     const attendBadgesHTML = MILESTONES.map(function(m, idx){
-      return badgeItemHTML(m.label, m.threshold, attended >= m.threshold, idx, MILESTONES.length, ATTEND_BADGE_COLOR);
+      return badgeItemHTML(m.label, m.threshold, attended, '場', idx, MILESTONES.length, ATTEND_BADGE_COLOR);
     }).join('');
     const friendBadgesHTML = FRIEND_BADGES.map(function(b, idx){
-      return badgeItemHTML(b.label, b.threshold, referrals >= b.threshold, idx, FRIEND_BADGES.length, FRIEND_BADGE_COLOR);
+      return badgeItemHTML(b.label, b.threshold, referrals, '人次', idx, FRIEND_BADGES.length, FRIEND_BADGE_COLOR);
     }).join('');
     document.getElementById('tcGrid').innerHTML = attendBadgesHTML + friendBadgesHTML;
   }
 
-  document.getElementById('yoToggleBtn').addEventListener('click', function(){
+  // 點各個徽章帶出條件說明（toast），用委派掛在容器上，重繪不用重新綁定。
+  document.getElementById('tcGrid').addEventListener('click', function(e){
+    const item = e.target.closest('.tc-item');
+    if(item && item.dataset.desc) showToast(item.dataset.desc);
+  });
+
+  document.getElementById('yoMoreBtn').addEventListener('click', function(){
     yoExpanded = !yoExpanded;
     document.getElementById('tcGrid').style.display = yoExpanded ? '' : 'none';
-    document.getElementById('yoChevron').textContent = yoExpanded ? '↑' : '↓';
+    this.textContent = yoExpanded ? '收合 ↑' : '查看更多 ↓';
   });
 
   // ---------------------------------------------------------------
