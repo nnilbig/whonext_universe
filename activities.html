@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WHONEXT UNIVERSE — 活動</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WHONEXT">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="top-nav.css">
+<link rel="stylesheet" href="bottom-nav.css">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{
+    --bg-glow-1: rgba(159,179,200,0.09);
+    --bg-glow-2: rgba(228,201,122,0.06);
+    --toast-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+  html,body{ height:100%; }
+  body{ min-height:100dvh; }
+
+  /* ---------- HERO ---------- */
+  .hero{ padding: 2px 4px 10px; }
+  .hero .hero-eyebrow{ color:var(--gold); margin-bottom:10px; }
+
+  /* ---------- EVENTS ---------- */
+  .event-add-btn{
+    font-size:11px; font-weight:700; padding:5px 11px; border-radius:999px;
+    border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
+  }
+
+  .event-tabs{ display:flex; gap:6px; }
+  .event-add-group{ display:flex; gap:6px; }
+  .event-tab{
+    font-size:12px; font-weight:700; padding:6px 13px; border-radius:999px;
+    border:1px solid var(--line); color: var(--tertiary); background: rgba(255,255,255,0.03);
+  }
+  .event-tab.active{ color:#000; background: var(--label); border-color: var(--label); }
+
+  .event-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:26px; }
+  .event-card{
+    display:flex; gap:14px; padding:16px;
+  }
+  /* 賽事／企劃／練習用很淡的底色漸層做低調區分，不搶走狀態標籤的視覺重點。 */
+  .event-card.et-practice{ background: linear-gradient(180deg, rgba(159,179,200,0.10), var(--card)); }
+  .event-card.et-project{ background: linear-gradient(180deg, rgba(201,183,155,0.10), var(--card)); }
+  .event-card.et-match{ background: linear-gradient(180deg, rgba(242,196,85,0.12), var(--card)); }
+  .event-date{
+    width:52px; flex-shrink:0; text-align:center;
+    padding: 8px 0; border-radius:14px;
+    background: rgba(255,255,255,0.05); border:1px solid var(--line);
+    font-family: var(--sf-mono);
+  }
+  .event-date .ed-month{ font-size:10px; font-weight:700; color:var(--tertiary); letter-spacing:.05em; }
+  .event-date .ed-day{ font-size:22px; font-weight:800; line-height:1.2; }
+  .event-date .ed-weekday{ font-size:10px; color:var(--secondary); }
+
+  .event-body{ flex:1; min-width:0; }
+  .event-title-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  .event-title{ font-size:15px; font-weight:800; letter-spacing:-.005em; }
+  .event-title-actions{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  /* ---------- 標籤系統整體規劃 ----------
+     兩層：
+     1) 賽事狀態（event-status）＝這場賽事本身的狀態，語氣中性、純色底、
+        沒有邊框，顏色只當「資訊分類」用（灰＝尚未/已結束、綠＝可報名、
+        金＝候補機會、橘＝額滿）。
+     2) 行動標籤（cta / confirmed）＝「我」跟這場賽事的關係，比狀態更
+        重要，一律加邊框或圖示做區隔；「我要報名」再加微光搶最大焦點，
+        「已報名」用勾選符號一眼確認、不用搶眼。
+     兩層顏色語意保持一致（綠＝好事、金＝機會/行動、橘＝受限、灰＝中性），
+     只靠有沒有邊框/圖示/微光分「賽事資訊」跟「我的狀態」誰該搶焦點。
+  ------------------------------------------ */
+  .event-status{
+    font-size:10px; font-weight:700; padding:3px 9px; border-radius:999px; flex-shrink:0; white-space:nowrap;
+    cursor:default; display:inline-flex; align-items:center; gap:5px;
+  }
+  .event-status.upcoming{ background: rgba(255,255,255,0.08); color: var(--secondary); }
+  .event-status.open{ background: var(--good-bg); color: var(--good); }
+  .event-status.waitlist{ background: var(--gold-bg); color: var(--gold); }
+  .event-status.full{ background: var(--warn-bg); color: var(--warn); }
+  .event-status.closed{ background: rgba(255,255,255,0.05); color: var(--tertiary); }
+  .event-status.ongoing{ background: rgba(159,179,200,0.16); color: var(--n-accent); }
+  .event-status.ended{ background: rgba(255,255,255,0.05); color: var(--tertiary); }
+  /* 「進行中」加一顆呼吸燈，跟其他純資訊性狀態區隔，強調現在正在發生。 */
+  .event-status.ongoing::before{
+    content:''; width:5px; height:5px; border-radius:50%; background: var(--n-accent);
+    box-shadow: 0 0 4px var(--n-accent); animation: eventStatusPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes eventStatusPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+  body.is-admin .event-status{ cursor:pointer; box-shadow: inset 0 0 0 1px currentColor; }
+  body.is-admin .event-status:active{ opacity:.7; }
+
+  /* 「我要報名」是主要 CTA，要搶視覺焦點，但不用高對比實色底那麼刺眼：
+     半透明金底 + 金字 + 細邊框，仍比「已報名」顯眼一點點就好。 */
+  .event-cta-tag{
+    font-size:10px; font-weight:800; padding:4px 10px; border-radius:999px; flex-shrink:0; white-space:nowrap;
+    color: var(--gold); background: var(--gold-bg); border:1px solid rgba(242,196,85,0.4);
+  }
+  /* 「已報名」是狀態告知，不用搶眼：半透明綠底 + 細邊框 + 勾選符號。 */
+  .event-confirmed-tag{
+    font-size:10px; font-weight:700; padding:3px 9px; border-radius:999px; flex-shrink:0; white-space:nowrap;
+    display:inline-flex; align-items:center; gap:3px;
+    color: var(--good); background: var(--good-bg); border:1px solid rgba(127,215,154,0.35);
+  }
+  .event-confirmed-tag::before{ content:'✓'; font-size:9px; font-weight:800; }
+  .event-meta{ font-size:12.5px; color:var(--secondary); line-height:1.5; font-family: var(--sf-mono); }
+  .event-meta .sep{ color:var(--tertiary); margin:0 6px; }
+
+  .event-edit-btn{
+    font-size:10px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap;
+    border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
+  }
+
+  .event-card{ cursor:pointer; }
+
+  .event-progress{ margin-top:10px; }
+  .event-progress-track{
+    height:5px; border-radius:999px; background: rgba(255,255,255,0.08); overflow:hidden;
+  }
+  .event-progress-fill{
+    height:100%; border-radius:999px; background: var(--gold); transition: width .2s ease;
+  }
+  .event-progress-fill.full{ background: var(--warn); }
+  .event-progress-label{
+    margin-top:5px; font-size:11px; color:var(--tertiary); font-family: var(--sf-mono);
+  }
+
+  .event-empty{
+    display:flex; align-items:center; justify-content:center;
+    min-height:100px; padding:16px 18px; text-align:center; font-size:13px; color:var(--tertiary);
+  }
+
+  .event-attendees{ display:flex; align-items:center; gap:8px; margin-top:10px; min-height:26px; }
+  .avatar-host{
+    width:26px; height:26px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10.5px; font-weight:800; color:#000;
+    background: var(--gold); border:2px solid #0a0a0a;
+    cursor:pointer;
+  }
+  .event-host-sep{ width:1px; height:14px; background:var(--line); flex-shrink:0; }
+  .avatar-stack{ display:flex; margin-right:6px; }
+  .avatar{
+    width:26px; height:26px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10.5px; font-weight:800; color:#000;
+    border:2px solid #0a0a0a; margin-left:-8px;
+    cursor:pointer;
+  }
+  .avatar:first-child{ margin-left:0; }
+  .avatar.n{ background: var(--n-accent); }
+  .avatar.e{ background: var(--e-accent); }
+  .avatar.x{ background: var(--x-accent); }
+  .avatar.t{ background: var(--t-accent); }
+  .avatar-more{
+    width:26px; height:26px; border-radius:50%; flex-shrink:0; margin-left:-8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:700; color:var(--secondary);
+    background: rgba(255,255,255,0.08); border:2px solid #0a0a0a;
+  }
+  .event-attendees-label{ font-size:11.5px; color:var(--tertiary); font-family: var(--sf-mono); }
+
+  /* ---------- EDIT SHEET ---------- */
+  .edit-input.invalid{ border-color:#ff453a; }
+  .time-range-row{ display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .time-range-row .edit-input{ flex:1; min-width:0; margin-bottom:0; }
+  .time-range-sep{ color:var(--tertiary); flex-shrink:0; }
+  .edit-delete-btn{
+    width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px; margin-bottom:8px;
+    color: var(--warn); border:1px solid rgba(231,161,90,0.4); background: rgba(231,161,90,0.1);
+  }
+  .edit-delete-btn:disabled{ opacity:.5; }
+
+  /* ---------- EVENT DETAIL / SIGNUP ---------- */
+  /* 固定高度先把文字跟報名欄位的空間留好，展開表單時內容不會整個跳動，
+     「我要報名」按鈕（跟展開後表單裡的送出按鈕）都貼齊底部。 */
+  .detail-box{
+    max-width:420px; max-height:85vh; min-height:420px;
+    overflow-y:auto; display:flex; flex-direction:column; justify-content:space-between;
+  }
+  /* 報名彈窗特別長（名單很多人）時，只讓上半部資訊區自己滾動，
+     報名按鈕固定在底部，避免外層彈窗＋內層名單雙重滾動條在手機上誤觸。 */
+  #eventDetailOverlay .detail-box{ overflow-y:hidden; }
+  .detail-scroll{ flex:1; min-height:0; overflow-y:auto; margin-bottom:16px; }
+  .detail-meta{ font-size:12.5px; color:var(--secondary); line-height:1.6; font-family: var(--sf-mono); margin-bottom:14px; }
+  #eventSignupSection{ display:flex; flex-direction:column; }
+
+  #detailAttendees{ margin-top:20px; }
+  .detail-attendees-empty{ font-size:12px; color:var(--tertiary); }
+  .detail-attendees-grid{
+    display:flex; flex-wrap:wrap; gap:8px;
+  }
+  .detail-attendees-grid .avatar{
+    margin-left:0; cursor:pointer;
+    width:44px; height:44px; font-size:15px;
+  }
+
+  .self-signed-note{
+    font-size:12.5px; font-weight:700; color:var(--gold); text-align:center; margin-bottom:10px;
+  }
+  .signup-cancel-btn{
+    width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px;
+    color: var(--warn); border:1px solid rgba(231,161,90,0.4); background: rgba(231,161,90,0.1);
+  }
+
+  .signup-self-note{ font-size:13px; color:var(--secondary); padding: 4px 2px; margin-bottom:2px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .signup-self-note b{ color:var(--label); font-weight:800; }
+  .signup-cancel-btn:disabled{ opacity:.5; }
+
+  .help-guest-section{ margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
+  .help-guest-section .signup-submit{ margin-top:10px; }
+  .guest-queue-row{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:9px 12px; border-radius:12px; background: rgba(255,255,255,0.04); border:1px solid var(--line);
+  }
+  .guest-queue-remove{
+    font-size:11px; font-weight:700; color:var(--tertiary); padding:3px 9px; border-radius:999px;
+    flex-shrink:0; background:transparent; border:1px solid var(--line);
+  }
+  .guest-queue-remove:active{ background: rgba(255,255,255,0.06); }
+  .guest-queue-remove:disabled{ opacity:.5; }
+  .help-guest-referred{ margin-top:14px; }
+
+  .guest-cancel-link{
+    width:100%; font-size:12px; font-weight:700; color:var(--tertiary); text-decoration:underline;
+    text-align:center; padding:8px 0 0; background:transparent; border:none;
+  }
+  .guest-cancel-link:disabled{ opacity:.5; text-decoration:none; }
+
+  .signup-switch-btn{
+    font-size:11px; font-weight:700; color:var(--tertiary); padding:4px 10px;
+    border:1px solid var(--line); border-radius:999px; flex-shrink:0; background:transparent;
+  }
+  .signup-switch-btn:active{ background: rgba(255,255,255,0.06); }
+
+  .signup-submit{
+    width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px;
+    background: var(--label); color:#000; margin-top:auto;
+  }
+  .signup-submit:disabled{ opacity:.5; }
+  .signup-submit.verified{ background: var(--gold); }
+
+  .signup-entry-row{ display:flex; gap:8px; }
+  .signup-entry-btn{
+    flex:1; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px;
+    background: var(--label); color:#000;
+  }
+  .signup-entry-btn:disabled{ opacity:.5; }
+
+  .signup-mode-toggle{
+    display:flex; background: rgba(255,255,255,0.05); border:1px solid var(--line);
+    border-radius:999px; padding:2px; margin-bottom:14px;
+  }
+  .signup-mode-toggle button{
+    flex:1; font-size:12px; font-weight:700; padding:8px 0; border-radius:999px; color:var(--tertiary);
+  }
+  .signup-mode-toggle button.active{ background: var(--card-strong); color: var(--label); }
+  /* 這裡上面已經有「球員報名／訪客報名」分頁標題，登入元件自己的
+     whoami-title 會重複寫一次「球員登入」，在這個彈窗裡隱藏掉就好，
+     不動 identity-picker.js 本身（profile.html/finance.html 還是要顯示）。 */
+  #signupWhoami .whoami-title{ display:none; }
+
+  .signup-list{ display:flex; flex-direction:column; gap:6px; }
+  .signup-empty{ font-size:12.5px; color:var(--tertiary); padding: 4px 2px; }
+
+  .guest-add-row{ display:flex; gap:8px; margin-bottom:10px; }
+  .guest-add-row .edit-input{ flex:1; min-width:0; margin-bottom:0; }
+  .guest-add-btn{
+    flex-shrink:0; font-size:13px; font-weight:700; padding:0 16px; border-radius:12px;
+    background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--label);
+  }
+  .guest-add-btn:active{ background: rgba(255,255,255,0.09); }
+
+  .import-toggle-row{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:9px 12px; border-radius:12px; background: rgba(255,255,255,0.04); border:1px solid var(--line);
+    cursor:pointer;
+  }
+  .import-toggle-row:active{ background: rgba(255,255,255,0.07); }
+  .import-toggle-status{ font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; flex-shrink:0; }
+
+</style>
+</head>
+<body>
+
+  <div class="wrap">
+
+    <div class="hero">
+      <div class="hero-eyebrow">WHONEXT BADMINTON CLUB</div>
+      <div class="wordmark">活動</div>
+    </div>
+
+    <div class="section-label-row">
+      <div class="event-tabs" id="eventTabs">
+        <button type="button" class="event-tab active" data-filter="own">本月活動</button>
+        <button type="button" class="event-tab" data-filter="friend">友團活動</button>
+      </div>
+      <div class="event-add-group">
+        <button type="button" class="event-add-btn" id="friendEventAddBtn" style="display:none">＋ 發起活動</button>
+        <button type="button" class="event-add-btn admin-only" id="eventAddBtn">＋ 新增賽事</button>
+      </div>
+    </div>
+    <div class="event-list" id="eventList"></div>
+
+  </div>
+
+  <div class="auth-overlay" id="eventEditOverlay">
+    <div class="modal-box-wrap">
+      <button type="button" class="modal-close-btn" id="eventEditCloseBtn" aria-label="關閉">×</button>
+      <div class="auth-box detail-box">
+      <div class="edit-title" id="eventEditTitleLabel">編輯賽事</div>
+
+      <div id="eventEditTemplateWrap">
+        <div class="edit-field-label">賽事範本</div>
+        <select id="eventEditTemplate" class="edit-input">
+          <option value="manual">手動新增</option>
+          <option value="whonext_badminton">WHONEXT 羽球</option>
+        </select>
+      </div>
+
+      <div class="edit-field-label">標題</div>
+      <input type="text" id="eventEditTitle" class="edit-input" placeholder="例如 例行練習賽">
+
+      <div class="edit-field-label">類型</div>
+      <select id="eventEditType" class="edit-input">
+        <option value="practice">練習</option>
+        <option value="project">企劃</option>
+        <option value="match">賽事</option>
+      </select>
+
+      <div class="edit-field-label">日期</div>
+      <input type="date" id="eventEditDate" class="edit-input">
+
+      <div class="edit-field-label">時間</div>
+      <div class="time-range-row">
+        <select id="eventEditTimeStart" class="edit-input"></select>
+        <span class="time-range-sep">–</span>
+        <select id="eventEditTimeEnd" class="edit-input"></select>
+      </div>
+
+      <div class="edit-field-label">地點</div>
+      <input type="text" id="eventEditLocation" class="edit-input" placeholder="例如 林口高中體育館">
+
+      <div class="edit-field-label">報名人數上限</div>
+      <input type="number" id="eventEditCapacity" class="edit-input" placeholder="留空代表不限" min="0">
+
+      <div class="edit-field-label">超過上限後</div>
+      <select id="eventEditOverflow" class="edit-input">
+        <option value="reject">拒絕報名</option>
+        <option value="waitlist">開放候補</option>
+      </select>
+
+      <div id="eventEditAttendWrap" style="display:none">
+        <div class="edit-field-label" id="eventEditAttendLabel">出席名單</div>
+        <div class="guest-add-row">
+          <input type="text" id="eventEditGuestName" class="edit-input" placeholder="手動新增訪客姓名">
+          <button type="button" class="guest-add-btn" id="eventEditGuestAdd">新增</button>
+        </div>
+        <div class="signup-list" id="eventEditAttendList"></div>
+      </div>
+
+      <div id="eventEditRecurringWrap" style="display:none; margin-bottom:14px;">
+        <label class="import-toggle-row" style="cursor:pointer;">
+          <span>自動產生當月剩餘週次（最多 4 週，套用同一份月繳名單）</span>
+          <input type="checkbox" id="eventEditRecurring" style="width:18px;height:18px;flex-shrink:0;">
+        </label>
+      </div>
+
+      <button type="button" class="edit-delete-btn admin-only" id="eventEditDelete" style="display:none">刪除賽事</button>
+      <div class="edit-actions">
+        <button type="button" class="edit-cancel" id="eventEditCancel">取消</button>
+        <button type="button" class="edit-save" id="eventEditSave">儲存</button>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-overlay" id="eventDetailOverlay">
+    <div class="modal-box-wrap">
+      <button type="button" class="modal-close-btn" id="eventDetailCloseBtn" aria-label="關閉">×</button>
+      <div class="auth-box detail-box">
+      <div class="detail-scroll">
+        <div class="edit-title" id="detailTitle"></div>
+        <div class="detail-meta" id="detailMeta"></div>
+        <div id="detailProgress"></div>
+        <div id="detailAttendees"></div>
+      </div>
+
+      <div id="selfSignedSection" style="display:none">
+        <div class="self-signed-note">你已經報名這場了</div>
+        <button type="button" class="signup-cancel-btn" id="signupCancelBtn" disabled>取消報名</button>
+
+        <div class="help-guest-section">
+          <div class="edit-field-label">推薦球友報名</div>
+          <div class="guest-add-row">
+            <input type="text" id="helpGuestName" class="edit-input" placeholder="輸入球友姓名">
+            <button type="button" class="guest-add-btn" id="helpGuestAdd">新增</button>
+          </div>
+          <div class="signup-list" id="helpGuestList"></div>
+          <button type="button" class="signup-submit" id="helpGuestSubmit" disabled>送出球友報名</button>
+
+          <div class="help-guest-referred">
+            <div class="edit-field-label">你推薦報名的球友</div>
+            <div class="signup-list" id="helpGuestReferredList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="signup-entry-row" id="signupEntryRow">
+        <button type="button" class="signup-entry-btn" id="signupEntryBtn">我要報名</button>
+      </div>
+
+      <div id="eventSignupSection" style="display:none">
+        <div class="signup-mode-toggle" id="signupModeToggle" style="display:none">
+          <button type="button" class="active" data-mode="member" id="signupModeMemberBtn">球員報名</button>
+          <button type="button" data-mode="guest" id="signupModeGuestBtn">訪客報名</button>
+        </div>
+        <div id="signupMemberFields">
+          <div id="signupAsSelf"></div>
+        </div>
+        <div id="signupGuestFields" style="display:none">
+          <input type="text" id="signupGuestName" class="edit-input" placeholder="輸入姓名">
+          <div class="edit-field-label">推薦人（選填，可從清單選或自己輸入）</div>
+          <input type="text" id="signupReferrer" class="edit-input" list="signupReferrerList" placeholder="請輸入或選擇隊內推薦人，無則留空">
+          <datalist id="signupReferrerList"></datalist>
+          <button type="button" class="guest-cancel-link" id="signupGuestCancelBtn">已經報名了？用這個姓名取消報名</button>
+        </div>
+
+        <button type="button" class="signup-submit" id="signupSubmit">送出報名</button>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script src="backend.js"></script>
+<script src="top-nav.js"></script>
+<script src="auth.js"></script>
+<script src="identity-picker.js"></script>
+<script src="bottom-nav.js"></script>
+<script>
+  // 賽事資料存在後端 events 分頁。status 是管理員手動控制的三段式：
+  // upcoming（即將開放）／open（報名中，實際名額狀態由系統判斷）／closed（已截止），
+  // 管理員點擊狀態標籤依序切換。open 底下的顯示文字再依報名人數/上限/候補設定
+  // 自動判斷成「報名中」「已額滿」「開放候補」三種，不用手動選。
+  // 舊資料的 status 若是 full 或空值，一律當成 open 處理（走自動判斷）。
+  // 「進行中」「已結束」是額外依賽事日期＋時間自動判斷，時間到了就蓋過上述顯示，
+  // 底層 ev.status 不受影響，事後時間往前捲動時仍會回到原本的報名狀態顯示。
+  let EVENTS = [];
+  let eventsLoaded = false;
+  let eventFilter = 'own';
+
+  // 賽事標題含友團隊伍關鍵字，就歸類為「友團活動」。目前只有黑狗隊，
+  // 之後如有其他友團合作，把隊名加進這個陣列即可，不用動篩選邏輯。
+  const FRIEND_CLUB_KEYWORDS = ['黑狗'];
+  function isFriendEvent(title){
+    const t = String(title || '');
+    return FRIEND_CLUB_KEYWORDS.some(function(k){ return t.indexOf(k) !== -1; });
+  }
+
+  // 「發起活動」的權限存在 players 分頁的 can_create_events 欄位，跟管理員
+  // 權限分開判斷，純看目前綁定的球員姓名（custom_name）對應的身分主檔有
+  // 沒有這個權限。這裡用 getRoster 不是 getPlayers，因為 getRoster 才有
+  // 「name」這個跟其他頁面一致的鍵值。can_create_events 在 Sheets 讀出來
+  // 可能是布林 true 也可能是文字 'TRUE'，兩種都要認得。
+  async function getRoster(){
+    const cached = getApiCache({ action:'getRoster' });
+    if(cached) return cached.roster || [];
+    try{
+      const result = await apiGet({ action:'getRoster' });
+      setApiCache({ action:'getRoster' }, result);
+      return result.roster || [];
+    } catch(e){
+      return [];
+    }
+  }
+  function canCreateEvents(roster, name){
+    const entry = roster.find(function(p){ return p.name === name; });
+    return !!entry && (entry.can_create_events === true || entry.can_create_events === 'TRUE');
+  }
+  async function updateFriendEventAddBtn(){
+    const btn = document.getElementById('friendEventAddBtn');
+    if(!btn) return;
+    const name = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+    if(!name){ btn.style.display = 'none'; return; }
+    const roster = await getRoster();
+    btn.style.display = canCreateEvents(roster, name) ? '' : 'none';
+  }
+
+  // type 存英文代碼（practice/project/match），但資料庫裡舊資料還是中文字串，
+  // 所以用 legacy 對照兩種都認得，畫面上一律顯示中文 label。
+  const EVENT_TYPES = [
+    { code: 'practice', label: '練習', legacy: '練習', cls: 'et-practice' },
+    { code: 'project', label: '企劃', legacy: '企劃', cls: 'et-project' },
+    { code: 'match', label: '賽事', legacy: '賽事', cls: 'et-match' }
+  ];
+  function eventTypeMeta(type){
+    return EVENT_TYPES.find(function(t){ return t.code === type || t.legacy === type; }) || null;
+  }
+  function eventTypeClass(type){
+    const meta = eventTypeMeta(type);
+    return meta ? meta.cls : '';
+  }
+  function eventTypeLabel(type){
+    const meta = eventTypeMeta(type);
+    return meta ? meta.label : (type || '');
+  }
+
+  // 判斷目前綁定的球員身分是否已經報名這場賽事，卡片狀態標籤旁邊顯示
+  // 「已報名」。用有沒有綁定球員姓名判斷，不看目前是用球員還是管理員
+  // 視角在看——一個人可以同時是球員又是管理員，切到管理員視角看首頁時
+  // 自己報名過的賽事也應該照樣顯示「已報名」。
+  function currentPlayerSignedUp(ev){
+    if(!window.WhonextAuth) return false;
+    const name = WhonextAuth.getPlayerName();
+    return !!name && Array.isArray(ev.signup_names) && ev.signup_names.indexOf(name) !== -1;
+  }
+
+  // 卡片狀態標籤旁邊的行動標籤：已報名一律顯示「已報名」（不管賽事狀態）；
+  // 還沒報名的話，只有賽事真的能報（報名中／開放候補）才顯示「我要報名」，
+  // 即將開放／已額滿／已截止／進行中／已結束這幾種點進去報名一定會失敗，
+  // 不會顯示 CTA，避免標籤跟賽事狀態互相矛盾。
+  function eventActionTagHTML(ev, statusMeta){
+    if(currentPlayerSignedUp(ev)) return '<span class="event-confirmed-tag">已報名</span>';
+    const signupable = statusMeta.cls === 'open' || statusMeta.cls === 'waitlist';
+    if(!signupable) return '';
+    return '<span class="event-cta-tag">我要報名</span>';
+  }
+
+  // 賽事標題關鍵字對應主辦人，卡片頭像用這份資料顯示。
+  const HOST_MAP = [
+    { keywords: ['WHONEXT'], name: '儒' },
+    { keywords: ['黑狗'], name: 'Eden' }
+  ];
+  function eventHostInfo(title){
+    const t = String(title || '');
+    return HOST_MAP.find(function(h){ return h.keywords.some(function(k){ return t.indexOf(k) !== -1; }); }) || null;
+  }
+  function isThisCalendarMonth(dateStr){
+    return String(dateStr || '').slice(0, 7) === currentCalendarMonth();
+  }
+  const WEEKDAYS = ['日','一','二','三','四','五','六'];
+  const STATUS_CYCLE = ['upcoming', 'open', 'closed'];
+  const STATUS_MANUAL_META = {
+    upcoming: { label: '即將開放', cls: 'upcoming' },
+    closed:   { label: '已截止',   cls: 'closed' }
+  };
+
+  function normalizeStatus(status){
+    return STATUS_CYCLE.includes(status) ? status : 'open';
+  }
+
+  function getEventTimeRange(ev){
+    const isoDate = String(ev.date || '').slice(0, 10);
+    const range = parseTimeRange(ev.time);
+    if(!isoDate || !range.start || !range.end) return { start: null, end: null };
+    return { start: new Date(isoDate + 'T' + range.start), end: new Date(isoDate + 'T' + range.end) };
+  }
+
+  function eventStatusMeta(ev){
+    const { start, end } = getEventTimeRange(ev);
+    if(start && end && !isNaN(start) && !isNaN(end)){
+      const now = new Date();
+      if(now >= end) return { label: '已結束', cls: 'ended' };
+      if(now >= start) return { label: '進行中', cls: 'ongoing' };
+    }
+    const status = normalizeStatus(ev.status);
+    if(STATUS_MANUAL_META[status]) return STATUS_MANUAL_META[status];
+    const capacity = Number(ev.capacity) || 0;
+    const count = Number(ev.signup_count) || 0;
+    if(capacity && count >= capacity){
+      return ev.overflow_mode === 'waitlist'
+        ? { label: '開放候補', cls: 'waitlist' }
+        : { label: '已額滿', cls: 'full' };
+    }
+    return { label: '報名中', cls: 'open' };
+  }
+
+  function loadCachedEvents(){
+    const cached = getApiCache({ action:'getEvents' });
+    if(cached){ EVENTS = cached.events || []; eventsLoaded = true; }
+    return !!cached;
+  }
+
+  // 賽事「進行中／已結束」時，卡片人數改顯示錢包那邊記錄的實際出席人數
+  // （weeks 分頁，依日期比對），取代賽事開始前使用的報名人數。
+  let ALL_WEEKS = [];
+  function splitNames(val){
+    return String(val || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  }
+  function weekAttendanceCount(isoDate){
+    const week = ALL_WEEKS.find(function(w){ return String(w.week_date).slice(0, 10) === isoDate; });
+    if(!week) return null;
+    return splitNames(week.present_names).length + splitNames(week.dropin_names).length;
+  }
+  function loadCachedWeeksForEvents(){
+    const cached = getApiCache({ action:'getWeeks' });
+    if(cached) ALL_WEEKS = cached.weeks || [];
+    return !!cached;
+  }
+  async function refreshWeeksForEvents(){
+    try{
+      const result = await apiGet({ action:'getWeeks' });
+      setApiCache({ action:'getWeeks' }, result);
+      ALL_WEEKS = result.weeks || [];
+      renderEvents();
+    } catch(e){}
+  }
+
+  async function refreshEvents(){
+    try{
+      const result = await apiGet({ action:'getEvents' });
+      setApiCache({ action:'getEvents' }, result);
+      EVENTS = result.events || [];
+      eventsLoaded = true;
+      renderEvents();
+    } catch(e){
+      if(!eventsLoaded){
+        eventsLoaded = true; // 沒快取又讀取失敗，還是要跳出「載入中」狀態
+        renderEvents();
+      }
+    }
+  }
+
+  async function persistEvents(){
+    try{
+      const result = await apiPost('saveEvents', EVENTS);
+      if(!result || !result.success) return null;
+      setApiCache({ action:'getEvents' }, { events: EVENTS });
+      return result;
+    } catch(e){
+      return null;
+    }
+  }
+
+  function progressHTML(ev, statusMeta){
+    const capacity = Number(ev.capacity) || 0;
+    const hasCapacity = capacity > 0;
+    const isPast = statusMeta.cls === 'ongoing' || statusMeta.cls === 'ended';
+    const attendance = isPast ? weekAttendanceCount(String(ev.date).slice(0, 10)) : null;
+    const count = attendance !== null ? attendance : (Number(ev.signup_count) || 0);
+    const waitlist = Number(ev.waitlist_count) || 0;
+    const pct = hasCapacity ? Math.min(100, Math.round(count / capacity * 100)) : 0;
+    const full = hasCapacity && count >= capacity;
+    let label = hasCapacity ? (count + ' / ' + capacity + (attendance !== null ? ' 人出席' : ' 人報名')) : ' ';
+    if(attendance === null && hasCapacity && waitlist > 0) label += '・候補 ' + waitlist;
+    // 沒設上限時還是把容器印出來(用 visibility:hidden 隱藏),讓卡片不管有沒有
+    // 上限，高度都一致，避免清單裡卡片高低不一。
+    return '<div class="event-progress"' + (hasCapacity ? '' : ' style="visibility:hidden"') + '>' +
+      '<div class="event-progress-track"><div class="event-progress-fill' + (full ? ' full' : '') + '" style="width:' + pct + '%"></div></div>' +
+      '<div class="event-progress-label">' + label + '</div>' +
+    '</div>';
+  }
+
+  const AVATAR_COLORS = ['n', 'e', 'x', 't'];
+
+  // 友團活動如果還沒接上我們的報名系統、抓不到真實人數/名單，可以在這裡
+  // 暫時寫死顯示；黑狗隊已經開放走真實報名流程，所以目前這份是空的。
+  const FRIEND_ATTENDEE_OVERRIDE = [];
+  function friendAttendeeOverride(title){
+    const t = String(title || '');
+    return FRIEND_ATTENDEE_OVERRIDE.find(function(h){ return h.keywords.some(function(k){ return t.indexOf(k) !== -1; }); }) || null;
+  }
+
+  // 卡片列表用頭像疊圖取代長條進度圖，最多顯示 4 個頭像 + 剩餘人數。
+  // ev.signup_names 是後端 getEvents 才會回傳的名單快照，舊快取或後端還沒
+  // 部署新版時會是 undefined，這裡退回只顯示人數，不會整張卡片壞掉。
+  function attendeesHTML(ev, statusMeta){
+    const isPast = statusMeta.cls === 'ongoing' || statusMeta.cls === 'ended';
+    const attendance = isPast ? weekAttendanceCount(String(ev.date).slice(0, 10)) : null;
+    const override = friendAttendeeOverride(ev.title);
+    const names = override ? override.names : (Array.isArray(ev.signup_names) ? ev.signup_names : []);
+    const count = attendance !== null ? attendance : (override ? override.count : (names.length || Number(ev.signup_count) || 0));
+    const waitlist = Number(ev.waitlist_count) || 0;
+
+    const hostInfo = eventHostInfo(ev.title);
+    const hostHTML = hostInfo
+      ? '<div class="avatar-host" title="發起人：' + escapeHtml(hostInfo.name) + '" data-name="發起人：' + escapeHtml(hostInfo.name) + '">' + avatarInitial(hostInfo.name) + '</div>' +
+        '<div class="event-host-sep"></div>'
+      : '';
+
+    if(!count){
+      return '<div class="event-attendees">' + hostHTML + '<div class="event-attendees-label">尚無人報名</div></div>';
+    }
+
+    const shown = names.slice(0, 4);
+    const extra = count - shown.length;
+    // 行動裝置沒有滑鼠 hover，title 顯示不出全名，所以頭像另外掛
+    // data-name，點擊時改用 toast 顯示（見 renderEvents 的點擊委派）。
+    const avatarsHTML = shown.map(function(n, idx){
+      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '" title="' + escapeHtml(n) + '" data-name="' + escapeHtml(n) + '">' + avatarInitial(n) + '</div>';
+    }).join('') + (extra > 0 ? '<div class="avatar-more">+' + extra + '</div>' : '');
+
+    let label = count + (attendance !== null ? ' 人出席' : ' 人已報名');
+    if(attendance === null && waitlist > 0) label += '・候補 ' + waitlist;
+
+    return '<div class="event-attendees">' +
+      hostHTML +
+      (avatarsHTML ? '<div class="avatar-stack">' + avatarsHTML + '</div>' : '') +
+      '<div class="event-attendees-label">' + label + '</div>' +
+    '</div>';
+  }
+
+  function renderEvents(){
+    const list = document.getElementById('eventList');
+    if(!eventsLoaded){
+      list.innerHTML = '<div class="event-empty glass">載入賽事中…</div>';
+      return;
+    }
+    const order = EVENTS.map(function(ev, i){ return i; })
+      .filter(function(i){
+        const ev = EVENTS[i];
+        return eventFilter === 'friend' ? isFriendEvent(ev.title) : (!isFriendEvent(ev.title) && isThisCalendarMonth(ev.date));
+      })
+      .sort(function(a, b){
+        const aEnded = eventStatusMeta(EVENTS[a]).cls === 'ended' ? 1 : 0;
+        const bEnded = eventStatusMeta(EVENTS[b]).cls === 'ended' ? 1 : 0;
+        if(aEnded !== bEnded) return aEnded - bEnded;
+        return String(EVENTS[a].date).slice(0,10).localeCompare(String(EVENTS[b].date).slice(0,10));
+      });
+
+    if(!order.length){
+      list.innerHTML = '<div class="event-empty glass">' + (eventFilter === 'friend' ? '目前沒有友團活動' : '本月目前沒有排定的活動') + '</div>';
+      return;
+    }
+
+    list.innerHTML = order.map(function(i){
+      const ev = EVENTS[i];
+      const isoDate = String(ev.date).slice(0, 10);
+      const mm = isoDate.slice(5,7);
+      const dd = isoDate.slice(8,10);
+      const wd = WEEKDAYS[new Date(isoDate + 'T00:00:00').getDay()];
+      const statusMeta = eventStatusMeta(ev);
+      return '<div class="event-card glass ' + eventTypeClass(ev.type) + '" data-index="' + i + '">' +
+        '<div class="event-date">' +
+          '<div class="ed-month">' + mm + '月</div>' +
+          '<div class="ed-day">' + dd + '</div>' +
+          '<div class="ed-weekday">週' + wd + '</div>' +
+        '</div>' +
+        '<div class="event-body">' +
+          '<div class="event-title-row">' +
+            '<div class="event-title">' + ev.title + '</div>' +
+            '<div class="event-title-actions">' +
+              '<button type="button" class="event-status ' + statusMeta.cls + '" data-index="' + i + '">' + statusMeta.label + '</button>' +
+              eventActionTagHTML(ev, statusMeta) +
+              '<button type="button" class="event-edit-btn admin-only" data-index="' + i + '">編輯</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="event-meta">' + (ev.type ? eventTypeLabel(ev.type) + '<span class="sep">・</span>' : '') + ev.time + '<span class="sep">・</span>' + ev.location + '</div>' +
+          attendeesHTML(ev, statusMeta) +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    list.querySelectorAll('.event-card').forEach(function(card){
+      card.addEventListener('click', function(e){
+        if(e.target.closest('.event-status') || e.target.closest('.event-edit-btn') || e.target.closest('[data-name]')) return;
+        const skipEntry = !!e.target.closest('.event-cta-tag');
+        openEventDetail(Number(card.dataset.index), skipEntry);
+      });
+    });
+
+    // 點頭像顯示全名（touch 裝置沒有 hover，title 這時候看不到）。
+    list.querySelectorAll('[data-name]').forEach(function(el){
+      el.addEventListener('click', function(e){
+        e.stopPropagation();
+        showToast(el.dataset.name);
+      });
+    });
+
+    list.querySelectorAll('.event-status').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        if(!document.body.classList.contains('is-admin')) return;
+        const ev = EVENTS[Number(btn.dataset.index)];
+        const prevStatus = ev.status;
+        const cur = normalizeStatus(ev.status);
+        ev.status = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur) + 1) % STATUS_CYCLE.length];
+        renderEvents();
+        const ok = await persistEvents();
+        if(!ok){
+          ev.status = prevStatus;
+          renderEvents();
+          showToast('狀態更新失敗，請稍後再試');
+        }
+      });
+    });
+
+    list.querySelectorAll('.event-edit-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        openEventEdit(Number(btn.dataset.index));
+      });
+    });
+  }
+
+  let editingIndex = null;
+
+  // 每 30 分鐘一個選項，06:00～23:30，涵蓋大部分活動時段。
+  const TIME_OPTIONS = (function(){
+    const opts = [];
+    for(let mins = 6 * 60; mins <= 23 * 60 + 30; mins += 30){
+      opts.push(String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0'));
+    }
+    return opts;
+  })();
+
+  function timeSelectOptionsHTML(extraValue){
+    const values = new Set(TIME_OPTIONS);
+    if(extraValue) values.add(extraValue); // 舊資料的時間若不在半點上，補一個選項讓它顯示得出來
+    return [...values].sort().map(function(t){ return '<option value="' + t + '">' + t + '</option>'; }).join('');
+  }
+
+  function setTimeSelects(startVal, endVal){
+    const startEl = document.getElementById('eventEditTimeStart');
+    const endEl = document.getElementById('eventEditTimeEnd');
+    startEl.innerHTML = timeSelectOptionsHTML(startVal);
+    endEl.innerHTML = timeSelectOptionsHTML(endVal);
+    startEl.value = startVal || TIME_OPTIONS[0];
+    endEl.value = endVal || TIME_OPTIONS[0];
+  }
+
+  function parseTimeRange(str){
+    const parts = String(str || '').split(/[-–]/).map(function(s){ return s.trim(); });
+    return { start: parts[0] || '', end: parts[1] || '' };
+  }
+
+  function openEventEdit(index){
+    editingIndex = index;
+    const ev = EVENTS[index];
+    document.getElementById('eventEditTitleLabel').textContent = '編輯賽事';
+    document.getElementById('eventEditTemplateWrap').style.display = 'none';
+    document.getElementById('eventEditAttendWrap').style.display = 'none';
+    document.getElementById('eventEditAttendList').innerHTML = '';
+    document.getElementById('eventEditRecurringWrap').style.display = 'none';
+    document.getElementById('eventEditRecurring').checked = false;
+    document.getElementById('eventEditTitle').value = ev.title;
+    document.getElementById('eventEditType').value = (eventTypeMeta(ev.type) || EVENT_TYPES[0]).code;
+    document.getElementById('eventEditDate').value = String(ev.date).slice(0, 10);
+    const parsedTime = parseTimeRange(ev.time);
+    setTimeSelects(parsedTime.start, parsedTime.end);
+    document.getElementById('eventEditLocation').value = ev.location;
+    document.getElementById('eventEditCapacity').value = ev.capacity || '';
+    document.getElementById('eventEditOverflow').value = ev.overflow_mode === 'waitlist' ? 'waitlist' : 'reject';
+    document.getElementById('eventEditDelete').style.display = '';
+    document.getElementById('eventEditOverlay').classList.add('open');
+  }
+
+  function openEventCreate(){
+    editingIndex = 'new';
+    document.getElementById('eventEditTitleLabel').textContent = '新增賽事';
+    document.getElementById('eventEditTemplateWrap').style.display = '';
+    document.getElementById('eventEditTemplate').value = 'manual';
+    document.getElementById('eventEditTitle').value = '';
+    document.getElementById('eventEditType').value = 'practice';
+    document.getElementById('eventEditDate').value = '';
+    setTimeSelects('20:00', '22:00');
+    document.getElementById('eventEditLocation').value = '';
+    document.getElementById('eventEditCapacity').value = '';
+    document.getElementById('eventEditOverflow').value = 'reject';
+    document.getElementById('eventEditGuestName').value = '';
+    document.getElementById('eventEditRecurringWrap').style.display = 'none';
+    document.getElementById('eventEditRecurring').checked = false;
+    document.getElementById('eventEditDelete').style.display = 'none';
+    document.getElementById('eventEditOverlay').classList.add('open');
+    loadAttendRosterPicker();
+  }
+
+  function closeEventEdit(){
+    document.getElementById('eventEditOverlay').classList.remove('open');
+    editingIndex = null;
+  }
+
+  function nextFridayISO(){
+    const d = new Date();
+    const diff = (5 - d.getDay() + 7) % 7; // 0 = 今天就是週五
+    d.setDate(d.getDate() + diff);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // 從 startISO 起，找同一個月內、每隔 7 天出現一次的後續日期（同星期幾），
+  // 用於「自動產生當月剩餘週次」，最多回傳 maxExtra 筆。
+  function sameWeekdayDatesInMonth(startISO, maxExtra){
+    const start = new Date(startISO + 'T00:00:00');
+    const month = start.getMonth();
+    const dates = [];
+    const d = new Date(start);
+    while(dates.length < maxExtra){
+      d.setDate(d.getDate() + 7);
+      if(d.getMonth() !== month) break;
+      dates.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
+    }
+    return dates;
+  }
+
+  const EVENT_TEMPLATES = {
+    whonext_badminton: {
+      title: 'WHONEXT 羽球',
+      type: 'practice',
+      location: '大墩大慶羽球館',
+      time: '20:00-22:00',
+      capacity: 16,
+      overflow_mode: 'waitlist'
+    }
+  };
+
+  // 手動新增（非範本）時，出席名單從完整球員名單（getRoster：members 歷史
+  // 姓名 + players 綁定狀態）勾選，預設全部未選，由發起人自己挑誰出席；
+  // 也能在下面手動加訪客姓名。
+  async function loadAttendRosterPicker(){
+    document.getElementById('eventEditAttendLabel').textContent = '出席名單';
+    document.getElementById('eventEditRecurringWrap').style.display = 'none';
+    document.getElementById('eventEditRecurring').checked = false;
+    document.getElementById('eventEditAttendWrap').style.display = '';
+    const listEl = document.getElementById('eventEditAttendList');
+    listEl.innerHTML = '<div class="signup-empty">載入球員名單中…</div>';
+    try{
+      const roster = await getRoster();
+      const names = [...new Set(roster.map(function(p){ return p.name; }).filter(Boolean))]
+        .sort(function(a, b){ return a.localeCompare(b); });
+      listEl.innerHTML = names.length
+        ? names.map(function(n){ return importRowHTML(n, false); }).join('')
+        : '<div class="signup-empty">尚無球員名單</div>';
+      if(names.length) wireImportToggleRows('eventEditAttendList');
+    } catch(e){
+      listEl.innerHTML = '<div class="signup-empty">讀取球員名單失敗，請稍後再試</div>';
+    }
+  }
+
+  function addGuestAttendRow(){
+    const input = document.getElementById('eventEditGuestName');
+    const name = input.value.trim();
+    if(!name) return;
+    const listEl = document.getElementById('eventEditAttendList');
+    const existing = [...listEl.querySelectorAll('.import-toggle-row')]
+      .find(function(row){ return row.dataset.name === name; });
+    if(existing){
+      existing.dataset.present = '1';
+      existing.querySelector('.import-toggle-status').textContent = '出席';
+      existing.querySelector('.import-toggle-status').setAttribute('style', importStatusStyle(true));
+    } else {
+      const empty = listEl.querySelector('.signup-empty');
+      if(empty) empty.remove();
+      listEl.insertAdjacentHTML('beforeend', importRowHTML(name, true));
+      attachToggleRow(listEl.lastElementChild);
+    }
+    input.value = '';
+    input.focus();
+  }
+  document.getElementById('eventEditGuestAdd').addEventListener('click', addGuestAttendRow);
+  document.getElementById('eventEditGuestName').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); addGuestAttendRow(); }
+  });
+
+  // 選範本時順便把本月月繳名單抓進來排好「出席」預設值,存檔時一起送出去,
+  // 不用另外再開一次匯入面板。
+  async function applyEventTemplate(key){
+    if(key !== 'whonext_badminton'){
+      await loadAttendRosterPicker();
+      return;
+    }
+    const tpl = EVENT_TEMPLATES[key];
+    document.getElementById('eventEditTitle').value = tpl.title;
+    document.getElementById('eventEditType').value = tpl.type;
+    document.getElementById('eventEditLocation').value = tpl.location;
+    const tplTime = parseTimeRange(tpl.time);
+    setTimeSelects(tplTime.start, tplTime.end);
+    document.getElementById('eventEditDate').value = nextFridayISO();
+    document.getElementById('eventEditCapacity').value = tpl.capacity;
+    document.getElementById('eventEditOverflow').value = tpl.overflow_mode;
+
+    // 名單還在抓的時候先鎖住儲存鈕，避免手速太快在清單填好前就存檔，
+    // 導致賽事建立成功但月繳名單沒有一起匯入、卻完全沒有提示。
+    const saveBtn = document.getElementById('eventEditSave');
+    saveBtn.disabled = true;
+    document.getElementById('eventEditAttendWrap').style.display = '';
+    document.getElementById('eventEditAttendList').innerHTML = '<div class="signup-empty">載入月繳名單中…</div>';
+
+    const month = currentCalendarMonth();
+    try{
+      const memberResult = await apiGet({ action:'getMembers', month: month });
+      const names = [...new Set((memberResult.members || []).map(function(m){ return m.name; }).filter(Boolean))]
+        .sort(function(a, b){ return a.localeCompare(b); });
+      document.getElementById('eventEditAttendLabel').textContent = '確認出席名單（' + month + '）';
+      document.getElementById('eventEditAttendList').innerHTML = names.length
+        ? names.map(function(n){ return importRowHTML(n, true); }).join('')
+        : '<div class="signup-empty">本月尚無月繳名單</div>';
+      if(names.length) wireImportToggleRows('eventEditAttendList');
+      document.getElementById('eventEditAttendWrap').style.display = '';
+      document.getElementById('eventEditRecurringWrap').style.display = '';
+      document.getElementById('eventEditRecurring').checked = false;
+    } catch(e){
+      document.getElementById('eventEditAttendWrap').style.display = 'none';
+      document.getElementById('eventEditRecurringWrap').style.display = 'none';
+      showToast('讀取月繳名單失敗，請稍後再試');
+    } finally {
+      saveBtn.disabled = false;
+    }
+  }
+
+  async function saveEventEdit(){
+    if(editingIndex === null) return;
+    const title = document.getElementById('eventEditTitle').value.trim();
+    const type = document.getElementById('eventEditType').value;
+    const date = document.getElementById('eventEditDate').value;
+    const timeStart = document.getElementById('eventEditTimeStart').value;
+    const timeEnd = document.getElementById('eventEditTimeEnd').value;
+    const location = document.getElementById('eventEditLocation').value.trim();
+    const capacityRaw = document.getElementById('eventEditCapacity').value.trim();
+    const overflowMode = document.getElementById('eventEditOverflow').value;
+    if(!title || !date || !timeStart || !timeEnd || !location){ showToast('請填寫完整資訊'); return; }
+    if(timeEnd <= timeStart){ showToast('結束時間需晚於開始時間'); return; }
+    const time = timeStart + '-' + timeEnd;
+
+    const isNew = editingIndex === 'new';
+    const capacity = capacityRaw === '' ? '' : Number(capacityRaw);
+    let ev, backup;
+    let createdCount = 1;
+
+    if(isNew){
+      ev = { title, type, date, time, location, status:'open', capacity, overflow_mode: overflowMode };
+      EVENTS.push(ev);
+      if(document.getElementById('eventEditRecurringWrap').style.display !== 'none'
+        && document.getElementById('eventEditRecurring').checked){
+        sameWeekdayDatesInMonth(date, 3).forEach(function(d){
+          EVENTS.push({ title, type, date: d, time, location, status:'open', capacity, overflow_mode: overflowMode });
+          createdCount++;
+        });
+      }
+    } else {
+      ev = EVENTS[editingIndex];
+      backup = Object.assign({}, ev);
+      ev.title = title;
+      ev.type = type;
+      ev.date = date;
+      ev.time = time;
+      ev.location = location;
+      ev.capacity = capacity;
+      ev.overflow_mode = overflowMode;
+    }
+
+    const attendNames = [];
+    if(isNew){
+      document.querySelectorAll('#eventEditAttendList .import-toggle-row').forEach(function(row){
+        if(row.dataset.present === '1') attendNames.push(row.dataset.name);
+      });
+    }
+
+    const saveBtn = document.getElementById('eventEditSave');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '儲存中…';
+    const ok = await persistEvents();
+
+    if(ok){
+      await refreshEvents(); // 重抓一次同步回來，更新 signup_count 等欄位
+      let importMsg = '';
+      if(isNew && attendNames.length){
+        // 用後端這次寫入實際回傳的 events（已含新產生的 id），
+        // 而不是靠「本地陣列最後一筆」去猜，避免順序假設錯了就找錯賽事。
+        // 週期賽事會一次新增多筆，取陣列最後 createdCount 筆逐一匯入名單。
+        const createdEvents = ok.events || [];
+        const newEvents = createdEvents.slice(createdEvents.length - createdCount).filter(function(e){ return e && e.id; });
+        if(newEvents.length === createdCount){
+          try{
+            const bulkResults = await Promise.all(newEvents.map(function(newEv){
+              return apiPost('bulkSignupEvent', { event_id: newEv.id, names: attendNames });
+            }));
+            const failed = bulkResults.some(function(r){ return !r || !r.success; });
+            if(!failed){
+              const confirmed = bulkResults.reduce(function(s, r){ return s + (r.confirmed || 0); }, 0);
+              const waitlist = bulkResults.reduce(function(s, r){ return s + (r.waitlist || 0); }, 0);
+              const parts = [];
+              if(confirmed) parts.push('確認 ' + confirmed + ' 人次');
+              if(waitlist) parts.push('候補 ' + waitlist + ' 人次');
+              if(parts.length) importMsg = '，' + parts.join('、');
+              await refreshEvents();
+            } else {
+              importMsg = '，但出席名單匯入失敗，請稍後手動匯入';
+            }
+          } catch(e){
+            importMsg = '，但出席名單匯入失敗，請稍後手動匯入';
+          }
+        } else {
+          importMsg = '，但出席名單匯入失敗，請稍後手動匯入';
+        }
+      }
+      saveBtn.disabled = false;
+      saveBtn.textContent = '儲存';
+      closeEventEdit();
+      const createdMsg = isNew && createdCount > 1 ? ('已新增 ' + createdCount + ' 場賽事') : (isNew ? '已新增賽事' : '已更新賽事資訊');
+      showToast(createdMsg + importMsg);
+    } else {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '儲存';
+      if(isNew) EVENTS.splice(EVENTS.length - createdCount, createdCount);
+      else Object.assign(ev, backup);
+      showToast('儲存失敗，請稍後再試');
+    }
+  }
+
+  // saveEvents 是整份陣列覆寫寫回表單，所以刪除只要先把這筆從本地
+  // EVENTS 陣列拿掉再存檔即可，不用另外開一個刪除用的後端 action。
+  async function deleteCurrentEvent(){
+    if(editingIndex === null || editingIndex === 'new') return;
+    const ev = EVENTS[editingIndex];
+    if(!confirm('確定要刪除「' + ev.title + '」（' + String(ev.date).slice(0, 10) + '）這場賽事嗎？此動作無法復原，已報名的人也會一起消失。')) return;
+
+    const btn = document.getElementById('eventEditDelete');
+    btn.disabled = true;
+    btn.textContent = '刪除中…';
+
+    const backup = EVENTS.slice();
+    EVENTS.splice(editingIndex, 1);
+    const ok = await persistEvents();
+
+    if(ok){
+      closeEventEdit();
+      await refreshEvents();
+      showToast('已刪除賽事');
+    } else {
+      EVENTS = backup;
+      showToast('刪除失敗，請稍後再試');
+    }
+    btn.disabled = false;
+    btn.textContent = '刪除賽事';
+  }
+
+  // 暫時隱藏「訪客報名」入口（球員登入／訪客報名分頁的訪客那個分頁）：
+  // 只影響 UI 是否顯示分頁切換，底下的訪客報名/取消邏輯完全沒動，
+  // 之後要復原只要把這個開關改回 true 就好。
+  const GUEST_SIGNUP_ENABLED = false;
+  let detailIndex = null;
+  let signupMode = 'member';
+  // 已報名者「推薦球友報名」的暫存名單：逐一輸入、加進清單，最後一次
+  // 送出（每筆各自打 signupEvent，因為要帶 referrer，跟 bulkSignupEvent
+  // 不同）。只在切換到不同賽事時重置，同一場重繪（例如身分變動）不清空。
+  let helpGuestQueue = [];
+  let helpGuestQueueIndex = null;
+
+  function currentMemberNames(){
+    const cached = getApiCache({ action:'getMembers' });
+    const members = (cached && cached.members) || [];
+    return [...new Set(members.map(function(m){ return m.name; }).filter(Boolean))]
+      .sort(function(a, b){ return a.localeCompare(b); });
+  }
+
+  // 報名頭像＋名單，欄位塞得下就直接全部列出來，不用再多一層展開收合。
+  function detailAttendeesHTML(ev){
+    const names = Array.isArray(ev.signup_names) ? ev.signup_names : [];
+    if(!names.length) return '<div class="detail-attendees-empty">尚無人報名</div>';
+    return '<div class="detail-attendees-grid">' + names.map(function(n, idx){
+      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '" title="' + escapeHtml(n) + '" data-name="' + escapeHtml(n) + '">' + avatarInitial(n) + '</div>';
+    }).join('') + '</div>';
+  }
+
+  // 已報名時要取消，需要這筆報名紀錄的 id（getEvents 的 signup_names
+  // 只是名字快照，沒有 id），開詳情時順便查一次，取消按鈕先鎖住等查到才能按。
+  let detailSelfSignupId = null;
+  async function loadDetailSelfSignup(ev, name){
+    detailSelfSignupId = null;
+    const cancelBtn = document.getElementById('signupCancelBtn');
+    cancelBtn.disabled = true;
+    try{
+      const result = await apiGet({ action:'getEventSignups', event_id: ev.id });
+      const match = (result.signups || []).find(function(s){
+        return s.type === 'member' && s.member_name === name && (s.status === 'confirmed' || s.status === 'waitlist');
+      });
+      if(match){
+        detailSelfSignupId = match.id;
+        cancelBtn.disabled = false;
+      }
+    } catch(e){
+      // 查不到就讓取消按鈕維持鎖住，避免打一個沒有 id 的取消請求
+    }
+  }
+
+  // 球員模式一定要登入才能報名，而且只能替自己報名（沒有下拉選單可以
+  // 選別人）；沒登入就在表單裡直接放登入流程。
+  // 訪客模式不需要登入，輸入姓名＋選推薦人（目前的會員名單）就能報名。
+  function signupAsSelfHTML(name){
+    if(name) return '<div class="signup-self-note">以 <b>' + name + '</b> 身份報名' +
+      '<button type="button" class="signup-switch-btn" id="signupSwitchBtn">換人</button></div>';
+    return '<div id="signupWhoami"></div>';
+  }
+  // 換人按鈕在 signupAsSelf 容器裡，內容每次都靠 innerHTML 重繪，掛在
+  // 容器本身（不會被換掉）上用事件代理，不用每次重繪後重新綁定。
+  document.getElementById('signupAsSelf').addEventListener('click', function(e){
+    if(e.target && e.target.id === 'signupSwitchBtn') WhonextAuth.setPlayerName('');
+  });
+
+  // 點頭像顯示全名（touch 裝置沒有 hover，title 這時候看不到）。
+  document.getElementById('detailAttendees').addEventListener('click', function(e){
+    const el = e.target.closest('[data-name]');
+    if(el) showToast(el.dataset.name);
+  });
+
+  function renderMemberFields(currentName){
+    document.getElementById('signupAsSelf').innerHTML = signupAsSelfHTML(currentName);
+    if(!currentName && window.WhonextIdentityPicker){
+      const whoamiEl = document.getElementById('signupWhoami');
+      if(whoamiEl) WhonextIdentityPicker.render(whoamiEl);
+    }
+  }
+
+  // 未登入、還在「訪客報名」分頁選擇畫面時用的 tab 切換（球員報名／訪客報名）。
+  // 已登入的人不會看到這組 tab，直接跳過這一步。
+  function setSignupTab(mode){
+    signupMode = mode;
+    document.getElementById('signupModeMemberBtn').classList.toggle('active', mode === 'member');
+    document.getElementById('signupModeGuestBtn').classList.toggle('active', mode === 'guest');
+    document.getElementById('signupMemberFields').style.display = mode === 'member' ? '' : 'none';
+    document.getElementById('signupGuestFields').style.display = mode === 'guest' ? '' : 'none';
+    if(mode === 'member') renderMemberFields('');
+    else document.getElementById('signupGuestName').classList.remove('invalid');
+    updateSubmitGate();
+  }
+  document.getElementById('signupModeMemberBtn').addEventListener('click', function(){ setSignupTab('member'); });
+  document.getElementById('signupModeGuestBtn').addEventListener('click', function(){ setSignupTab('guest'); });
+
+  document.getElementById('signupEntryBtn').addEventListener('click', function(){
+    document.getElementById('signupEntryRow').style.display = 'none';
+    document.getElementById('eventSignupSection').style.display = '';
+    document.getElementById('signupModeToggle').style.display = GUEST_SIGNUP_ENABLED ? '' : 'none';
+    setSignupTab('member');
+  });
+
+  // 未登入時直接在報名表單裡放登入流程，選完身份留在原本這個賽事的
+  // 詳情彈窗繼續報名，不用跳去 profile.html 再繞回來。
+  // 卡片列表的「已報名／我要報名」也是靠目前綁定身分算出來的，nav 那邊
+  // 登出/切換身分（不重新整理頁面）時同樣要重繪整個列表，不然會沿用
+  // 切換前那個身分算出來的標籤，變成別人登出/登入都不會更新。
+  document.addEventListener('whonext:playername-change', function(){
+    if(detailIndex !== null) openEventDetail(detailIndex);
+    if(eventsLoaded) renderEvents();
+    updateFriendEventAddBtn();
+  });
+
+  // 報名按鈕的狀態跟賽事開放狀態綁定，不要等使用者填完資料送出才用 toast
+  // 告知已額滿／已截止 —— 開卡片當下就直接反映在按鈕上。
+  function signupButtonMeta(statusMeta){
+    if(statusMeta.cls === 'waitlist') return { disabled:false, label:'加入候補名單' };
+    if(statusMeta.cls === 'full') return { disabled:true, label:'已額滿' };
+    if(statusMeta.cls === 'upcoming') return { disabled:true, label:'尚未開放報名' };
+    if(statusMeta.cls === 'closed' || statusMeta.cls === 'ongoing' || statusMeta.cls === 'ended'){
+      return { disabled:true, label:'報名已截止' };
+    }
+    return { disabled:false, label:'送出報名' };
+  }
+
+  // 「送出報名」是否能按，除了賽事本身的名額/開放狀態，還要看目前選的
+  // 分頁：球員模式沒登入的話，表單裡顯示的是登入/註冊流程，不是報名
+  // 欄位，這時候按鈕要鎖住＋換字，不能讓人點了才用 toast 說「請先登入」。
+  function updateSubmitGate(statusMeta){
+    if(detailIndex === null) return;
+    const submitBtn = document.getElementById('signupSubmit');
+    const signupState = signupButtonMeta(statusMeta || eventStatusMeta(EVENTS[detailIndex]));
+    if(signupState.disabled){
+      submitBtn.style.display = '';
+      submitBtn.disabled = true;
+      submitBtn.textContent = signupState.label;
+      submitBtn.classList.remove('verified');
+      return;
+    }
+    const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+    if(signupMode === 'member' && !currentName){
+      // 球員模式沒登入時整個按鈕藏起來（表單裡本來就顯示登入/註冊流程了，
+      // 不需要一個鎖住的按鈕再提示一次要先登入）。
+      submitBtn.style.display = 'none';
+    } else {
+      submitBtn.style.display = '';
+      submitBtn.disabled = false;
+      submitBtn.textContent = signupMode === 'member' ? '確認送出報名' : '送出報名';
+      submitBtn.classList.toggle('verified', signupMode === 'member');
+    }
+  }
+
+  function renderHelpGuestQueue(){
+    const listEl = document.getElementById('helpGuestList');
+    const submitBtn = document.getElementById('helpGuestSubmit');
+    listEl.innerHTML = helpGuestQueue.length
+      ? helpGuestQueue.map(function(name, i){
+          return '<div class="guest-queue-row">' +
+            '<span>' + escapeHtml(name) + '</span>' +
+            '<button type="button" class="guest-queue-remove" data-remove="' + i + '">移除</button>' +
+          '</div>';
+        }).join('')
+      : '';
+    submitBtn.disabled = helpGuestQueue.length === 0;
+    submitBtn.textContent = '送出球友報名';
+  }
+
+  function addHelpGuest(){
+    const input = document.getElementById('helpGuestName');
+    const name = input.value.trim();
+    if(!name) return;
+    if(helpGuestQueue.indexOf(name) === -1) helpGuestQueue.push(name);
+    input.value = '';
+    input.focus();
+    renderHelpGuestQueue();
+  }
+  document.getElementById('helpGuestAdd').addEventListener('click', addHelpGuest);
+  document.getElementById('helpGuestName').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); addHelpGuest(); }
+  });
+  document.getElementById('helpGuestList').addEventListener('click', function(e){
+    const btn = e.target.closest('[data-remove]');
+    if(!btn) return;
+    helpGuestQueue.splice(Number(btn.dataset.remove), 1);
+    renderHelpGuestQueue();
+  });
+
+  // 逐一 signupEvent（而不是 bulkSignupEvent）是因為推薦球友報名要帶
+  // referrer（自動 = 自己），bulkSignupEvent 只認 member 型別、沒有
+  // referrer 欄位，不適合這裡的訪客報名情境。
+  async function submitHelpGuests(){
+    if(!helpGuestQueue.length || detailIndex === null) return;
+    const ev = EVENTS[detailIndex];
+    const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+    const btn = document.getElementById('helpGuestSubmit');
+    btn.disabled = true;
+    btn.textContent = '送出中…';
+    try{
+      const results = await Promise.all(helpGuestQueue.map(function(name){
+        return apiPost('signupEvent', { event_id: ev.id, type:'guest', guest_name: name, referrer: currentName });
+      }));
+      const okCount = results.filter(function(r){ return r && r.success; }).length;
+      const failCount = results.length - okCount;
+      showToast(okCount
+        ? '已推薦 ' + okCount + ' 位球友報名' + (failCount ? '，' + failCount + ' 位失敗' : '')
+        : '推薦球友報名失敗，請稍後再試');
+      helpGuestQueue = [];
+      await refreshEvents();
+      if(detailIndex !== null) openEventDetail(detailIndex);
+      return;
+    } catch(e){
+      showToast('推薦球友報名失敗，請稍後再試');
+    }
+    btn.disabled = false;
+    btn.textContent = '送出球友報名';
+  }
+  document.getElementById('helpGuestSubmit').addEventListener('click', submitHelpGuests);
+
+  // 列出「這個人推薦報名」的球友，讓已報名的球員自己就能取消推薦報名的
+  // 球友，不用麻煩管理員。只認 type:'guest' 且 referrer 是自己，不會動到
+  // 任何球員（member 型別）的報名紀錄。
+  async function loadHelpGuestSignups(ev, currentName){
+    const listEl = document.getElementById('helpGuestReferredList');
+    listEl.innerHTML = '<div class="signup-empty">載入中…</div>';
+    try{
+      const result = await apiGet({ action:'getEventSignups', event_id: ev.id });
+      const referred = (result.signups || []).filter(function(s){
+        return s.type === 'guest' && s.referrer === currentName && (s.status === 'confirmed' || s.status === 'waitlist');
+      });
+      listEl.innerHTML = referred.length
+        ? referred.map(function(s){
+            return '<div class="guest-queue-row">' +
+              '<span>' + escapeHtml(s.guest_name) + (s.status === 'waitlist' ? '（候補）' : '') + '</span>' +
+              '<button type="button" class="guest-queue-remove" data-cancel-id="' + escapeHtml(s.id) + '">取消</button>' +
+            '</div>';
+          }).join('')
+        : '';
+    } catch(e){
+      listEl.innerHTML = '<div class="signup-empty">讀取失敗，請稍後再試</div>';
+    }
+  }
+  document.getElementById('helpGuestReferredList').addEventListener('click', async function(e){
+    const btn = e.target.closest('[data-cancel-id]');
+    if(!btn || detailIndex === null) return;
+    btn.disabled = true;
+    btn.textContent = '取消中…';
+    try{
+      const result = await apiPost('cancelSignup', { id: btn.dataset.cancelId });
+      if(result && result.success){
+        showToast('已取消該球友報名');
+        await refreshEvents();
+        if(detailIndex !== null) openEventDetail(detailIndex);
+        return;
+      }
+      showToast('取消失敗，請稍後再試');
+    } catch(err){
+      showToast('取消失敗，請稍後再試');
+    }
+    btn.disabled = false;
+    btn.textContent = '取消';
+  });
+
+  // 訪客報名不用登入，取消時只能靠自己輸入姓名去比對，安全起見一定要
+  // 只認 type:'guest' 的紀錄——不然有人輸入某個球員的姓名，就能把
+  // 那個球員（member 型別）已經確認的報名取消掉，這是絕對不能發生的。
+  async function cancelGuestByName(){
+    const nameInput = document.getElementById('signupGuestName');
+    const name = nameInput.value.trim();
+    if(!name){
+      nameInput.classList.add('invalid');
+      nameInput.focus();
+      showToast('請先輸入姓名');
+      return;
+    }
+    nameInput.classList.remove('invalid');
+    if(detailIndex === null) return;
+    const ev = EVENTS[detailIndex];
+    const btn = document.getElementById('signupGuestCancelBtn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '查詢中…';
+    try{
+      const result = await apiGet({ action:'getEventSignups', event_id: ev.id });
+      const match = (result.signups || []).find(function(s){
+        return s.type === 'guest' && s.guest_name === name && (s.status === 'confirmed' || s.status === 'waitlist');
+      });
+      if(!match){
+        showToast('找不到這個姓名的訪客報名紀錄');
+      } else {
+        const cancelResult = await apiPost('cancelSignup', { id: match.id });
+        if(cancelResult && cancelResult.success){
+          showToast('已取消報名');
+          nameInput.value = '';
+          await refreshEvents();
+          if(detailIndex !== null) openEventDetail(detailIndex);
+          return;
+        }
+        showToast('取消失敗，請稍後再試');
+      }
+    } catch(e){
+      showToast('取消失敗，請稍後再試');
+    }
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+  document.getElementById('signupGuestCancelBtn').addEventListener('click', cancelGuestByName);
+
+  function openEventDetail(index, skipEntry){
+    detailIndex = index;
+    const ev = EVENTS[index];
+    const statusMeta = eventStatusMeta(ev);
+    document.getElementById('detailTitle').textContent = ev.title;
+    document.getElementById('detailMeta').textContent = (ev.type ? eventTypeLabel(ev.type) + '　' : '') + String(ev.date).slice(0, 10) + '　' + ev.time + '　' + ev.location;
+    document.getElementById('detailProgress').innerHTML = progressHTML(ev, statusMeta);
+    document.getElementById('detailAttendees').innerHTML = detailAttendeesHTML(ev);
+
+    const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+    document.getElementById('signupGuestName').value = '';
+    document.getElementById('signupGuestName').classList.remove('invalid');
+    const signupState = signupButtonMeta(statusMeta);
+    const entryBtn = document.getElementById('signupEntryBtn');
+    entryBtn.disabled = signupState.disabled;
+    entryBtn.textContent = signupState.disabled ? signupState.label : '我要報名';
+
+    // 推薦人（訪客模式）預設可以從目前的會員名單挑，但清單裡沒有的人
+    // 也能直接輸入（用 input+datalist，不是只能選的下拉選單）。
+    document.getElementById('signupReferrerList').innerHTML = currentMemberNames().map(function(n){
+      return '<option value="' + n + '">';
+    }).join('');
+    document.getElementById('signupReferrer').value = currentName || '';
+
+    const selfSigned = currentPlayerSignedUp(ev);
+    document.getElementById('selfSignedSection').style.display = selfSigned ? '' : 'none';
+
+    if(selfSigned){
+      // 每次重新打開都把按鈕文字重置成「取消報名」，不要沿用上一次
+      // 點擊留下的「取消中…」，查到 id 前先鎖住避免打沒有 id 的請求。
+      document.getElementById('signupEntryRow').style.display = 'none';
+      document.getElementById('eventSignupSection').style.display = 'none';
+      const cancelBtn = document.getElementById('signupCancelBtn');
+      cancelBtn.textContent = '取消報名';
+      cancelBtn.disabled = true;
+      loadDetailSelfSignup(ev, currentName);
+      if(helpGuestQueueIndex !== index){ helpGuestQueue = []; helpGuestQueueIndex = index; }
+      document.getElementById('helpGuestName').value = '';
+      renderHelpGuestQueue();
+      loadHelpGuestSignups(ev, currentName);
+    } else if(currentName){
+      // 已登入、還沒報名這場：跳過選按鈕的步驟，直接顯示「以 X 身份報名」
+      // ＋送出按鈕，開卡片後點一下就能報名完成。
+      signupMode = 'member';
+      document.getElementById('signupEntryRow').style.display = 'none';
+      document.getElementById('eventSignupSection').style.display = '';
+      document.getElementById('signupModeToggle').style.display = 'none';
+      document.getElementById('signupMemberFields').style.display = '';
+      document.getElementById('signupGuestFields').style.display = 'none';
+      renderMemberFields(currentName);
+    } else if(skipEntry && !signupState.disabled){
+      // 從卡片上的「我要報名」標籤點進來：跳過中間的入口按鈕，
+      // 直接展開球員報名／訪客報名的選擇。
+      document.getElementById('signupEntryRow').style.display = 'none';
+      document.getElementById('eventSignupSection').style.display = '';
+      document.getElementById('signupModeToggle').style.display = GUEST_SIGNUP_ENABLED ? '' : 'none';
+      setSignupTab('member');
+    } else {
+      // 未登入：先顯示單一「我要報名」按鈕，點了才展開球員報名／訪客報名的選擇。
+      document.getElementById('signupEntryRow').style.display = '';
+      document.getElementById('eventSignupSection').style.display = 'none';
+    }
+
+    updateSubmitGate(statusMeta);
+    document.getElementById('eventDetailOverlay').classList.add('open');
+  }
+
+  function closeEventDetail(){
+    document.getElementById('eventDetailOverlay').classList.remove('open');
+    detailIndex = null;
+  }
+
+  async function cancelCurrentSignup(){
+    if(!detailSelfSignupId) return;
+    const btn = document.getElementById('signupCancelBtn');
+    btn.disabled = true;
+    btn.textContent = '取消中…';
+    try{
+      const result = await apiPost('cancelSignup', { id: detailSelfSignupId });
+      if(result && result.success){
+        showToast('已取消報名');
+        await refreshEvents();
+        if(detailIndex !== null) openEventDetail(detailIndex);
+        return;
+      }
+      showToast('取消失敗，請稍後再試');
+    } catch(e){
+      showToast('取消失敗，請稍後再試');
+    }
+    btn.disabled = false;
+    btn.textContent = '取消報名';
+  }
+  document.getElementById('signupCancelBtn').addEventListener('click', cancelCurrentSignup);
+
+  const SIGNUP_FAIL_MSG = {
+    full: '報名已額滿',
+    duplicate: '您已經報名過了',
+    event_not_found: '找不到這筆賽事',
+    not_open: '報名尚未開放',
+    closed: '報名已截止'
+  };
+
+  async function submitSignup(){
+    if(detailIndex === null) return;
+    const ev = EVENTS[detailIndex];
+    const payload = { event_id: ev.id, type: signupMode };
+    if(signupMode === 'member'){
+      const name = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+      if(!name){ showToast('請先登入才能以球員身份報名'); return; }
+      payload.member_name = name;
+    } else {
+      const guestNameInput = document.getElementById('signupGuestName');
+      const guestName = guestNameInput.value.trim();
+      if(!guestName){
+        guestNameInput.classList.add('invalid');
+        guestNameInput.focus();
+        showToast('請輸入姓名');
+        return;
+      }
+      guestNameInput.classList.remove('invalid');
+      payload.guest_name = guestName;
+      payload.referrer = document.getElementById('signupReferrer').value;
+    }
+
+    const btn = document.getElementById('signupSubmit');
+    btn.disabled = true;
+    btn.textContent = '送出中…';
+    try{
+      const result = await apiPost('signupEvent', payload);
+      if(result.success){
+        showToast(result.status === 'waitlist' ? '已加入候補名單' : '已報名成功');
+        const signedUpIndex = detailIndex;
+        await refreshEvents();
+        if(signedUpIndex !== null) openEventDetail(signedUpIndex);
+        return;
+      } else {
+        showToast(SIGNUP_FAIL_MSG[result.reason] || '報名失敗，請稍後再試');
+      }
+    } catch(e){
+      showToast('報名失敗，請稍後再試');
+    }
+    const signupState = signupButtonMeta(eventStatusMeta(ev));
+    btn.disabled = signupState.disabled;
+    btn.textContent = signupState.label;
+  }
+
+  function currentCalendarMonth(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  function importStatusStyle(present){
+    return present
+      ? 'color:var(--warn); background:rgba(231,161,90,0.15);'
+      : 'color:var(--good); background:rgba(127,215,154,0.15);';
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  // present 預設 true（月繳名單匯入情境：預設出席，點掉才變未選）；
+  // 球員名單挑選／手動新增訪客則明確傳 present，各自符合預期的預設值。
+  function importRowHTML(name, present){
+    const isPresent = present !== false;
+    const safeName = escapeHtml(name);
+    return '<div class="import-toggle-row" data-name="' + safeName + '" data-present="' + (isPresent ? '1' : '0') + '">' +
+      '<span>' + safeName + '</span>' +
+      '<span class="import-toggle-status" style="' + importStatusStyle(isPresent) + '">' + (isPresent ? '出席' : '未選') + '</span>' +
+    '</div>';
+  }
+
+  function attachToggleRow(row){
+    row.addEventListener('click', function(){
+      const nowPresent = row.dataset.present !== '1';
+      row.dataset.present = nowPresent ? '1' : '0';
+      const statusEl = row.querySelector('.import-toggle-status');
+      statusEl.textContent = nowPresent ? '出席' : '未選';
+      statusEl.setAttribute('style', importStatusStyle(nowPresent));
+    });
+  }
+
+  function wireImportToggleRows(containerId){
+    document.querySelectorAll('#' + containerId + ' .import-toggle-row').forEach(attachToggleRow);
+  }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> t.classList.remove('show'), 2200);
+  }
+
+  document.getElementById('eventAddBtn').addEventListener('click', openEventCreate);
+  document.getElementById('friendEventAddBtn').addEventListener('click', openEventCreate);
+  updateFriendEventAddBtn();
+
+  document.querySelectorAll('#eventTabs .event-tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      if(tab.classList.contains('active')) return;
+      document.querySelectorAll('#eventTabs .event-tab').forEach(function(t){ t.classList.remove('active'); });
+      tab.classList.add('active');
+      eventFilter = tab.dataset.filter;
+      renderEvents();
+    });
+  });
+  document.getElementById('eventEditTemplate').addEventListener('change', function(){
+    applyEventTemplate(this.value);
+  });
+  document.getElementById('eventEditCancel').addEventListener('click', closeEventEdit);
+  document.getElementById('eventEditSave').addEventListener('click', saveEventEdit);
+  document.getElementById('eventEditDelete').addEventListener('click', deleteCurrentEvent);
+  document.getElementById('eventEditCloseBtn').addEventListener('click', closeEventEdit);
+  document.getElementById('eventEditOverlay').addEventListener('click', function(e){
+    if(e.target.id === 'eventEditOverlay') closeEventEdit();
+  });
+
+  document.getElementById('signupSubmit').addEventListener('click', submitSignup);
+  document.getElementById('eventDetailCloseBtn').addEventListener('click', closeEventDetail);
+  document.getElementById('eventDetailOverlay').addEventListener('click', function(e){
+    if(e.target.id === 'eventDetailOverlay') closeEventDetail();
+  });
+
+  // 遮罩至少停留 1.5 秒再淡出，快取秒開時也不會一閃而過。
+  const BRAND_MASK_MIN_MS = 1500;
+  const brandMaskShownAt = Date.now();
+  function hideBrandMask(){
+    const mask = document.getElementById('brandMask');
+    if(!mask || mask.classList.contains('hide') || mask.dataset.hiding) return;
+    mask.dataset.hiding = '1';
+    const wait = Math.max(0, BRAND_MASK_MIN_MS - (Date.now() - brandMaskShownAt));
+    setTimeout(function(){
+      mask.classList.add('hide');
+      setTimeout(function(){ mask.remove(); }, 400);
+    }, wait);
+  }
+
+  (async function initialLoad(){
+    const hadCache = loadCachedEvents();
+    loadCachedWeeksForEvents();
+    renderEvents();
+    if(hadCache) hideBrandMask();
+
+    await refreshEvents();
+    hideBrandMask();
+  })();
+
+  // 賽事是首頁第一眼看到的內容，先讓它的請求送出去，
+  // 再暖機其他子頁面用的資料，避免跟 GAS 執行配額擠在一起拖慢賽事回應。
+  // getWeeks 額外拿來算「進行中／已結束」賽事卡片的實際出席人數，所以讀完要重繪一次。
+  refreshWeeksForEvents();
+  apiPrefetch({ action:'getMembers' });
+  apiPrefetch({ action:'getRoster' });
+</script>
+</body>
+</html>

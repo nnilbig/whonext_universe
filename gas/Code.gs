@@ -394,7 +394,7 @@ function googleLogin(data) {
 }
 
 // 合併「members 歷史上出現過的所有姓名」跟「players 目前的綁定狀態」，
-// 給球員清單(member.html)、手動建活動的出席名單(index.html)這種需要
+// 給球員清單(member.html)、手動建活動的出席名單(activities.html)這種需要
 // 列出「還沒註冊過的舊球員」的畫面用——players 表本身不會有「還沒綁定」
 // 的佔位列，所以這裡改成即時從 members 撈全部出現過的姓名，再對照
 // players.bound_name(不是 custom_name——custom_name 只是顯示用的暱稱，
