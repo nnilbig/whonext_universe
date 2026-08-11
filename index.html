@@ -424,10 +424,10 @@
           <div class="edit-field-label">推薦球友報名</div>
           <div class="guest-add-row">
             <input type="text" id="helpGuestName" class="edit-input" placeholder="輸入球友姓名">
-            <button type="button" class="guest-add-btn" id="helpGuestAdd">新增</button>
+            <button type="button" class="guest-add-btn" id="helpGuestAdd">+</button>
           </div>
           <div class="signup-list" id="helpGuestList"></div>
-          <button type="button" class="signup-submit" id="helpGuestSubmit" disabled>送出球友報名</button>
+          <button type="button" class="signup-submit" id="helpGuestSubmit">送出球友報名</button>
 
           <div class="help-guest-referred">
             <div class="edit-field-label">你推薦報名的球友</div>
@@ -1342,7 +1342,7 @@
           '</div>';
         }).join('')
       : '';
-    submitBtn.disabled = helpGuestQueue.length === 0;
+    submitBtn.disabled = false;
     submitBtn.textContent = '送出球友報名';
   }
 
@@ -1370,7 +1370,14 @@
   // referrer（自動 = 自己），bulkSignupEvent 只認 member 型別、沒有
   // referrer 欄位，不適合這裡的訪客報名情境。
   async function submitHelpGuests(){
-    if(!helpGuestQueue.length || detailIndex === null) return;
+    if(detailIndex === null) return;
+    // 沒點過「+」也能直接送出：輸入框裡還沒加進名單的名字，送出時
+    // 自動一併算進去，不用強迫使用者先點「+」才能送。
+    const input = document.getElementById('helpGuestName');
+    const pending = input.value.trim();
+    if(pending && helpGuestQueue.indexOf(pending) === -1) helpGuestQueue.push(pending);
+    if(!helpGuestQueue.length){ showToast('請輸入球友姓名'); return; }
+    input.value = '';
     const ev = EVENTS[detailIndex];
     const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
     const btn = document.getElementById('helpGuestSubmit');
