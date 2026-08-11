@@ -401,6 +401,21 @@
         <div id="detailAttendees"></div>
       </div>
 
+      <!-- 管理員點卡片不是走自己報名的流程，是直接管理這場的報名名單：
+           取消任何人的報名、或幫球員手動報名，見 openEventDetail 的
+           isAdmin 分支。 -->
+      <div id="adminManageSection" style="display:none">
+        <div class="edit-field-label">已報名名單</div>
+        <div class="signup-list" id="adminSignupList"></div>
+
+        <div class="edit-field-label" style="margin-top:16px">幫球員報名</div>
+        <div class="guest-add-row">
+          <input type="text" id="adminAddPlayerName" class="edit-input" list="adminAddPlayerList" placeholder="輸入或選擇球員姓名" autocomplete="off">
+          <button type="button" class="guest-add-btn" id="adminAddPlayerBtn">新增</button>
+        </div>
+        <datalist id="adminAddPlayerList"></datalist>
+      </div>
+
       <div id="selfSignedSection" style="display:none">
         <div class="self-signed-note">你已經報名這場了</div>
         <button type="button" class="signup-cancel-btn" id="signupCancelBtn" disabled>取消報名</button>
@@ -1426,6 +1441,88 @@
     btn.textContent = '取消';
   });
 
+  // ---------------------------------------------------------------
+  // 管理員：卡片點進去直接管理這場的報名名單（取消任何人／幫球員手動
+  // 報名），跟球員自己的報名流程完全分開，見 openEventDetail。
+  // ---------------------------------------------------------------
+  async function loadAdminSignupList(ev){
+    const listEl = document.getElementById('adminSignupList');
+    listEl.innerHTML = '<div class="signup-empty">載入中…</div>';
+    try{
+      const result = await apiGet({ action:'getEventSignups', event_id: ev.id });
+      const active = (result.signups || []).filter(function(s){ return s.status === 'confirmed' || s.status === 'waitlist'; });
+      listEl.innerHTML = active.length
+        ? active.map(function(s){
+            const name = s.type === 'guest' ? (s.guest_name + '（訪客）') : s.member_name;
+            const waitTag = s.status === 'waitlist' ? '（候補）' : '';
+            return '<div class="guest-queue-row">' +
+              '<span>' + escapeHtml(name + waitTag) + '</span>' +
+              '<button type="button" class="guest-queue-remove" data-cancel-id="' + escapeHtml(s.id) + '">取消</button>' +
+            '</div>';
+          }).join('')
+        : '<div class="signup-empty">尚無人報名</div>';
+    } catch(e){
+      listEl.innerHTML = '<div class="signup-empty">讀取失敗，請稍後再試</div>';
+    }
+  }
+  document.getElementById('adminSignupList').addEventListener('click', async function(e){
+    const btn = e.target.closest('[data-cancel-id]');
+    if(!btn || detailIndex === null) return;
+    btn.disabled = true;
+    btn.textContent = '取消中…';
+    try{
+      const result = await apiPost('cancelSignup', { id: btn.dataset.cancelId });
+      if(result && result.success){
+        showToast('已取消報名');
+        await refreshEvents();
+        if(detailIndex !== null) openEventDetail(detailIndex);
+        return;
+      }
+      showToast('取消失敗，請稍後再試');
+    } catch(err){
+      showToast('取消失敗，請稍後再試');
+    }
+    btn.disabled = false;
+    btn.textContent = '取消';
+  });
+
+  async function loadAdminAddPlayerOptions(){
+    const roster = await getRoster();
+    const names = [...new Set(roster.map(function(p){ return p.name; }).filter(Boolean))]
+      .sort(function(a, b){ return a.localeCompare(b); });
+    document.getElementById('adminAddPlayerList').innerHTML = names.map(function(n){ return '<option value="' + n + '">'; }).join('');
+  }
+
+  async function adminAddPlayerSignup(){
+    if(detailIndex === null) return;
+    const input = document.getElementById('adminAddPlayerName');
+    const name = input.value.trim();
+    if(!name) return;
+    const ev = EVENTS[detailIndex];
+    const btn = document.getElementById('adminAddPlayerBtn');
+    btn.disabled = true;
+    btn.textContent = '新增中…';
+    try{
+      const result = await apiPost('signupEvent', { event_id: ev.id, type:'member', member_name: name });
+      if(result && result.success){
+        showToast(result.status === 'waitlist' ? '已加入候補名單' : '已幫 ' + name + ' 報名');
+        input.value = '';
+        await refreshEvents();
+        if(detailIndex !== null) openEventDetail(detailIndex);
+        return;
+      }
+      showToast(SIGNUP_FAIL_MSG[result && result.reason] || '報名失敗，請稍後再試');
+    } catch(e){
+      showToast('報名失敗，請稍後再試');
+    }
+    btn.disabled = false;
+    btn.textContent = '新增';
+  }
+  document.getElementById('adminAddPlayerBtn').addEventListener('click', adminAddPlayerSignup);
+  document.getElementById('adminAddPlayerName').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); adminAddPlayerSignup(); }
+  });
+
   // 訪客報名不用登入，取消時只能靠自己輸入姓名去比對，安全起見一定要
   // 只認 type:'guest' 的紀錄——不然有人輸入某個球員的姓名，就能把
   // 那個球員（member 型別）已經確認的報名取消掉，這是絕對不能發生的。
@@ -1479,6 +1576,21 @@
     document.getElementById('detailMeta').textContent = (ev.type ? eventTypeLabel(ev.type) + '　' : '') + String(ev.date).slice(0, 10) + '　' + ev.time + '　' + ev.location;
     document.getElementById('detailProgress').innerHTML = progressHTML(ev, statusMeta);
     document.getElementById('detailAttendees').innerHTML = detailAttendeesHTML(ev);
+
+    // 管理員點卡片是管理報名名單（取消/幫球員報名），不走下面球員自己
+    // 報名的步驟，兩邊完全分開顯示。
+    if(document.body.classList.contains('is-admin')){
+      document.getElementById('selfSignedSection').style.display = 'none';
+      document.getElementById('signupEntryRow').style.display = 'none';
+      document.getElementById('eventSignupSection').style.display = 'none';
+      document.getElementById('adminManageSection').style.display = '';
+      document.getElementById('adminAddPlayerName').value = '';
+      loadAdminSignupList(ev);
+      loadAdminAddPlayerOptions();
+      document.getElementById('eventDetailOverlay').classList.add('open');
+      return;
+    }
+    document.getElementById('adminManageSection').style.display = 'none';
 
     const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
     document.getElementById('signupGuestName').value = '';
