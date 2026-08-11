@@ -93,7 +93,9 @@
   }
 
   // Top nav 的身分區塊整個從狀態重繪，比較好處理三種情況：
-  //   沒登入：「註冊」「登入」。
+  //   沒登入：只留「球員登入」一顆——點下去直接走登入流程，選到還沒
+  //   註冊過的帳號時，identity-picker.js 的 renderNotRegistered 會自動
+  //   接手詢問要不要前往註冊，不用在 nav 這裡另外放一顆「註冊」分岔。
   //   已登入、不是管理員：頭像＋姓名（點一下跳去我的活動）、「登出」。
   //   已登入、是管理員：頭像＋姓名、「管理員」（切換管理員視角，目前
   //   在管理員視角就反白）、「登出」——順序照這樣排，不用另外用 CSS
@@ -104,9 +106,7 @@
     var name = getPlayerName();
 
     if(!name){
-      toggle.innerHTML =
-        '<button type="button" class="role-toggle-btn" data-action="register">註冊</button>' +
-        '<button type="button" class="role-toggle-btn" data-action="login">登入</button>';
+      toggle.innerHTML = '<button type="button" class="role-toggle-btn" data-action="login">球員登入</button>';
       return;
     }
 
@@ -139,15 +139,15 @@
   }
 
   // 球員登入用 identity-picker.js 同一套流程，塞進 nav 自己的 overlay，
-  // 留在目前頁面完成登入，不用跳去 profile.html。nav 上「註冊」「登入」
-  // 兩顆按鈕分別直接開對應畫面，不用先經過起始選擇畫面。
-  function openNavLogin(entry){
+  // 留在目前頁面完成登入，不用跳去 profile.html。直接開登入畫面，不經過
+  // 起始選擇畫面——選到還沒註冊過的帳號時，identity-picker.js 的
+  // renderNotRegistered 會自動接手詢問要不要前往註冊。
+  function openNavLogin(){
     var overlay = document.getElementById('navLoginOverlay');
     var container = document.getElementById('navLoginContainer');
     if(!overlay || !container || !window.WhonextIdentityPicker) return;
     container.innerHTML = '';
-    if(entry === 'register') WhonextIdentityPicker.renderRegister(container, true);
-    else WhonextIdentityPicker.renderLoginMenu(container, true);
+    WhonextIdentityPicker.renderLoginMenu(container, true);
     overlay.classList.add('open');
   }
 
@@ -177,7 +177,7 @@
         window.location.href = 'profile.html';
         return;
       }
-      openNavLogin(action);
+      openNavLogin();
     });
 
     var navLoginOverlay = document.getElementById('navLoginOverlay');

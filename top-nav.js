@@ -10,8 +10,7 @@
         '</a>' +
         '<div class="nav-role">' +
           '<div class="role-toggle" id="navRoleToggle">' +
-            '<button type="button" class="role-toggle-btn" data-action="register">註冊</button>' +
-            '<button type="button" class="role-toggle-btn" data-action="login">登入</button>' +
+            '<button type="button" class="role-toggle-btn" data-action="login">球員登入</button>' +
           '</div>' +
         '</div>' +
       '</div>';
