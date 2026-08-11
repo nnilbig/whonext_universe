@@ -21,8 +21,10 @@
   var GOOGLE_CLIENT_ID = '702772011583-5g00roumo9mgruijtn3jhg525bot1cja.apps.googleusercontent.com';
 
   // 進來直接是登入畫面（Google／LINE 二選一），不再另外分「註冊」／
-  // 「登入」兩顆——沒註冊過的帳號登入時 renderNotRegistered 會自動接手
-  // 導去註冊，跟 nav 的「球員登入」按鈕已經是同一套邏輯（見
+  // 「登入」兩顆——沒註冊過的帳號登入時直接拿這次已經驗證過的
+  // credential/idToken 轉去註冊、進綁定畫面（見 handleLoginCredential／
+  // finishLineAuth），不會多顯示一層「還沒註冊」提示要求重新點一次
+  // Google/LINE，跟 nav 的「球員登入」按鈕已經是同一套邏輯（見
   // auth.js openNavLogin）。renderStart 保留給深層流程當「回到最前面」
   // 的返回目標用，不再是預設入口。
   function render(container){
@@ -61,6 +63,9 @@
     container.querySelector('#wiLineLoginBtn').addEventListener('click', function(){ startLineFlow(container, 'login'); });
   }
 
+  // 沒註冊過的帳號登入時，直接拿這次登入已經驗證過的 credential 送去
+  // 註冊、進綁定畫面（renderNicknamePrompt），不用再多一層「這個帳號還
+  // 沒註冊，前往註冊」的提示、逼使用者重新點一次 Google/LINE 按鈕。
   function handleLoginCredential(container, credential){
     renderVerifying(container);
     apiPost('googleLogin', { credential: credential }).then(function(result){
@@ -69,24 +74,11 @@
       if(result.matched){
         finishLogin(container, result.profile, 'google');
       } else {
-        renderNotRegistered(container, result.account, 'google');
+        handleRegisterCredential(container, credential);
       }
     }).catch(function(){
       if(document.body.contains(container)) renderError(container, '無法連線後台，請稍後再試', renderLoginMenu);
     });
-  }
-
-  function renderNotRegistered(container, account, provider){
-    var label = provider === 'google' ? (account.name || '') + (account.email ? '（' + account.email + '）' : '') : (account.name || 'LINE 使用者');
-    container.innerHTML =
-      '<div class="whoami-card glass">' +
-        '<div class="whoami-title">這個帳號還沒註冊</div>' +
-        '<div class="whoami-sub">「' + label + '」還沒綁定過球員身份，要先完成註冊才能登入。</div>' +
-        '<button type="button" class="whoami-primary-btn" id="wiGoRegisterBtn">前往註冊</button>' +
-        '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>' +
-      '</div>';
-    container.querySelector('#wiGoRegisterBtn').addEventListener('click', function(){ renderRegister(container); });
-    container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
   }
 
   // ---------------------------------------------------------------
@@ -360,8 +352,10 @@
     const action = mode === 'register' ? 'registerLineProfile' : 'lineLogin';
     apiPost(action, { idToken: idToken }).then(function(result){
       if(!document.body.contains(container)) return;
+      // 沒註冊過的 LINE 帳號登入時，直接拿這次已經驗證過的 idToken 轉去
+      // 註冊、進綁定畫面，不用再多一層提示逼使用者重新點一次 LINE 按鈕。
       if(mode === 'login' && result && result.success && result.matched === false){
-        renderNotRegistered(container, result.account, 'line');
+        finishLineAuth(container, 'register', name, idToken, linkPlayerId);
         return;
       }
       if(!result || !result.success){
