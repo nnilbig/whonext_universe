@@ -1,32 +1,21 @@
 (function(){
+  // adminLabel／adminHref 只在管理員視角覆蓋預設值，其餘分頁（卡牌）
+  // 兩種身分看到的都一樣，不用另外列。
   const TABS = [
-    { href: 'activities.html', accent: 'home', icon: '≡', label: '活動' },
-    { href: 'profile.html', accent: 'profile', icon: '☺', label: '個人', key: 'profile' },
-    { href: 'finance.html', accent: 'finance', icon: '$', label: '錢包', key: 'finance' },
-    { href: 'ranking.html', accent: 'rank', icon: '★', label: '排行' },
+    { href: 'activities.html', accent: 'home', icon: '≡', label: '活動', adminLabel: '活動列表', key: 'activities' },
+    { href: 'profile.html', adminHref: 'member.html', accent: 'profile', icon: '☺', label: '個人', adminLabel: '球員列表', key: 'profile' },
+    { href: 'finance.html', accent: 'finance', icon: '$', label: '錢包', adminLabel: '球隊錢包', key: 'finance' },
+    { href: 'ranking.html', accent: 'rank', icon: '★', label: '排行', adminLabel: '排行榜', key: 'ranking' },
     { href: 'match.html', accent: 'match', icon: '⚑', label: '卡牌' }
   ];
+
+  function getRole(){ return window.WhonextAuth ? WhonextAuth.getRole() : 'player'; }
+  function tabLabel(t){ return getRole() === 'admin' && t.adminLabel ? t.adminLabel : t.label; }
+  function tabHref(t){ return getRole() === 'admin' && t.adminHref ? t.adminHref : t.href; }
 
   function currentPage(){
     const path = location.pathname.split('/').pop();
     return path === '' ? 'index.html' : path;
-  }
-
-  // 錢包依身分切換：管理員看球隊錢包，其他人看自己的錢包。
-  function financeLabel(){
-    const role = window.WhonextAuth ? WhonextAuth.getRole() : 'player';
-    return role === 'admin' ? '球隊錢包' : '錢包';
-  }
-
-  // 個人／球員名冊依身分切換：管理員直接進球員名冊管理頁（member.html），
-  // 不用先進個人頁再多點一次「管理球員名冊」連結；其他人看自己的個人頁。
-  function profileLabel(){
-    const role = window.WhonextAuth ? WhonextAuth.getRole() : 'player';
-    return role === 'admin' ? '球員名冊' : '個人';
-  }
-  function profileHref(){
-    const role = window.WhonextAuth ? WhonextAuth.getRole() : 'player';
-    return role === 'admin' ? 'member.html' : 'profile.html';
   }
 
   function buildNav(){
@@ -35,16 +24,9 @@
     nav.className = 'bottom-nav';
     nav.innerHTML = '<div class="bottom-nav-inner">' +
       TABS.map(function(t){
-        let href = t.href;
-        let label = t.label;
-        let activePages = [t.href];
-        if(t.key === 'finance'){
-          label = financeLabel();
-        } else if(t.key === 'profile'){
-          href = profileHref();
-          label = profileLabel();
-          activePages = ['profile.html', 'member.html'];
-        }
+        const href = tabHref(t);
+        const label = tabLabel(t);
+        const activePages = t.adminHref ? [t.href, t.adminHref] : [t.href];
         const cls = activePages.indexOf(page) !== -1 ? 'active' : '';
         return '<a class="' + cls + '" data-accent="' + t.accent + '"' + (t.key ? ' data-tab="' + t.key + '"' : '') + ' href="' + href + '">' +
           '<span class="bn-icon">' + t.icon + '</span>' +
@@ -54,17 +36,17 @@
     '</div>';
     document.body.appendChild(nav);
 
-    // 切換球員／管理員視角時（不重新整理頁面），連結文字跟目的地都要
-    // 跟著更新，不然管理員登入後這顆按鈕還是連去 profile.html。
-    const financeLinkEl = nav.querySelector('a[data-tab="finance"]');
-    const profileLinkEl = nav.querySelector('a[data-tab="profile"]');
-    if(financeLinkEl || profileLinkEl){
+    // 切換球員／管理員視角時（不重新整理頁面），有 key 的分頁文字跟
+    // 目的地都要跟著更新，不然管理員登入後這些分頁還是停在球員版本。
+    const keyed = TABS.filter(function(t){ return t.key; })
+      .map(function(t){ return { t: t, el: nav.querySelector('a[data-tab="' + t.key + '"]') }; })
+      .filter(function(x){ return x.el; });
+    if(keyed.length){
       new MutationObserver(function(){
-        if(financeLinkEl) financeLinkEl.querySelector('.bn-label').textContent = financeLabel();
-        if(profileLinkEl){
-          profileLinkEl.querySelector('.bn-label').textContent = profileLabel();
-          profileLinkEl.setAttribute('href', profileHref());
-        }
+        keyed.forEach(function(x){
+          x.el.querySelector('.bn-label').textContent = tabLabel(x.t);
+          x.el.setAttribute('href', tabHref(x.t));
+        });
       }).observe(document.body, { attributes:true, attributeFilter:['class'] });
     }
   }
