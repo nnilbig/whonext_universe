@@ -47,21 +47,12 @@
     font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
     font-size: clamp(30px,8vw,40px);
   }
-  /* ---------- HERO ---------- */
 
   /* ---------- EVENTS ---------- */
   .event-add-btn{
     font-size:11px; font-weight:700; padding:5px 11px; border-radius:999px;
     border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
   }
-
-  .event-tabs{ display:flex; gap:6px; }
-  .event-add-group{ display:flex; gap:6px; }
-  .event-tab{
-    font-size:12px; font-weight:700; padding:6px 13px; border-radius:999px;
-    border:1px solid var(--line); color: var(--tertiary); background: rgba(255,255,255,0.03);
-  }
-  .event-tab.active{ color:#000; background: var(--label); border-color: var(--label); }
 
   .event-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:26px; }
   .event-card{
@@ -71,6 +62,11 @@
   .event-card.et-practice{ background: linear-gradient(180deg, rgba(159,179,200,0.10), var(--card)); }
   .event-card.et-project{ background: linear-gradient(180deg, rgba(201,183,155,0.10), var(--card)); }
   .event-card.et-match{ background: linear-gradient(180deg, rgba(242,196,85,0.12), var(--card)); }
+  /* 主辦方外框色：WHONEXT／友團各用系列色的一支，跟賽事類型底色（上面
+     et-practice/et-project/et-match）是兩個獨立軸，一眼分得出「誰辦的」
+     跟「什麼性質」。 */
+  .event-card.club-whonext{ border-color: rgba(159,179,200,0.45); }
+  .event-card.club-friend{ border-color: rgba(201,183,155,0.45); }
   .event-date{
     width:52px; flex-shrink:0; text-align:center;
     padding: 8px 0; border-radius:14px;
@@ -317,11 +313,15 @@
   <div class="wrap">
 
     <div class="section-label-row">
-      <div class="section-label">目前報名的活動</div>
-      <a class="event-add-btn" href="activities.html">瀏覽全部活動 →</a>
+      <div class="section-label">本週活動</div>
+      <button type="button" class="event-add-btn" id="eventAddBtn" style="display:none">＋ 發起活動</button>
     </div>
-    <div id="homeWhoami" style="display:none"></div>
-    <div class="event-list" id="eventList"></div>
+    <div class="event-list" id="eventListWeek"></div>
+
+    <div class="section-label-row">
+      <div class="section-label">本月活動</div>
+    </div>
+    <div class="event-list" id="eventListMonth"></div>
 
   </div>
 
@@ -468,20 +468,27 @@
   // 舊資料的 status 若是 full 或空值，一律當成 open 處理（走自動判斷）。
   // 「進行中」「已結束」是額外依賽事日期＋時間自動判斷，時間到了就蓋過上述顯示，
   // 底層 ev.status 不受影響，事後時間往前捲動時仍會回到原本的報名狀態顯示。
-  // 首頁只給球員視角用的「目前報名的活動」個人化清單，管理員沒有這個
-  // 分頁（底部導覽直接是球隊錢包），切到管理員視角時導去活動管理頁。
-  if(window.WhonextAuth && WhonextAuth.getRole() === 'admin'){
-    location.replace('activities.html');
-  }
-  document.addEventListener('DOMContentLoaded', function(){
-    new MutationObserver(function(){
-      if(document.body.classList.contains('is-admin')) location.replace('activities.html');
-    }).observe(document.body, { attributes:true, attributeFilter:['class'] });
-  });
-
   let EVENTS = [];
   let eventsLoaded = false;
 
+  // 賽事標題含友團隊伍關鍵字，就歸類為「友團活動」。目前只有黑狗隊，
+  // 之後如有其他友團合作，把隊名加進這個陣列即可，不用動判斷邏輯。
+  // 不再拿來篩選分頁（本週/本月已經混在一起顯示），只用來決定卡片外框
+  // 顏色（見 clubClass）。
+  const FRIEND_CLUB_KEYWORDS = ['黑狗'];
+  function isFriendEvent(title){
+    const t = String(title || '');
+    return FRIEND_CLUB_KEYWORDS.some(function(k){ return t.indexOf(k) !== -1; });
+  }
+  function clubClass(title){
+    return isFriendEvent(title) ? 'club-friend' : 'club-whonext';
+  }
+
+  // 「發起活動」的權限存在 players 分頁的 can_create_events 欄位，跟管理員
+  // 權限分開判斷，純看目前綁定的球員姓名（custom_name）對應的身分主檔有
+  // 沒有這個權限。這裡用 getRoster 不是 getPlayers，因為 getRoster 才有
+  // 「name」這個跟其他頁面一致的鍵值。can_create_events 在 Sheets 讀出來
+  // 可能是布林 true 也可能是文字 'TRUE'，兩種都要認得。
   async function getRoster(){
     const cached = getApiCache({ action:'getRoster' });
     if(cached) return cached.roster || [];
@@ -492,6 +499,21 @@
     } catch(e){
       return [];
     }
+  }
+  function canCreateEvents(roster, name){
+    const entry = roster.find(function(p){ return p.name === name; });
+    return !!entry && (entry.can_create_events === true || entry.can_create_events === 'TRUE');
+  }
+  // 「＋發起活動」現在只有一顆，管理員或有 can_create_events 權限的球員
+  // 都看得到，不再分「新增賽事」（管理員）／「發起活動」（球員）兩顆按鈕。
+  async function updateEventAddBtn(){
+    const btn = document.getElementById('eventAddBtn');
+    if(!btn) return;
+    if(document.body.classList.contains('is-admin')){ btn.style.display = ''; return; }
+    const name = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+    if(!name){ btn.style.display = 'none'; return; }
+    const roster = await getRoster();
+    btn.style.display = canCreateEvents(roster, name) ? '' : 'none';
   }
 
   // type 存英文代碼（practice/project/match），但資料庫裡舊資料還是中文字串，
@@ -545,6 +567,27 @@
   }
   function isThisCalendarMonth(dateStr){
     return String(dateStr || '').slice(0, 7) === currentCalendarMonth();
+  }
+  // 本週＝週一到週日（不是「未來 7 天」），跟球隊固定每週練習的習慣對齊。
+  function currentWeekRange(){
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const day = now.getDay(); // 0=日 1=一 ... 6=六
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    return { start: monday, end: sunday };
+  }
+  function isThisWeek(dateStr){
+    const isoDate = String(dateStr || '').slice(0, 10);
+    if(!isoDate) return false;
+    const d = new Date(isoDate + 'T00:00:00');
+    if(isNaN(d)) return false;
+    const range = currentWeekRange();
+    return d >= range.start && d <= range.end;
   }
   const WEEKDAYS = ['日','一','二','三','四','五','六'];
   const STATUS_CYCLE = ['upcoming', 'open', 'closed'];
@@ -708,64 +751,35 @@
     '</div>';
   }
 
-  function renderEvents(){
-    const list = document.getElementById('eventList');
-    const whoamiContainer = document.getElementById('homeWhoami');
-    const myName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
-
-    if(!myName){
-      list.innerHTML = '';
-      if(!whoamiContainer.childElementCount && window.WhonextIdentityPicker) WhonextIdentityPicker.render(whoamiContainer);
-      whoamiContainer.style.display = '';
-      return;
-    }
-    whoamiContainer.style.display = 'none';
-
-    if(!eventsLoaded){
-      list.innerHTML = '<div class="event-empty glass">載入賽事中…</div>';
-      return;
-    }
-    const order = EVENTS.map(function(ev, i){ return i; })
-      .filter(function(i){
-        return currentPlayerSignedUp(EVENTS[i]) && eventStatusMeta(EVENTS[i]).cls !== 'ended';
-      })
-      .sort(function(a, b){
-        return String(EVENTS[a].date).slice(0,10).localeCompare(String(EVENTS[b].date).slice(0,10));
-      });
-
-    if(!order.length){
-      list.innerHTML = '<div class="event-empty glass">目前沒有已報名的活動，<a href="activities.html">去看看活動列表 →</a></div>';
-      return;
-    }
-
-    list.innerHTML = order.map(function(i){
-      const ev = EVENTS[i];
-      const isoDate = String(ev.date).slice(0, 10);
-      const mm = isoDate.slice(5,7);
-      const dd = isoDate.slice(8,10);
-      const wd = WEEKDAYS[new Date(isoDate + 'T00:00:00').getDay()];
-      const statusMeta = eventStatusMeta(ev);
-      return '<div class="event-card glass ' + eventTypeClass(ev.type) + '" data-index="' + i + '">' +
-        '<div class="event-date">' +
-          '<div class="ed-month">' + mm + '月</div>' +
-          '<div class="ed-day">' + dd + '</div>' +
-          '<div class="ed-weekday">週' + wd + '</div>' +
-        '</div>' +
-        '<div class="event-body">' +
-          '<div class="event-title-row">' +
-            '<div class="event-title">' + ev.title + '</div>' +
-            '<div class="event-title-actions">' +
-              '<button type="button" class="event-status ' + statusMeta.cls + '" data-index="' + i + '">' + statusMeta.label + '</button>' +
-              eventActionTagHTML(ev, statusMeta) +
-              '<button type="button" class="event-edit-btn admin-only" data-index="' + i + '">編輯</button>' +
-            '</div>' +
+  function eventCardHTML(i){
+    const ev = EVENTS[i];
+    const isoDate = String(ev.date).slice(0, 10);
+    const mm = isoDate.slice(5,7);
+    const dd = isoDate.slice(8,10);
+    const wd = WEEKDAYS[new Date(isoDate + 'T00:00:00').getDay()];
+    const statusMeta = eventStatusMeta(ev);
+    return '<div class="event-card glass ' + eventTypeClass(ev.type) + ' ' + clubClass(ev.title) + '" data-index="' + i + '">' +
+      '<div class="event-date">' +
+        '<div class="ed-month">' + mm + '月</div>' +
+        '<div class="ed-day">' + dd + '</div>' +
+        '<div class="ed-weekday">週' + wd + '</div>' +
+      '</div>' +
+      '<div class="event-body">' +
+        '<div class="event-title-row">' +
+          '<div class="event-title">' + ev.title + '</div>' +
+          '<div class="event-title-actions">' +
+            '<button type="button" class="event-status ' + statusMeta.cls + '" data-index="' + i + '">' + statusMeta.label + '</button>' +
+            eventActionTagHTML(ev, statusMeta) +
+            '<button type="button" class="event-edit-btn admin-only" data-index="' + i + '">編輯</button>' +
           '</div>' +
-          '<div class="event-meta">' + (ev.type ? eventTypeLabel(ev.type) + '<span class="sep">・</span>' : '') + ev.time + '<span class="sep">・</span>' + ev.location + '</div>' +
-          attendeesHTML(ev, statusMeta) +
         '</div>' +
-      '</div>';
-    }).join('');
+        '<div class="event-meta">' + (ev.type ? eventTypeLabel(ev.type) + '<span class="sep">・</span>' : '') + ev.time + '<span class="sep">・</span>' + ev.location + '</div>' +
+        attendeesHTML(ev, statusMeta) +
+      '</div>' +
+    '</div>';
+  }
 
+  function wireEventList(list){
     list.querySelectorAll('.event-card').forEach(function(card){
       card.addEventListener('click', function(e){
         if(e.target.closest('.event-status') || e.target.closest('.event-edit-btn') || e.target.closest('[data-name]')) return;
@@ -804,6 +818,46 @@
         openEventEdit(Number(btn.dataset.index));
       });
     });
+  }
+
+  // 本週活動優先顯示已經報名的（已結束的一律沉到最後）；本月其餘活動
+  // （本月內、但不在本週）維持單純照日期排序，不特別把已報名的往前提。
+  function renderEvents(){
+    const weekList = document.getElementById('eventListWeek');
+    const monthList = document.getElementById('eventListMonth');
+    if(!eventsLoaded){
+      weekList.innerHTML = '<div class="event-empty glass">載入賽事中…</div>';
+      monthList.innerHTML = '';
+      return;
+    }
+
+    const inMonth = EVENTS.map(function(ev, i){ return i; }).filter(function(i){ return isThisCalendarMonth(EVENTS[i].date); });
+    const endedRank = function(i){ return eventStatusMeta(EVENTS[i]).cls === 'ended' ? 1 : 0; };
+    const byDate = function(a, b){ return String(EVENTS[a].date).slice(0,10).localeCompare(String(EVENTS[b].date).slice(0,10)); };
+
+    const week = inMonth.filter(function(i){ return isThisWeek(EVENTS[i].date); }).sort(function(a, b){
+      const er = endedRank(a) - endedRank(b);
+      if(er) return er;
+      const sa = currentPlayerSignedUp(EVENTS[a]) ? 0 : 1;
+      const sb = currentPlayerSignedUp(EVENTS[b]) ? 0 : 1;
+      if(sa !== sb) return sa - sb;
+      return byDate(a, b);
+    });
+    const restMonth = inMonth.filter(function(i){ return !isThisWeek(EVENTS[i].date); }).sort(function(a, b){
+      const er = endedRank(a) - endedRank(b);
+      if(er) return er;
+      return byDate(a, b);
+    });
+
+    weekList.innerHTML = week.length
+      ? week.map(eventCardHTML).join('')
+      : '<div class="event-empty glass">本週目前沒有排定的活動</div>';
+    monthList.innerHTML = restMonth.length
+      ? restMonth.map(eventCardHTML).join('')
+      : '<div class="event-empty glass">本月其他時間目前沒有排定的活動</div>';
+
+    wireEventList(weekList);
+    wireEventList(monthList);
   }
 
   let editingIndex = null;
@@ -860,7 +914,7 @@
 
   function openEventCreate(){
     editingIndex = 'new';
-    document.getElementById('eventEditTitleLabel').textContent = '新增賽事';
+    document.getElementById('eventEditTitleLabel').textContent = '發起活動';
     document.getElementById('eventEditTemplateWrap').style.display = '';
     document.getElementById('eventEditTemplate').value = 'manual';
     document.getElementById('eventEditTitle').value = '';
@@ -1243,7 +1297,8 @@
   // 切換前那個身分算出來的標籤，變成別人登出/登入都不會更新。
   document.addEventListener('whonext:playername-change', function(){
     if(detailIndex !== null) openEventDetail(detailIndex);
-    renderEvents();
+    if(eventsLoaded) renderEvents();
+    updateEventAddBtn();
   });
 
   // 報名按鈕的狀態跟賽事開放狀態綁定，不要等使用者填完資料送出才用 toast
@@ -1635,6 +1690,12 @@
     clearTimeout(showToast._t);
     showToast._t = setTimeout(()=> t.classList.remove('show'), 2200);
   }
+
+  document.getElementById('eventAddBtn').addEventListener('click', openEventCreate);
+  updateEventAddBtn();
+  // 管理員視角切換（不重新整理頁面）也要跟著更新按鈕顯示，不能只靠
+  // playername-change（那個只在登入/登出/換人時觸發）。
+  new MutationObserver(updateEventAddBtn).observe(document.body, { attributes:true, attributeFilter:['class'] });
 
   document.getElementById('eventEditTemplate').addEventListener('change', function(){
     applyEventTemplate(this.value);
