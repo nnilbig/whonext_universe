@@ -225,7 +225,7 @@
     color: var(--warn); border:1px solid rgba(231,161,90,0.4); background: rgba(231,161,90,0.1);
   }
 
-  .signup-self-note{ font-size:13px; color:var(--secondary); padding: 4px 2px; margin-bottom:2px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .signup-self-note{ font-size:13px; color:var(--secondary); padding: 4px 2px; margin-bottom:2px; }
   .signup-self-note b{ color:var(--label); font-weight:800; }
   .signup-cancel-btn:disabled{ opacity:.5; }
 
@@ -248,12 +248,6 @@
     text-align:center; padding:8px 0 0; background:transparent; border:none;
   }
   .guest-cancel-link:disabled{ opacity:.5; text-decoration:none; }
-
-  .signup-switch-btn{
-    font-size:11px; font-weight:700; color:var(--tertiary); padding:4px 10px;
-    border:1px solid var(--line); border-radius:999px; flex-shrink:0; background:transparent;
-  }
-  .signup-switch-btn:active{ background: rgba(255,255,255,0.06); }
 
   .signup-submit{
     width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px;
@@ -1232,15 +1226,9 @@
   // 選別人）；沒登入就在表單裡直接放登入流程。
   // 訪客模式不需要登入，輸入姓名＋選推薦人（目前的會員名單）就能報名。
   function signupAsSelfHTML(name){
-    if(name) return '<div class="signup-self-note">以 <b>' + name + '</b> 身份報名' +
-      '<button type="button" class="signup-switch-btn" id="signupSwitchBtn">換人</button></div>';
+    if(name) return '<div class="signup-self-note">以 <b>' + name + '</b> 身份報名</div>';
     return '<div id="signupWhoami"></div>';
   }
-  // 換人按鈕在 signupAsSelf 容器裡，內容每次都靠 innerHTML 重繪，掛在
-  // 容器本身（不會被換掉）上用事件代理，不用每次重繪後重新綁定。
-  document.getElementById('signupAsSelf').addEventListener('click', function(e){
-    if(e.target && e.target.id === 'signupSwitchBtn') WhonextAuth.setPlayerName('');
-  });
 
   // 點頭像顯示全名（touch 裝置沒有 hover，title 這時候看不到）。
   document.getElementById('detailAttendees').addEventListener('click', function(e){
