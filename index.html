@@ -328,6 +328,9 @@
       <div class="edit-field-label">標題</div>
       <input type="text" id="eventEditTitle" class="edit-input" placeholder="例如 例行練習賽">
 
+      <div class="edit-field-label">發起人</div>
+      <input type="text" id="eventEditHost" class="edit-input" placeholder="例如 儒">
+
       <div id="eventEditTemplateWrap">
         <div class="edit-field-label">預設賽事</div>
         <select id="eventEditTemplate" class="edit-input">
@@ -553,15 +556,6 @@
     return '<span class="event-cta-tag">我要報名</span>';
   }
 
-  // 賽事標題關鍵字對應主辦人，卡片頭像用這份資料顯示。
-  const HOST_MAP = [
-    { keywords: ['WHONEXT'], name: '儒' },
-    { keywords: ['黑狗'], name: 'Eden' }
-  ];
-  function eventHostInfo(title){
-    const t = String(title || '');
-    return HOST_MAP.find(function(h){ return h.keywords.some(function(k){ return t.indexOf(k) !== -1; }); }) || null;
-  }
   function isThisCalendarMonth(dateStr){
     return String(dateStr || '').slice(0, 7) === currentCalendarMonth();
   }
@@ -720,9 +714,9 @@
     const count = attendance !== null ? attendance : (override ? override.count : (names.length || Number(ev.signup_count) || 0));
     const waitlist = Number(ev.waitlist_count) || 0;
 
-    const hostInfo = eventHostInfo(ev.title);
-    const hostHTML = hostInfo
-      ? '<div class="avatar-host" title="發起人：' + escapeHtml(hostInfo.name) + '" data-name="發起人：' + escapeHtml(hostInfo.name) + '">' + avatarInitial(hostInfo.name) + '</div>' +
+    const hostName = String(ev.host_name || '').trim();
+    const hostHTML = hostName
+      ? '<div class="avatar-host" title="發起人：' + escapeHtml(hostName) + '" data-name="發起人：' + escapeHtml(hostName) + '">' + avatarInitial(hostName) + '</div>' +
         '<div class="event-host-sep"></div>'
       : '';
 
@@ -897,6 +891,7 @@
   function eventEditFormSnapshot(){
     return JSON.stringify({
       title: document.getElementById('eventEditTitle').value,
+      host: document.getElementById('eventEditHost').value,
       type: document.getElementById('eventEditType').value,
       date: document.getElementById('eventEditDate').value,
       timeStart: document.getElementById('eventEditTimeStart').value,
@@ -922,6 +917,7 @@
     document.getElementById('eventEditRecurringWrap').style.display = 'none';
     document.getElementById('eventEditRecurring').checked = false;
     document.getElementById('eventEditTitle').value = ev.title;
+    document.getElementById('eventEditHost').value = ev.host_name || '';
     document.getElementById('eventEditType').value = (eventTypeMeta(ev.type) || EVENT_TYPES[0]).code;
     document.getElementById('eventEditDate').value = String(ev.date).slice(0, 10);
     const parsedTime = parseTimeRange(ev.time);
@@ -940,6 +936,7 @@
     document.getElementById('eventEditTemplateWrap').style.display = '';
     document.getElementById('eventEditTemplate').value = 'manual';
     document.getElementById('eventEditTitle').value = '';
+    document.getElementById('eventEditHost').value = '';
     document.getElementById('eventEditType').value = 'practice';
     document.getElementById('eventEditDate').value = '';
     setTimeSelects('20:00', '22:00');
@@ -1098,6 +1095,7 @@
   async function saveEventEdit(){
     if(editingIndex === null) return;
     const title = document.getElementById('eventEditTitle').value.trim();
+    const hostName = document.getElementById('eventEditHost').value.trim();
     const type = document.getElementById('eventEditType').value;
     const date = document.getElementById('eventEditDate').value;
     const timeStart = document.getElementById('eventEditTimeStart').value;
@@ -1115,12 +1113,12 @@
     let createdCount = 1;
 
     if(isNew){
-      ev = { title, type, date, time, location, status:'open', capacity, overflow_mode: overflowMode };
+      ev = { title, host_name: hostName, type, date, time, location, status:'open', capacity, overflow_mode: overflowMode };
       EVENTS.push(ev);
       if(document.getElementById('eventEditRecurringWrap').style.display !== 'none'
         && document.getElementById('eventEditRecurring').checked){
         sameWeekdayDatesInMonth(date, 3).forEach(function(d){
-          EVENTS.push({ title, type, date: d, time, location, status:'open', capacity, overflow_mode: overflowMode });
+          EVENTS.push({ title, host_name: hostName, type, date: d, time, location, status:'open', capacity, overflow_mode: overflowMode });
           createdCount++;
         });
       }
@@ -1128,6 +1126,7 @@
       ev = EVENTS[editingIndex];
       backup = Object.assign({}, ev);
       ev.title = title;
+      ev.host_name = hostName;
       ev.type = type;
       ev.date = date;
       ev.time = time;
