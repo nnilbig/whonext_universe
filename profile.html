@@ -328,12 +328,18 @@
     return (0.4 + 0.6 * (levelIdx / (levelCount - 1))).toFixed(2);
   }
 
+  // 徽章解鎖條件的白話說法：出席系列講「完成N場活動」，WHO朋引伴系列
+  // 講「推薦N位新球員」，取代單純顯示門檻數字。
+  function badgeConditionText(threshold, unit){
+    return unit === '人次' ? '推薦' + threshold + '位新球員' : '完成' + threshold + '場活動';
+  }
+
   // data-desc：點這個徽章時 toast 顯示的條件說明，未解鎖顯示還差多少，
-  // 已解鎖顯示門檻本身，不用另外開說明彈窗。
+  // 已解鎖顯示解鎖條件本身，不用另外開說明彈窗。
   function badgeItemHTML(label, threshold, current, unit, levelIdx, levelCount, seriesColor){
     const got = current >= threshold;
     const style = got ? ' style="--tc-alpha:' + badgeTierAlpha(levelIdx, levelCount) + '"' : '';
-    const desc = label + '：' + (got ? '已解鎖' : '還差 ' + (threshold - current) + ' ' + unit) + '（門檻 ' + threshold + ' ' + unit + '）';
+    const desc = got ? (label + '：' + badgeConditionText(threshold, unit)) : (label + '：還差 ' + (threshold - current) + ' ' + unit + '（門檻 ' + threshold + ' ' + unit + '）');
     return '<div class="tc-item' + (got ? '' : ' locked') + '" data-desc="' + desc + '">' +
       '<div class="tc-badge' + (got ? ' ' + seriesColor : ' locked') + '"' + style + '>' + threshold + '</div>' +
       '<div class="tc-label">' + label + '</div>' +
