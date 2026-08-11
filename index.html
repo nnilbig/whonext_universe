@@ -888,6 +888,30 @@
     return { start: parts[0] || '', end: parts[1] || '' };
   }
 
+  // 離開前的資料防遺失：開啟當下拍一張表單快照，關閉時（背景遮罩／×）
+  // 比對現在的值有沒有變，變了才跳確認框，避免手滑關掉整份填到一半的
+  // 表單。不含 eventEditGuestName（那是暫存輸入框，加進出席名單後就會
+  // 清空，不算「表單資料」）跟出席名單勾選（太細瑣，且新增賽事流程本來
+  // 就會在儲存時才真正送出勾選結果）。
+  let eventEditSnapshot = null;
+  function eventEditFormSnapshot(){
+    return JSON.stringify({
+      title: document.getElementById('eventEditTitle').value,
+      type: document.getElementById('eventEditType').value,
+      date: document.getElementById('eventEditDate').value,
+      timeStart: document.getElementById('eventEditTimeStart').value,
+      timeEnd: document.getElementById('eventEditTimeEnd').value,
+      location: document.getElementById('eventEditLocation').value,
+      capacity: document.getElementById('eventEditCapacity').value,
+      overflow: document.getElementById('eventEditOverflow').value,
+      template: document.getElementById('eventEditTemplate').value,
+      recurring: document.getElementById('eventEditRecurring').checked
+    });
+  }
+  function isEventEditDirty(){
+    return eventEditSnapshot !== null && eventEditFormSnapshot() !== eventEditSnapshot;
+  }
+
   function openEventEdit(index){
     editingIndex = index;
     const ev = EVENTS[index];
@@ -907,6 +931,7 @@
     document.getElementById('eventEditOverflow').value = ev.overflow_mode === 'waitlist' ? 'waitlist' : 'reject';
     document.getElementById('eventEditDelete').style.display = '';
     document.getElementById('eventEditOverlay').classList.add('open');
+    eventEditSnapshot = eventEditFormSnapshot();
   }
 
   function openEventCreate(){
@@ -926,12 +951,21 @@
     document.getElementById('eventEditRecurring').checked = false;
     document.getElementById('eventEditDelete').style.display = 'none';
     document.getElementById('eventEditOverlay').classList.add('open');
+    eventEditSnapshot = eventEditFormSnapshot();
     loadAttendRosterPicker();
   }
 
   function closeEventEdit(){
     document.getElementById('eventEditOverlay').classList.remove('open');
     editingIndex = null;
+    eventEditSnapshot = null;
+  }
+
+  // 背景遮罩／× 關閉才擋（手滑誤觸的主要來源）；「取消」按鈕本身字面上
+  // 就是要放棄變更，不用再多問一次。
+  function confirmCloseEventEdit(){
+    if(isEventEditDirty() && !confirm('確定要離開嗎？未儲存的內容將會遺失')) return;
+    closeEventEdit();
   }
 
   function nextFridayISO(){
@@ -1798,9 +1832,9 @@
   document.getElementById('eventEditCancel').addEventListener('click', closeEventEdit);
   document.getElementById('eventEditSave').addEventListener('click', saveEventEdit);
   document.getElementById('eventEditDelete').addEventListener('click', deleteCurrentEvent);
-  document.getElementById('eventEditCloseBtn').addEventListener('click', closeEventEdit);
+  document.getElementById('eventEditCloseBtn').addEventListener('click', confirmCloseEventEdit);
   document.getElementById('eventEditOverlay').addEventListener('click', function(e){
-    if(e.target.id === 'eventEditOverlay') closeEventEdit();
+    if(e.target.id === 'eventEditOverlay') confirmCloseEventEdit();
   });
 
   document.getElementById('signupSubmit').addEventListener('click', submitSignup);
