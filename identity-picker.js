@@ -20,8 +20,13 @@
 
   var GOOGLE_CLIENT_ID = '702772011583-5g00roumo9mgruijtn3jhg525bot1cja.apps.googleusercontent.com';
 
+  // 進來直接是登入畫面（Google／LINE 二選一），不再另外分「註冊」／
+  // 「登入」兩顆——沒註冊過的帳號登入時 renderNotRegistered 會自動接手
+  // 導去註冊，跟 nav 的「球員登入」按鈕已經是同一套邏輯（見
+  // auth.js openNavLogin）。renderStart 保留給深層流程當「回到最前面」
+  // 的返回目標用，不再是預設入口。
   function render(container){
-    renderStart(container);
+    renderLoginMenu(container, true);
   }
 
   function renderStart(container){
