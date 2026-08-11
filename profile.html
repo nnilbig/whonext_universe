@@ -105,10 +105,12 @@
     border:2px solid var(--line); background: rgba(255,255,255,0.04); color: var(--tertiary);
   }
   .tc-badge.locked{ border-color: var(--line); background: rgba(255,255,255,0.04); color: var(--tertiary); }
-  .tc-badge.n{ border-color: var(--n-accent); background: var(--n-bg); color: var(--n-accent); }
-  .tc-badge.e{ border-color: var(--e-accent); background: var(--e-bg); color: var(--e-accent); }
-  .tc-badge.x{ border-color: var(--x-accent); background: var(--x-bg); color: var(--x-accent); }
-  .tc-badge.t{ border-color: var(--t-accent); background: var(--t-bg); color: var(--t-accent); }
+  /* 同系列固定用同一個 NEXT 色系（見 badgeItemHTML），--tc-alpha 由 JS
+     依等級算好帶進來，只有邊框亮度隨等級升高，底色／數字顏色不變。 */
+  .tc-badge.n{ border-color: rgba(var(--n-rgb), var(--tc-alpha, 1)); background: var(--n-bg); color: var(--n-accent); }
+  .tc-badge.e{ border-color: rgba(var(--e-rgb), var(--tc-alpha, 1)); background: var(--e-bg); color: var(--e-accent); }
+  .tc-badge.x{ border-color: rgba(var(--x-rgb), var(--tc-alpha, 1)); background: var(--x-bg); color: var(--x-accent); }
+  .tc-badge.t{ border-color: rgba(var(--t-rgb), var(--tc-alpha, 1)); background: var(--t-bg); color: var(--t-accent); }
   .tc-label{ font-size:10.5px; color:var(--secondary); text-align:center; line-height:1.3; }
   .tc-item.locked .tc-label{ color: var(--tertiary); }
 
@@ -286,10 +288,12 @@
     { threshold: 15, label: '萬人迷' },
     { threshold: 25, label: '外交官' }
   ];
-  // 里程碑徽章顏色跟隊名 N-E-X-T 對齊，同系列內每個門檻各自照順序
-  // 從 n/e/x/t 循環取色（跟卡片列表頭像疊圖同一套配色邏輯），不用
-  // gold/silver 那種獎牌色階。
-  const BADGE_COLOR_CLASSES = ['n', 'e', 'x', 't'];
+  // 里程碑徽章顏色跟隊名 N-E-X-T 對齊：同一系列（出席／WHO朋引伴）固定
+  // 用同一個基色，不同系列各自從 N-E-X-T 挑一色互相區隔；系列內則是
+  // 等級越高、邊框越亮（見 badgeItemHTML 的 --tc-alpha），用亮度而不是
+  // 換色來表現進度。
+  const ATTEND_BADGE_COLOR = 'n';
+  const FRIEND_BADGE_COLOR = 'e';
   let yoExpanded = false;
 
   function yearAttendedCount(name){
@@ -314,10 +318,17 @@
     return entry ? entry.value : 0;
   }
 
-  function badgeItemHTML(label, threshold, got, colorIdx){
-    const colorCls = BADGE_COLOR_CLASSES[colorIdx % BADGE_COLOR_CLASSES.length];
+  // levelIdx/levelCount：這一階在系列裡的順位，換算成 0.4～1.0 的邊框
+  // 透明度——第一階看得到色但比較暗，最後一階全亮，中間線性內插。
+  function badgeTierAlpha(levelIdx, levelCount){
+    if(levelCount <= 1) return 1;
+    return (0.4 + 0.6 * (levelIdx / (levelCount - 1))).toFixed(2);
+  }
+
+  function badgeItemHTML(label, threshold, got, levelIdx, levelCount, seriesColor){
+    const style = got ? ' style="--tc-alpha:' + badgeTierAlpha(levelIdx, levelCount) + '"' : '';
     return '<div class="tc-item' + (got ? '' : ' locked') + '">' +
-      '<div class="tc-badge' + (got ? ' ' + colorCls : ' locked') + '">' + threshold + '</div>' +
+      '<div class="tc-badge' + (got ? ' ' + seriesColor : ' locked') + '"' + style + '>' + threshold + '</div>' +
       '<div class="tc-label">' + label + '</div>' +
     '</div>';
   }
@@ -344,10 +355,10 @@
     }
 
     const attendBadgesHTML = MILESTONES.map(function(m, idx){
-      return badgeItemHTML(m.label, m.threshold, attended >= m.threshold, idx);
+      return badgeItemHTML(m.label, m.threshold, attended >= m.threshold, idx, MILESTONES.length, ATTEND_BADGE_COLOR);
     }).join('');
     const friendBadgesHTML = FRIEND_BADGES.map(function(b, idx){
-      return badgeItemHTML(b.label, b.threshold, referrals >= b.threshold, idx);
+      return badgeItemHTML(b.label, b.threshold, referrals >= b.threshold, idx, FRIEND_BADGES.length, FRIEND_BADGE_COLOR);
     }).join('');
     document.getElementById('tcGrid').innerHTML = attendBadgesHTML + friendBadgesHTML;
   }
