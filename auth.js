@@ -92,14 +92,17 @@
     document.body.classList.toggle('is-admin', getRole() === 'admin');
   }
 
-  // Top nav 的身分區塊整個從狀態重繪，比較好處理三種情況：
+  // Top nav 的身分區塊整個從狀態重繪，比較好處理四種情況：
   //   沒登入：只留「球員登入」一顆——點下去直接走登入流程，選到還沒
   //   註冊過的帳號時，identity-picker.js 的 renderNotRegistered 會自動
   //   接手詢問要不要前往註冊，不用在 nav 這裡另外放一顆「註冊」分岔。
-  //   已登入、不是管理員：頭像＋姓名（點一下跳去我的活動）、「登出」。
-  //   已登入、是管理員：頭像＋姓名、「管理員」（切換管理員視角，目前
-  //   在管理員視角就反白）、「登出」——順序照這樣排，不用另外用 CSS
-  //   order 換位。
+  //   已登入、球員視角：頭像＋姓名（點一下跳去我的活動）、「管理員」
+  //   （有 is_admin 才會出現）、「登出」。
+  //   已登入、管理員視角：不顯示球員本人的頭像／姓名——切到管理員等於
+  //   把球員身分那個入口收起來，只留「管理員」（反白）「登出」，畫面上
+  //   看起來像是純粹的管理員身分在操作，不是掛著某個人的名字。球員的
+  //   登入狀態／is_admin 權限判斷還是留在背後，切回球員視角不用重新
+  //   登入，「登出」也還是一次登出全部。
   function updateNavRoleToggle(){
     var toggle = document.getElementById('navRoleToggle');
     if(!toggle) return;
@@ -110,14 +113,20 @@
       return;
     }
 
-    var html = '<button type="button" class="role-toggle-btn has-identity" data-action="identity">' +
-      navAvatarHTML(name) + '<span class="nav-id-name">' + name + '</span>' +
-    '</button>';
+    var isAdminView = getRole() === 'admin';
+    var html = '';
+    if(!isAdminView){
+      html += '<button type="button" class="role-toggle-btn has-identity" data-action="identity">' +
+        navAvatarHTML(name) + '<span class="nav-id-name">' + name + '</span>' +
+      '</button>';
+    }
     if(getPlayerIsAdmin()){
-      html += '<button type="button" class="role-toggle-btn' + (getRole() === 'admin' ? ' active' : '') + '" data-action="admin-toggle">管理員</button>';
+      html += '<button type="button" class="role-toggle-btn' + (isAdminView ? ' active' : '') + '" data-action="admin-toggle">管理員</button>';
     }
     html += '<button type="button" class="role-toggle-btn" data-action="logout">登出</button>';
     toggle.innerHTML = html;
+
+    if(isAdminView) return; // 管理員視角沒有頭像可顯示
 
     // 有綁定 LINE 頭像照片就優先顯示，載入失敗（連結失效／被擋）就
     // 退回原本的姓名縮寫圓圈，不留一格空白圖示。
