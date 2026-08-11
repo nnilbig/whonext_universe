@@ -1,0 +1,126 @@
+/* ---------- COMMON PAGE SHELL (shared across pages) ----------
+   Base reset, glass surface, page wrap, hero header, section labels,
+   list-header (title + count), toast, and the modal edit-form pattern
+   used by member/event/finance edit sheets. Pages override only what
+   differs (e.g. body glow colors, hero padding) in their own <page>.css,
+   loaded after this file. */
+
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{ margin:0; padding:0; }
+
+:root{
+  --bg-glow-1: rgba(228,201,122,0.08);
+  --bg-glow-2: rgba(159,179,200,0.07);
+  --toast-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+body{
+  background:
+    radial-gradient(ellipse at 15% -10%, var(--bg-glow-1), transparent 45%),
+    radial-gradient(ellipse at 90% 105%, var(--bg-glow-2), transparent 50%),
+    var(--bg);
+  color: var(--label);
+  font-family: var(--sf);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+a{ text-decoration:none; color:inherit; }
+button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+
+.glass{
+  background: var(--card);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+}
+
+.wrap{
+  max-width: 640px; margin:0 auto; width:100%;
+  padding: 20px 16px calc(96px + env(safe-area-inset-bottom));
+}
+
+/* ---------- HERO ---------- */
+.hero{ padding: 4px 4px 22px; }
+.hero .hero-eyebrow{
+  font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary);
+  text-transform:uppercase; margin-bottom:8px;
+}
+.hero .wordmark{
+  font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
+  font-size: clamp(26px,7vw,34px); margin-bottom:8px;
+}
+.hero p{ margin:0; font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
+
+/* ---------- SECTION LABEL (plain uppercase eyebrow-style label) ---------- */
+.section-label{
+  font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--tertiary);
+  text-transform:uppercase; margin: 0 4px 12px;
+}
+.section-label-row{ display:flex; align-items:center; justify-content:space-between; margin: 0 4px 12px; }
+.section-label-row .section-label{ margin:0; }
+
+/* ---------- LIST HEADER (title + count, e.g. "每週紀錄 · 共 12 週") ---------- */
+.list-header{
+  display:flex; align-items:baseline; justify-content:space-between;
+  margin: 4px 4px 12px;
+}
+.list-header .t{ font-size:14px; font-weight:800; }
+.list-header .n{ font-size:11px; color:var(--tertiary); }
+
+/* ---------- MONTH NAV (prev/next month or period stepper) ---------- */
+.month-nav{
+  display:flex; align-items:center; justify-content:space-between;
+  margin: 0 4px 16px;
+}
+.month-btn{
+  width:36px; height:36px; border-radius:50%; flex-shrink:0;
+  background: var(--card); border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--gold);
+}
+.month-btn:disabled{ opacity:.25; }
+.month-label{ text-align:center; }
+.month-label .m{ margin:0; font-size:16px; font-weight:800; }
+.month-label .s{ margin:2px 0 0; font-size:10.5px; color:var(--tertiary); }
+
+/* ---------- "顯示更多" ROW ---------- */
+.more-row{
+  width:100%; text-align:center;
+  padding:12px 6px;
+  border-top:1px solid var(--line);
+  font-size:12.5px; font-weight:700; color:var(--tertiary);
+}
+.more-row:active{ color:var(--label); }
+
+/* ---------- MODAL EDIT FORM (member/event/finance edit sheets) ---------- */
+.edit-title{ font-size:16px; font-weight:800; margin-bottom:16px; color:var(--label); }
+.edit-field-label{ font-size:11px; color:var(--tertiary); margin: 0 2px 6px; }
+.edit-input{
+  width:100%; box-sizing:border-box;
+  font-family: var(--sf-mono); font-size:16px; color: var(--label);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--line); border-radius: 12px;
+  padding: 11px 14px; margin-bottom:14px;
+}
+.edit-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
+.edit-input[readonly]{ color: var(--secondary); background: rgba(255,255,255,0.03); }
+select.edit-input{ color: var(--label); }
+select.edit-input option{ color: var(--label); background:#1c1c1e; }
+.edit-actions{ display:flex; gap:8px; margin-top:2px; }
+.edit-actions button{
+  flex:1; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px;
+}
+.edit-cancel{ background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--secondary); }
+.edit-save{ background: var(--label); color:#000; }
+
+/* ---------- TOAST ---------- */
+.toast{
+  position:fixed; bottom: var(--toast-bottom); left:50%; transform:translateX(-50%) translateY(20px);
+  max-width: calc(100vw - 32px);
+  background: rgba(30,30,32,0.92);
+  backdrop-filter: blur(16px);
+  color: var(--label); font-size:13.5px; padding:11px 20px;
+  border: 1px solid var(--line);
+  border-radius: 999px; opacity:0; transition: all .3s ease; pointer-events:none; z-index:200;
+  text-align:center;
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }

@@ -18,49 +18,11 @@
 <link rel="stylesheet" href="auth.css">
 <link rel="stylesheet" href="top-nav.css">
 <link rel="stylesheet" href="bottom-nav.css">
+<link rel="stylesheet" href="common.css">
 <style>
-  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body{ margin:0; padding:0; }
-  body{
-    background:
-      radial-gradient(ellipse at 15% -10%, rgba(228,201,122,0.08), transparent 45%),
-      radial-gradient(ellipse at 90% 105%, rgba(159,179,200,0.07), transparent 50%),
-      var(--bg);
-    color: var(--label);
-    font-family: var(--sf);
-    min-height:100vh;
-    -webkit-font-smoothing:antialiased;
-  }
-  a{ text-decoration:none; color:inherit; }
-  button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
-
-  .glass{
-    background: var(--card);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid var(--line);
-    border-radius: 22px;
-  }
-
-  .wrap{ max-width: 640px; margin:0 auto; padding: 20px 16px calc(96px + env(safe-area-inset-bottom)); }
-
-  .hero{ padding: 4px 4px 22px; }
-  .hero .hero-eyebrow{
-    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary);
-    text-transform:uppercase; margin-bottom:8px;
-  }
-  .hero .wordmark{
-    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
-    font-size: clamp(26px,7vw,34px); margin-bottom:8px;
-  }
-  .hero p{ margin:0; font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
-
-  .section-label-row{ display:flex; align-items:center; justify-content:space-between; margin: 26px 4px 12px; }
+  .section-label-row{ margin: 26px 4px 12px; }
   .section-label-row:first-of-type{ margin-top:0; }
-  .section-label{
-    font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--tertiary);
-    text-transform:uppercase; margin:0;
-  }
+  .section-label{ margin:0; }
 
   /* ---- 活動列表 ---- */
   .plist{ padding: 6px 6px; margin-bottom: 8px; }
@@ -91,13 +53,6 @@
   .prow-toggle{ cursor:pointer; }
   .prow-toggle:active{ background: rgba(255,255,255,0.03); }
   .empty-row{ padding: 20px 10px; font-size:12.5px; color:var(--tertiary); text-align:center; }
-  .more-row{
-    width:100%; text-align:center;
-    padding:12px 6px;
-    border-top:1px solid var(--line);
-    font-size:12.5px; font-weight:700; color:var(--tertiary);
-  }
-  .more-row:active{ color:var(--label); }
 
   /* ---- 歷屆賽事排名 ---- */
   .trow{
@@ -163,17 +118,6 @@
     padding: 14px 0 4px;
   }
 
-  .toast{
-    position:fixed; bottom: calc(76px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(20px);
-    max-width: calc(100vw - 32px);
-    background: rgba(30,30,32,0.92);
-    backdrop-filter: blur(16px);
-    color: var(--label); font-size:13.5px; padding:11px 20px;
-    border: 1px solid var(--line);
-    border-radius: 999px; opacity:0; transition: all .3s ease; pointer-events:none; z-index:200;
-    text-align:center;
-  }
-  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>

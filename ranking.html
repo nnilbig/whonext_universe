@@ -18,49 +18,9 @@
 <link rel="stylesheet" href="auth.css">
 <link rel="stylesheet" href="top-nav.css">
 <link rel="stylesheet" href="bottom-nav.css">
+<link rel="stylesheet" href="common.css">
 <style>
-  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body{ margin:0; padding:0; }
-  body{
-    background:
-      radial-gradient(ellipse at 15% -10%, rgba(228,201,122,0.08), transparent 45%),
-      radial-gradient(ellipse at 90% 105%, rgba(159,179,200,0.07), transparent 50%),
-      var(--bg);
-    color: var(--label);
-    font-family: var(--sf);
-    min-height:100vh;
-    -webkit-font-smoothing:antialiased;
-  }
-  a{ text-decoration:none; color:inherit; }
-  button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
-
-  .glass{
-    background: var(--card);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid var(--line);
-    border-radius: 22px;
-  }
-
-  .wrap{ max-width: 640px; margin:0 auto; padding: 20px 16px calc(96px + env(safe-area-inset-bottom)); }
-
   .hero{ padding: 4px 4px 10px; }
-  .hero .hero-eyebrow{
-    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--tertiary);
-    text-transform:uppercase; margin-bottom:8px;
-  }
-  .hero .wordmark{
-    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
-    font-size: clamp(26px,7vw,34px); margin-bottom:8px;
-  }
-  .hero p{ margin:0; font-size: clamp(13px,3.2vw,14.5px); color:var(--secondary); line-height:1.6; max-width:440px; }
-
-  .section-label{
-    font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--tertiary);
-    text-transform:uppercase; margin: 0 4px 12px;
-  }
-  .section-label-row{ display:flex; align-items:center; justify-content:space-between; margin: 0 4px 12px; }
-  .section-label-row .section-label{ margin:0; }
 
   .trophy-row{ display:flex; flex-direction:column; gap:10px; margin: 0 0 10px; }
   .trophy-card{

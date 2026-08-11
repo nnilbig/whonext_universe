@@ -18,29 +18,15 @@
 <link rel="stylesheet" href="auth.css">
 <link rel="stylesheet" href="top-nav.css">
 <link rel="stylesheet" href="bottom-nav.css">
+<link rel="stylesheet" href="common.css">
 <style>
-  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body{ margin:0; padding:0; height:100%; }
-  body{
-    background:
-      radial-gradient(ellipse at 15% -10%, rgba(159,179,200,0.09), transparent 45%),
-      radial-gradient(ellipse at 90% 105%, rgba(228,201,122,0.06), transparent 50%),
-      var(--bg);
-    color: var(--label);
-    font-family: var(--sf);
-    min-height:100dvh;
-    -webkit-font-smoothing:antialiased;
+  :root{
+    --bg-glow-1: rgba(159,179,200,0.09);
+    --bg-glow-2: rgba(228,201,122,0.06);
+    --toast-bottom: max(24px, env(safe-area-inset-bottom));
   }
-  a{ text-decoration:none; color:inherit; }
-  button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
-
-  .glass{
-    background: var(--card);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid var(--line);
-    border-radius: 22px;
-  }
+  html,body{ height:100%; }
+  body{ min-height:100dvh; }
 
   /* ---------- BRAND MASK ---------- */
   .brand-mask{
@@ -61,29 +47,11 @@
     font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
     font-size: clamp(30px,8vw,40px);
   }
-  .wrap{
-    max-width: 640px; margin:0 auto; width:100%;
-    padding: 20px 16px calc(96px + env(safe-area-inset-bottom));
-  }
-
   /* ---------- HERO ---------- */
   .hero{ padding: 2px 4px 10px; }
-  .hero .hero-eyebrow{
-    font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--gold);
-    text-transform:uppercase; margin-bottom:10px;
-  }
-  .hero .wordmark{
-    font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.1em;
-    font-size: clamp(26px,7vw,34px); margin-bottom:8px;
-  }
+  .hero .hero-eyebrow{ color:var(--gold); margin-bottom:10px; }
 
   /* ---------- EVENTS ---------- */
-  .section-label{
-    font-size:11px; font-weight:700; letter-spacing:.18em; color:var(--tertiary);
-    text-transform:uppercase; margin: 0 4px 12px;
-  }
-  .section-label-row{ display:flex; align-items:center; justify-content:space-between; margin: 0 4px 12px; }
-  .section-label-row .section-label{ margin:0; }
   .event-add-btn{
     font-size:11px; font-weight:700; padding:5px 11px; border-radius:999px;
     border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
@@ -221,28 +189,10 @@
   .event-attendees-label{ font-size:11.5px; color:var(--tertiary); font-family: var(--sf-mono); }
 
   /* ---------- EDIT SHEET ---------- */
-  .edit-title{ font-size:16px; font-weight:800; margin-bottom:16px; color:var(--label); }
-  .edit-field-label{ font-size:11px; color:var(--tertiary); margin: 0 2px 6px; }
-  .edit-input{
-    width:100%; box-sizing:border-box;
-    font-family: var(--sf-mono); font-size:16px; color: var(--label);
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--line); border-radius: 12px;
-    padding: 11px 14px; margin-bottom:14px;
-  }
-  .edit-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
   .edit-input.invalid{ border-color:#ff453a; }
-  select.edit-input{ color: var(--label); }
-  select.edit-input option{ color: var(--label); background:#1c1c1e; }
   .time-range-row{ display:flex; align-items:center; gap:8px; margin-bottom:14px; }
   .time-range-row .edit-input{ flex:1; min-width:0; margin-bottom:0; }
   .time-range-sep{ color:var(--tertiary); flex-shrink:0; }
-  .edit-actions{ display:flex; gap:8px; margin-top:2px; }
-  .edit-actions button{
-    flex:1; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px;
-  }
-  .edit-cancel{ background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--secondary); }
-  .edit-save{ background: var(--label); color:#000; }
   .edit-delete-btn{
     width:100%; font-size:13px; font-weight:700; padding:11px 0; border-radius:12px; margin-bottom:8px;
     color: var(--warn); border:1px solid rgba(231,161,90,0.4); background: rgba(231,161,90,0.1);
@@ -357,17 +307,6 @@
   .import-toggle-row:active{ background: rgba(255,255,255,0.07); }
   .import-toggle-status{ font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; flex-shrink:0; }
 
-  .toast{
-    position:fixed; bottom: max(24px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(20px);
-    max-width: calc(100vw - 32px);
-    background: rgba(30,30,32,0.92);
-    backdrop-filter: blur(16px);
-    color: var(--label); font-size:13.5px; padding:11px 20px;
-    border: 1px solid var(--line);
-    border-radius: 999px; opacity:0; transition: all .3s ease; pointer-events:none; z-index:200;
-    text-align:center;
-  }
-  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -385,15 +324,10 @@
     </div>
 
     <div class="section-label-row">
-      <div class="event-tabs" id="eventTabs">
-        <button type="button" class="event-tab active" data-filter="own">本月活動</button>
-        <button type="button" class="event-tab" data-filter="friend">友團活動</button>
-      </div>
-      <div class="event-add-group">
-        <button type="button" class="event-add-btn" id="friendEventAddBtn" style="display:none">＋ 發起活動</button>
-        <button type="button" class="event-add-btn admin-only" id="eventAddBtn">＋ 新增賽事</button>
-      </div>
+      <div class="section-label">目前報名的活動</div>
+      <a class="event-add-btn" href="activities.html">瀏覽全部活動 →</a>
     </div>
+    <div id="homeWhoami" style="display:none"></div>
     <div class="event-list" id="eventList"></div>
 
   </div>
@@ -541,23 +475,20 @@
   // 舊資料的 status 若是 full 或空值，一律當成 open 處理（走自動判斷）。
   // 「進行中」「已結束」是額外依賽事日期＋時間自動判斷，時間到了就蓋過上述顯示，
   // 底層 ev.status 不受影響，事後時間往前捲動時仍會回到原本的報名狀態顯示。
+  // 首頁只給球員視角用的「目前報名的活動」個人化清單，管理員沒有這個
+  // 分頁（底部導覽直接是球隊錢包），切到管理員視角時導去活動管理頁。
+  if(window.WhonextAuth && WhonextAuth.getRole() === 'admin'){
+    location.replace('activities.html');
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    new MutationObserver(function(){
+      if(document.body.classList.contains('is-admin')) location.replace('activities.html');
+    }).observe(document.body, { attributes:true, attributeFilter:['class'] });
+  });
+
   let EVENTS = [];
   let eventsLoaded = false;
-  let eventFilter = 'own';
 
-  // 賽事標題含友團隊伍關鍵字，就歸類為「友團活動」。目前只有黑狗隊，
-  // 之後如有其他友團合作，把隊名加進這個陣列即可，不用動篩選邏輯。
-  const FRIEND_CLUB_KEYWORDS = ['黑狗'];
-  function isFriendEvent(title){
-    const t = String(title || '');
-    return FRIEND_CLUB_KEYWORDS.some(function(k){ return t.indexOf(k) !== -1; });
-  }
-
-  // 「發起活動」的權限存在 players 分頁的 can_create_events 欄位，跟管理員
-  // 權限分開判斷，純看目前綁定的球員姓名（custom_name）對應的身分主檔有
-  // 沒有這個權限。這裡用 getRoster 不是 getPlayers，因為 getRoster 才有
-  // 「name」這個跟其他頁面一致的鍵值。can_create_events 在 Sheets 讀出來
-  // 可能是布林 true 也可能是文字 'TRUE'，兩種都要認得。
   async function getRoster(){
     const cached = getApiCache({ action:'getRoster' });
     if(cached) return cached.roster || [];
@@ -568,18 +499,6 @@
     } catch(e){
       return [];
     }
-  }
-  function canCreateEvents(roster, name){
-    const entry = roster.find(function(p){ return p.name === name; });
-    return !!entry && (entry.can_create_events === true || entry.can_create_events === 'TRUE');
-  }
-  async function updateFriendEventAddBtn(){
-    const btn = document.getElementById('friendEventAddBtn');
-    if(!btn) return;
-    const name = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
-    if(!name){ btn.style.display = 'none'; return; }
-    const roster = await getRoster();
-    btn.style.display = canCreateEvents(roster, name) ? '' : 'none';
   }
 
   // type 存英文代碼（practice/project/match），但資料庫裡舊資料還是中文字串，
@@ -798,24 +717,31 @@
 
   function renderEvents(){
     const list = document.getElementById('eventList');
+    const whoamiContainer = document.getElementById('homeWhoami');
+    const myName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
+
+    if(!myName){
+      list.innerHTML = '';
+      if(!whoamiContainer.childElementCount && window.WhonextIdentityPicker) WhonextIdentityPicker.render(whoamiContainer);
+      whoamiContainer.style.display = '';
+      return;
+    }
+    whoamiContainer.style.display = 'none';
+
     if(!eventsLoaded){
       list.innerHTML = '<div class="event-empty glass">載入賽事中…</div>';
       return;
     }
     const order = EVENTS.map(function(ev, i){ return i; })
       .filter(function(i){
-        const ev = EVENTS[i];
-        return eventFilter === 'friend' ? isFriendEvent(ev.title) : (!isFriendEvent(ev.title) && isThisCalendarMonth(ev.date));
+        return currentPlayerSignedUp(EVENTS[i]) && eventStatusMeta(EVENTS[i]).cls !== 'ended';
       })
       .sort(function(a, b){
-        const aEnded = eventStatusMeta(EVENTS[a]).cls === 'ended' ? 1 : 0;
-        const bEnded = eventStatusMeta(EVENTS[b]).cls === 'ended' ? 1 : 0;
-        if(aEnded !== bEnded) return aEnded - bEnded;
         return String(EVENTS[a].date).slice(0,10).localeCompare(String(EVENTS[b].date).slice(0,10));
       });
 
     if(!order.length){
-      list.innerHTML = '<div class="event-empty glass">' + (eventFilter === 'friend' ? '目前沒有友團活動' : '本月目前沒有排定的活動') + '</div>';
+      list.innerHTML = '<div class="event-empty glass">目前沒有已報名的活動，<a href="activities.html">去看看活動列表 →</a></div>';
       return;
     }
 
@@ -1324,8 +1250,7 @@
   // 切換前那個身分算出來的標籤，變成別人登出/登入都不會更新。
   document.addEventListener('whonext:playername-change', function(){
     if(detailIndex !== null) openEventDetail(detailIndex);
-    if(eventsLoaded) renderEvents();
-    updateFriendEventAddBtn();
+    renderEvents();
   });
 
   // 報名按鈕的狀態跟賽事開放狀態綁定，不要等使用者填完資料送出才用 toast
@@ -1718,19 +1643,6 @@
     showToast._t = setTimeout(()=> t.classList.remove('show'), 2200);
   }
 
-  document.getElementById('eventAddBtn').addEventListener('click', openEventCreate);
-  document.getElementById('friendEventAddBtn').addEventListener('click', openEventCreate);
-  updateFriendEventAddBtn();
-
-  document.querySelectorAll('#eventTabs .event-tab').forEach(function(tab){
-    tab.addEventListener('click', function(){
-      if(tab.classList.contains('active')) return;
-      document.querySelectorAll('#eventTabs .event-tab').forEach(function(t){ t.classList.remove('active'); });
-      tab.classList.add('active');
-      eventFilter = tab.dataset.filter;
-      renderEvents();
-    });
-  });
   document.getElementById('eventEditTemplate').addEventListener('change', function(){
     applyEventTemplate(this.value);
   });
