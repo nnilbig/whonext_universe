@@ -124,11 +124,6 @@
 
   <div class="wrap">
 
-    <div class="hero">
-      <div class="hero-eyebrow">WHONEXT BADMINTON CLUB</div>
-      <div class="wordmark" id="profileTitle">我的活動</div>
-    </div>
-
     <!-- ---------- 管理員：球員名冊預覽 ---------- -->
     <!-- 球隊錢包已經是底部導覽自己的分頁（管理員身分會顯示成「球隊錢包」），
          這裡不用重複放入口；直接嵌入當月名單預覽，滿三筆收合。 -->
@@ -681,7 +676,6 @@
 
   function updateViewMode(){
     const isAdmin = document.body.classList.contains('is-admin');
-    document.getElementById('profileTitle').textContent = isAdmin ? '球員名冊' : '我的活動';
     document.getElementById('adminOverviewView').style.display = isAdmin ? '' : 'none';
     document.getElementById('personalView').style.display = isAdmin ? 'none' : '';
     if(isAdmin) renderAdminRoster();
