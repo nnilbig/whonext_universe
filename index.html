@@ -484,11 +484,6 @@
     return isFriendEvent(title) ? 'club-friend' : 'club-whonext';
   }
 
-  // 「發起活動」的權限存在 players 分頁的 can_create_events 欄位，跟管理員
-  // 權限分開判斷，純看目前綁定的球員姓名（custom_name）對應的身分主檔有
-  // 沒有這個權限。這裡用 getRoster 不是 getPlayers，因為 getRoster 才有
-  // 「name」這個跟其他頁面一致的鍵值。can_create_events 在 Sheets 讀出來
-  // 可能是布林 true 也可能是文字 'TRUE'，兩種都要認得。
   async function getRoster(){
     const cached = getApiCache({ action:'getRoster' });
     if(cached) return cached.roster || [];
@@ -500,20 +495,13 @@
       return [];
     }
   }
-  function canCreateEvents(roster, name){
-    const entry = roster.find(function(p){ return p.name === name; });
-    return !!entry && (entry.can_create_events === true || entry.can_create_events === 'TRUE');
-  }
-  // 「＋發起活動」現在只有一顆，管理員或有 can_create_events 權限的球員
-  // 都看得到，不再分「新增賽事」（管理員）／「發起活動」（球員）兩顆按鈕。
-  async function updateEventAddBtn(){
+  // 「＋發起活動」任何人都能用，唯一的門檻是要先登入（不看
+  // can_create_events 那個舊權限欄位，也不特別看是不是管理員）。
+  function updateEventAddBtn(){
     const btn = document.getElementById('eventAddBtn');
     if(!btn) return;
-    if(document.body.classList.contains('is-admin')){ btn.style.display = ''; return; }
     const name = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
-    if(!name){ btn.style.display = 'none'; return; }
-    const roster = await getRoster();
-    btn.style.display = canCreateEvents(roster, name) ? '' : 'none';
+    btn.style.display = name ? '' : 'none';
   }
 
   // type 存英文代碼（practice/project/match），但資料庫裡舊資料還是中文字串，
