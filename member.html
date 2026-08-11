@@ -360,7 +360,7 @@
       const balance = Number(m.monthly_total_fee) || 0;
       const status = attendanceStatus(m.name, latestWeek);
       const statusLabel = status === 'present' ? '月繳出席' : status === 'leave' ? '月繳請假' : '月繳';
-      const statusCls = status === 'present' ? 'good' : status === 'leave' ? 'warn' : '';
+      const statusCls = status === 'present' ? 'good' : '';
       return `
       <div class="row">
         <div class="row-avatar">${avatarInitial(m.name)}</div>

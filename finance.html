@@ -158,8 +158,8 @@
         <p class="label" id="balanceLabel">年度合計</p>
         <p class="amount" id="netAmount">$0</p>
         <div class="balance-sub">
-          <div><p>收入</p><p id="incomeAmount" style="color:var(--warn);">$0</p></div>
-          <div><p>支出</p><p id="expenseAmount" style="color:var(--good);">$0</p></div>
+          <div><p>收入</p><p id="incomeAmount" style="color:var(--good);">$0</p></div>
+          <div><p>支出</p><p id="expenseAmount" style="color:var(--danger);">$0</p></div>
           <div><p>平均出席</p><p id="avgAtt">0</p></div>
         </div>
       </div>
@@ -280,7 +280,7 @@ function renderSummary(weeks){
   });
   const net = income - expense;
   document.getElementById('netAmount').textContent = (net>=0?'+':'') + fmt(net);
-  document.getElementById('netAmount').style.color = net>=0 ? 'var(--warn)' : 'var(--good)';
+  document.getElementById('netAmount').style.color = net>=0 ? 'var(--good)' : 'var(--danger)';
   document.getElementById('incomeAmount').textContent = fmt(income);
   document.getElementById('expenseAmount').textContent = fmt(expense);
   document.getElementById('avgAtt').textContent = (weeks.length ? Math.round(att/weeks.length) : 0) + '';
@@ -298,7 +298,7 @@ function renderWeekList(weeks, dateFmt){
         <p class="rmeta">出席 ${attCount} · 月繳 ${w.present.length} · 臨打 ${w.dropins.length}${w.leave.length ? ' · 請假 '+w.leave.length : ''}</p>
         ${w.note ? `<p class="rnote">${w.note}</p>` : ''}
       </div>
-      <span class="row-value" style="color:${f.net>0?'var(--warn)':f.net<0?'var(--good)':'var(--secondary)'};">${f.net>=0?'+':''}${fmt(f.net)}</span>
+      <span class="row-value" style="color:${f.net>0?'var(--good)':f.net<0?'var(--danger)':'var(--secondary)'};">${f.net>=0?'+':''}${fmt(f.net)}</span>
       <span class="chev">›</span>
     </div>`;
   }).join('') : '<div class="row"><div class="row-body"><p class="rmeta">尚無收支紀錄</p></div></div>';
@@ -382,7 +382,7 @@ function openWeek(date){
   document.getElementById('sheetBody').innerHTML = `
     <div class="sheet-hero">
       <p class="label">本週合計</p>
-      <p class="amount" style="color:${f.net>=0?'var(--warn)':'var(--good)'};">${f.net>=0?'+':''}${fmt(f.net)}</p>
+      <p class="amount" style="color:${f.net>=0?'var(--good)':'var(--danger)'};">${f.net>=0?'+':''}${fmt(f.net)}</p>
     </div>
 
     <div class="group-card glass">
@@ -392,8 +392,8 @@ function openWeek(date){
 
     ${sheetWeek.leave.length ? `
     <div class="group-card glass">
-      <p class="group-title" style="color:var(--good);">請假 <span class="cnt">${sheetWeek.leave.length} 人</span></p>
-      ${attGroupHTML(sheetWeek.leave, 'var(--good)', 'var(--good-bg)')}
+      <p class="group-title" style="color:var(--secondary);">請假 <span class="cnt">${sheetWeek.leave.length} 人</span></p>
+      ${attGroupHTML(sheetWeek.leave, 'var(--secondary)', 'rgba(255,255,255,0.08)')}
     </div>` : ''}
 
     <div class="group-card glass">
@@ -403,13 +403,13 @@ function openWeek(date){
 
     <div class="group-card glass">
       <p class="group-title" style="color:var(--secondary);">財務明細</p>
-      <div class="detail-row"><span class="dlabel">月繳收入</span><span class="dvalue">${fmt(f.monthlyInc)}</span></div>
-      ${f.leaveDed > 0 ? `<div class="detail-row"><span class="dlabel">請假扣除</span><span class="dvalue" style="color:var(--good);">-${fmt(f.leaveDed)}</span></div>` : ''}
-      <div class="detail-row"><span class="dlabel">臨打收入</span><span class="dvalue">${fmt(f.dropinInc)}</span></div>
-      ${sheetWeek.actInc > 0 ? `<div class="detail-row"><span class="dlabel">活動收入</span><span class="dvalue">${fmt(sheetWeek.actInc)}</span></div>` : ''}
-      <div class="detail-row"><span class="dlabel">球費（${sheetWeek.balls} 顆）</span><span class="dvalue">${fmt(ballExpense(sheetWeek))}</span></div>
-      <div class="detail-row"><span class="dlabel">場地費</span><span class="dvalue">${fmt(sheetWeek.court)}</span></div>
-      ${sheetWeek.actExp > 0 ? `<div class="detail-row"><span class="dlabel">活動支出</span><span class="dvalue">${fmt(sheetWeek.actExp)}</span></div>` : ''}
+      <div class="detail-row"><span class="dlabel">月繳收入</span><span class="dvalue" style="color:var(--good);">${fmt(f.monthlyInc)}</span></div>
+      ${f.leaveDed > 0 ? `<div class="detail-row"><span class="dlabel">請假扣除</span><span class="dvalue" style="color:var(--danger);">-${fmt(f.leaveDed)}</span></div>` : ''}
+      <div class="detail-row"><span class="dlabel">臨打收入</span><span class="dvalue" style="color:var(--good);">${fmt(f.dropinInc)}</span></div>
+      ${sheetWeek.actInc > 0 ? `<div class="detail-row"><span class="dlabel">活動收入</span><span class="dvalue" style="color:var(--good);">${fmt(sheetWeek.actInc)}</span></div>` : ''}
+      <div class="detail-row"><span class="dlabel">球費（${sheetWeek.balls} 顆）</span><span class="dvalue" style="color:var(--danger);">${fmt(ballExpense(sheetWeek))}</span></div>
+      <div class="detail-row"><span class="dlabel">場地費</span><span class="dvalue" style="color:var(--danger);">${fmt(sheetWeek.court)}</span></div>
+      ${sheetWeek.actExp > 0 ? `<div class="detail-row"><span class="dlabel">活動支出</span><span class="dvalue" style="color:var(--danger);">${fmt(sheetWeek.actExp)}</span></div>` : ''}
       ${sheetWeek.note ? `<div class="detail-row"><span class="dlabel">活動備註</span><span class="dvalue">${sheetWeek.note}</span></div>` : ''}
     </div>
 
@@ -519,7 +519,7 @@ async function loadAttendEditCard(week){
 function attendStatusStyle(present){
   return present
     ? 'color:var(--warn); border-color:rgba(231,161,90,0.4); background:var(--warn-bg);'
-    : 'color:var(--good); border-color:rgba(127,215,154,0.4); background:var(--good-bg);';
+    : 'color:var(--secondary); border-color:var(--line); background:rgba(255,255,255,0.08);';
 }
 
 function renderAttendEditUI(week, members){
