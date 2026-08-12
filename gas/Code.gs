@@ -398,13 +398,20 @@ function googleLogin(data) {
 }
 
 // 合併「members 歷史上出現過的所有姓名」跟「players 目前的綁定狀態」，
-// 給球員清單(member.html)、手動建活動的出席名單(index.html)這種需要
-// 列出「還沒註冊過的舊球員」的畫面用——players 表本身不會有「還沒綁定」
-// 的佔位列，所以這裡改成即時從 members 撈全部出現過的姓名，再對照
+// 給球員清單(member.html)、手動建活動的出席名單(index.html)、註冊時的
+// 「舊暱稱」選單(identity-picker.js)這種需要分辨「哪些舊球員還沒被真人
+// 登入認領」的畫面用。撈全部 members 出現過的姓名，再對照
 // players.bound_name(不是 custom_name——custom_name 只是顯示用的暱稱，
 // 還沒綁定舊資料的人也會有，不代表「這個歷史姓名已經被認領」)補上是否
 // 已綁定/大頭貼/管理員等資訊。bound_name 已綁定但可能還沒出現在 members
 // 裡的人(例如剛註冊、還沒繳過月費)也會被列進去。
+// 這裡回傳的 is_bound 故意不是「players 表有沒有這一列」，而是「這一列
+// 有沒有 google_id/line_user_id(真的有人登入過)」：migrate_names_to_
+// players.gs 會幫每個舊姓名先建一筆佔位列(只填 bound_name，方便掛
+// wallet_balance/is_monthly_member 之類的未來欄位)，這種佔位列不代表
+// 真的有人登入認領了這個名字，如果直接拿「有沒有這一列」當 is_bound，
+// 佔位列建完之後這個舊姓名就會從「舊暱稱」選單消失、member.html 也會
+// 誤標成「已註冊」，兩邊都是錯的。
 function getRoster() {
   const membersSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(MEMBERS_SHEET);
   const memberRows = membersSheet.getDataRange().getValues();
@@ -433,9 +440,10 @@ function getRoster() {
 
   const roster = Array.from(allNames).sort((a, b) => a.localeCompare(b)).map(name => {
     const bound = boundByName[name];
+    const hasLogin = !!(bound && (bound.google_id || bound.line_user_id));
     return {
       name: name,
-      is_bound: !!bound,
+      is_bound: hasLogin,
       line_user_id: bound ? bound.line_user_id : '',
       google_id: bound ? bound.google_id : '',
       display_name: bound ? bound.custom_name : '',
@@ -575,6 +583,7 @@ function registerLineProfile(data) {
   const customNameCol = headers.indexOf('custom_name');
   const boundNameCol = headers.indexOf('bound_name');
   const lineIdCol = headers.indexOf('line_user_id');
+  const googleIdCol = headers.indexOf('google_id');
   if (lineIdCol < 0) return { success: false, reason: 'missing_line_user_id_column' };
   // player_id 是主鍵，這欄位如果不存在，headers.map() 寫新列時會靜默漏
   // 寫這一格(不會噴錯)，後面 bindCustomName/linkProviderProfile 都靠這個
@@ -586,10 +595,28 @@ function registerLineProfile(data) {
   if (alreadyBound) return { success: false, reason: 'already_bound' };
 
   const typedName = String((data && data.name) || '').trim();
+
+  // 有帶暱稱的話，先看這個暱稱是不是剛好對到一筆遷移腳本建的舊球員
+  // 佔位列(bound_name 對得上、完全沒綁過任何 provider)——有的話直接把
+  // 這次登入的 LINE 資訊寫回那一列，不要另外新開一列，不然佔位列上以後
+  // 掛的資料(is_monthly_member/wallet_balance 之類)就永遠接不回本人。
+  if (typedName && boundNameCol >= 0) {
+    const claim = findClaimablePlaceholder_(rows, boundNameCol, googleIdCol, lineIdCol, typedName, 'line');
+    if (!claim.ok) return { success: false, reason: 'name_taken' };
+    if (claim.rowIndex > 0) {
+      const claimUpdates = { line_user_id: account.sub, avatar_url: account.picture || '' };
+      Object.keys(claimUpdates).forEach(h => {
+        const col = headers.indexOf(h);
+        if (col >= 0) sheet.getRange(claim.rowIndex, col + 1).setValue(claimUpdates[h]);
+      });
+      const profile = {};
+      headers.forEach((h, i) => { profile[h] = claimUpdates[h] !== undefined ? claimUpdates[h] : rows[claim.rowIndex - 1][i]; });
+      return { success: true, claimed: true, profile: profile };
+    }
+  }
+
   let customName, boundName = '', isBound = false;
   if (typedName) {
-    const nameTaken = boundNameCol >= 0 && rows.slice(1).some(r => r[boundNameCol] === typedName);
-    if (nameTaken) return { success: false, reason: 'name_taken' };
     customName = typedName;
     boundName = typedName;
     isBound = true;
@@ -628,6 +655,7 @@ function registerGoogleProfile(data) {
   const customNameCol = headers.indexOf('custom_name');
   const boundNameCol = headers.indexOf('bound_name');
   const googleIdCol = headers.indexOf('google_id');
+  const lineIdCol = headers.indexOf('line_user_id');
   if (googleIdCol < 0) return { success: false, reason: 'missing_google_id_column' };
   if (headers.indexOf('player_id') < 0) return { success: false, reason: 'missing_player_id_column' };
 
@@ -635,10 +663,26 @@ function registerGoogleProfile(data) {
   if (alreadyBound) return { success: false, reason: 'already_bound' };
 
   const typedName = String((data && data.name) || '').trim();
+
+  // 跟 registerLineProfile 對稱：暱稱剛好對到一筆還沒綁過任何 provider
+  // 的舊佔位列，就直接認領那一列，不要另開新列。
+  if (typedName && boundNameCol >= 0) {
+    const claim = findClaimablePlaceholder_(rows, boundNameCol, googleIdCol, lineIdCol, typedName, 'google');
+    if (!claim.ok) return { success: false, reason: 'name_taken' };
+    if (claim.rowIndex > 0) {
+      const claimUpdates = { google_id: account.sub, email: account.email || '', photo_url: account.picture || '' };
+      Object.keys(claimUpdates).forEach(h => {
+        const col = headers.indexOf(h);
+        if (col >= 0) sheet.getRange(claim.rowIndex, col + 1).setValue(claimUpdates[h]);
+      });
+      const profile = {};
+      headers.forEach((h, i) => { profile[h] = claimUpdates[h] !== undefined ? claimUpdates[h] : rows[claim.rowIndex - 1][i]; });
+      return { success: true, claimed: true, profile: profile };
+    }
+  }
+
   let customName, boundName = '', isBound = false;
   if (typedName) {
-    const nameTaken = boundNameCol >= 0 && rows.slice(1).some(r => r[boundNameCol] === typedName);
-    if (nameTaken) return { success: false, reason: 'name_taken' };
     customName = typedName;
     boundName = typedName;
     isBound = true;
@@ -684,6 +728,28 @@ function playerProviderSlots_(row, googleIdCol, lineIdCol) {
   return [];
 }
 
+// 註冊時(registerLineProfile/registerGoogleProfile)判斷某個要綁的
+// bound_name 該怎麼處理：
+//   { ok: false } —— 這個 provider 的名額已經被佔走，註冊要擋下來(name_taken)
+//   { ok: true, rowIndex: -1 } —— 沒有衝突，正常新增一列就好
+//   { ok: true, rowIndex: N } —— 對到一筆完全沒綁過任何 provider 的舊
+//     佔位列(遷移腳本建的)，rowIndex 是該列的試算表列號(1-based)，呼叫端
+//     應該直接把這次登入的 provider 資訊寫回那一列，不要新增列。
+// rows 是含標題列的完整陣列(sheet.getDataRange().getValues() 的原始輸出)。
+function findClaimablePlaceholder_(rows, boundNameCol, googleIdCol, lineIdCol, name, provider) {
+  const takenSlots = [];
+  let placeholderRowIndex = -1;
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (r[boundNameCol] !== name) continue;
+    const slots = playerProviderSlots_(r, googleIdCol, lineIdCol);
+    takenSlots.push.apply(takenSlots, slots);
+    if (slots.length === 0 && placeholderRowIndex < 0) placeholderRowIndex = i + 1;
+  }
+  if (takenSlots.indexOf(provider) >= 0) return { ok: false };
+  return { ok: true, rowIndex: placeholderRowIndex };
+}
+
 function bindCustomName(data) {
   const playerId = String((data && data.player_id) || '').trim();
   const name = String((data && data.name) || '').trim();
@@ -705,9 +771,12 @@ function bindCustomName(data) {
     : target.player.google_id ? ['google']
     : target.player.line_user_id ? ['line'] : [];
   const takenSlots = [];
-  rows.forEach(r => {
+  let placeholderRowIndex = -1; // 對到的舊佔位列(完全沒綁過任何 provider)的試算表列號，找不到是 -1
+  rows.forEach((r, i) => {
     if (r[boundNameCol] !== name || String(r[playerIdCol]) === playerId) return;
-    takenSlots.push(...playerProviderSlots_(r, googleIdCol, lineIdCol));
+    const slots = playerProviderSlots_(r, googleIdCol, lineIdCol);
+    takenSlots.push(...slots);
+    if (slots.length === 0 && placeholderRowIndex < 0) placeholderRowIndex = i + 2; // rows 已經 shift 掉標題列，陣列 index 0 對應試算表第 2 列
   });
   const nameTaken = selfSlots.some(slot => takenSlots.includes(slot)) || takenSlots.length + selfSlots.length > 2;
   if (nameTaken) return { success: false, reason: 'name_taken' };
@@ -718,7 +787,35 @@ function bindCustomName(data) {
   target.player.bound_name = name;
   target.player.is_bound = true;
 
+  // 這個名字剛好對到一筆舊佔位列(遷移腳本建的、還沒被任何人登入認領)——
+  // 把佔位列上「本人這一列還是空的」欄位搬過去(以後 is_monthly_member/
+  // wallet_balance 這類欄位就是靠這裡接回本人)，再刪掉佔位列，避免同一個
+  // 人留著兩列、佔位列上的資料變成永遠接不回來的孤兒。
+  if (placeholderRowIndex > 0) {
+    mergePlaceholderIntoTarget_(target, rows[placeholderRowIndex - 2], placeholderRowIndex);
+  }
+
   return { success: true, profile: target.player };
+}
+
+// 把佔位列裡，本人那一列目前還是空值的欄位補過去(已經有值的欄位不覆蓋)，
+// 然後刪掉佔位列。身分相關欄位(player_id/google_id/line_user_id/
+// custom_name/bound_name/is_bound/created_at/avatar_url/photo_url/email)
+// 故意跳過不搬——這些本人那一列已經是正確的值，不該被佔位列的空值蓋掉。
+function mergePlaceholderIntoTarget_(target, placeholderRow, placeholderRowIndex) {
+  const skip = ['player_id', 'google_id', 'line_user_id', 'custom_name', 'bound_name', 'is_bound', 'created_at', 'avatar_url', 'photo_url', 'email'];
+  target.headers.forEach((h, i) => {
+    if (skip.indexOf(h) >= 0) return;
+    const current = target.player[h];
+    const placeholderVal = placeholderRow[i];
+    const currentIsEmpty = current === '' || current === undefined || current === null;
+    const placeholderHasValue = placeholderVal !== '' && placeholderVal !== undefined && placeholderVal !== null;
+    if (currentIsEmpty && placeholderHasValue) {
+      target.sheet.getRange(target.rowIndex, i + 1).setValue(placeholderVal);
+      target.player[h] = placeholderVal;
+    }
+  });
+  target.sheet.deleteRow(placeholderRowIndex);
 }
 
 // 已登入狀態下，在個人頁「帳號綁定」面板多綁一個 provider(例如已經用
