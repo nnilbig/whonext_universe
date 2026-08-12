@@ -139,25 +139,22 @@
   }
 
   // 原本用 <input list=datalist> 讓瀏覽器畫展開箭頭，但那顆箭頭在手機上
-  // 小到很難點準（各瀏覽器畫法還不一樣）。改成自己刻一顆夠大的展開鈕
-  // + 清單，點名字直接帶入輸入框；輸入框本身還是可以直接打字篩選。
+  // 小到很難點準（各瀏覽器畫法還不一樣）。改成輸入框 + 常駐展開的清單：
+  // 清單本來就顯示著，不用先點開才看得到選項，點清單裡的名字直接帶入
+  // 輸入框；輸入框本身還是可以直接打字篩選清單。
   function renderNicknamePromptForm(container, profile, provider, names){
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-title">要順便綁定舊球員身份嗎？</div>' +
         '<div class="whoami-sub">如果你是舊球員，輸入以前用的暱稱就能接回報名/錢包紀錄；不是的話可以先略過，之後在個人頁也能補綁。</div>' +
-        '<div class="whoami-nickname-wrap">' +
-          '<input type="text" id="wiBindNickname" class="nav-login-input" placeholder="輸入或選擇舊暱稱" autocomplete="off">' +
-          '<button type="button" class="whoami-nickname-toggle" id="wiBindNicknameToggle" aria-label="展開舊暱稱清單"></button>' +
-          '<div class="whoami-nickname-list" id="wiBindNicknameList"></div>' +
-        '</div>' +
+        '<input type="text" id="wiBindNickname" class="nav-login-input" placeholder="輸入或選擇舊暱稱" autocomplete="off">' +
+        '<div class="whoami-nickname-list" id="wiBindNicknameList"></div>' +
         '<div class="auth-error" id="wiBindNicknameError" style="display:none">請先輸入暱稱</div>' +
         '<button type="button" class="whoami-primary-btn" id="wiBindNicknameBtn">綁定暱稱</button>' +
         '<button type="button" class="whoami-secondary-btn" id="wiSkipBindBtn">略過，直接使用</button>' +
       '</div>';
 
     const nameInput = container.querySelector('#wiBindNickname');
-    const toggleBtn = container.querySelector('#wiBindNicknameToggle');
     const listEl = container.querySelector('#wiBindNicknameList');
 
     function renderOptions(filter){
@@ -167,34 +164,15 @@
         ? matches.map(function(n){ return '<button type="button" class="whoami-nickname-option">' + escapeHtml_(n) + '</button>'; }).join('')
         : '<div class="whoami-nickname-empty">沒有符合的舊暱稱</div>';
     }
-    function openList(){
-      renderOptions(nameInput.value);
-      listEl.classList.add('open');
-      toggleBtn.classList.add('open');
-    }
-    function closeList(){
-      listEl.classList.remove('open');
-      toggleBtn.classList.remove('open');
-    }
+    renderOptions('');
 
-    toggleBtn.addEventListener('click', function(){
-      if(listEl.classList.contains('open')) closeList(); else openList();
-    });
-    nameInput.addEventListener('input', openList);
-    nameInput.addEventListener('focus', openList);
+    nameInput.addEventListener('input', function(){ renderOptions(nameInput.value); });
     listEl.addEventListener('click', function(e){
       const opt = e.target.closest('.whoami-nickname-option');
       if(!opt) return;
       nameInput.value = opt.textContent;
-      closeList();
-    });
-    // 點清單/輸入框/展開鈕以外的地方（含彈窗外）都收起清單，跟一般
-    // 下拉選單的習慣一致。container 被換掉（例如按了「綁定暱稱」進入
-    // 驗證畫面）之後這顆 listener 就沒事做了，順便自己拔掉。
-    document.addEventListener('click', function outsideClick(e){
-      if(!document.body.contains(container)){ document.removeEventListener('click', outsideClick); return; }
-      if(e.target === nameInput || e.target === toggleBtn || listEl.contains(e.target)) return;
-      closeList();
+      renderOptions('');
+      nameInput.focus();
     });
 
     container.querySelector('#wiBindNicknameBtn').addEventListener('click', function(){
