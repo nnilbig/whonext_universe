@@ -148,15 +148,15 @@
   }
 
   // 球員登入用 identity-picker.js 同一套流程，塞進 nav 自己的 overlay，
-  // 留在目前頁面完成登入，不用跳去 profile.html。直接開登入畫面，不經過
-  // 起始選擇畫面——選到還沒註冊過的帳號時，identity-picker.js 的
-  // renderNotRegistered 會自動接手詢問要不要前往註冊。
+  // 留在目前頁面完成登入，不用跳去 profile.html。選到還沒註冊過的帳號時，
+  // identity-picker.js 的 handleLoginCredential／finishLineAuth 會自動
+  // 接手轉去註冊，不需要另外的起始選擇畫面。
   function openNavLogin(){
     var overlay = document.getElementById('navLoginOverlay');
     var container = document.getElementById('navLoginContainer');
     if(!overlay || !container || !window.WhonextIdentityPicker) return;
     container.innerHTML = '';
-    WhonextIdentityPicker.renderLoginMenu(container, true);
+    WhonextIdentityPicker.renderLoginMenu(container);
     overlay.classList.add('open');
   }
 

@@ -25,40 +25,22 @@
   // credential/idToken 轉去註冊、進綁定畫面（見 handleLoginCredential／
   // finishLineAuth），不會多顯示一層「還沒註冊」提示要求重新點一次
   // Google/LINE，跟 nav 的「球員登入」按鈕已經是同一套邏輯（見
-  // auth.js openNavLogin）。renderStart 保留給深層流程當「回到最前面」
-  // 的返回目標用，不再是預設入口。
+  // auth.js openNavLogin）。
   function render(container){
-    renderLoginMenu(container, true);
-  }
-
-  function renderStart(container){
-    container.innerHTML =
-      '<div class="whoami-card glass">' +
-        '<div class="whoami-title">球員登入</div>' +
-        '<div class="whoami-sub">快速綁定 LINE 帳號「註冊」；已經註冊過的話直接「登入」。</div>' +
-        '<div class="whoami-branch-row">' +
-          '<button type="button" class="whoami-branch-btn" id="wiRegisterBtn">註冊</button>' +
-          '<button type="button" class="whoami-branch-btn" id="wiLoginBtn">登入</button>' +
-        '</div>' +
-      '</div>';
-    container.querySelector('#wiRegisterBtn').addEventListener('click', function(){ renderRegister(container); });
-    container.querySelector('#wiLoginBtn').addEventListener('click', function(){ renderLoginMenu(container); });
+    renderLoginMenu(container);
   }
 
   // ---------------------------------------------------------------
   // 登入
   // ---------------------------------------------------------------
-  // hideBack：從 nav「登入」按鈕直接開這個畫面時不經過 renderStart，
-  // 沒有上一步可回，就不顯示「‹」。
-  function renderLoginMenu(container, hideBack){
+  // 這是 identity picker 的入口畫面，沒有上一步可回，不顯示「‹」。
+  function renderLoginMenu(container){
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
         '<div class="whoami-or-divider">或</div>' +
         '<button type="button" class="whoami-line-btn" id="wiLineLoginBtn">使用 LINE 登入</button>' +
-        (hideBack ? '' : '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>') +
       '</div>';
-    if(!hideBack) container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
     renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), handleLoginCredential);
     container.querySelector('#wiLineLoginBtn').addEventListener('click', function(){ startLineFlow(container, 'login'); });
   }
@@ -104,18 +86,19 @@
   // 結構，點哪個就用哪個驗證，不用先選方式、按下一步。這裡不用先打
   // 暱稱——後端註冊時沒收到暱稱會自動用 Google/LINE 的顯示名稱頂著
   // 建檔（is_bound:false），暱稱綁定挪到下一步(renderNicknamePrompt)
-  // 問，還可以直接略過。hideBack：從 nav「註冊」按鈕直接開這個畫面時
-  // 不經過 renderStart，沒有上一步可回，就不顯示「‹」。
-  function renderRegister(container, hideBack){
+  // 問，還可以直接略過。現在只會在註冊 API 失敗時當重試畫面出現（見
+  // handleRegisterCredential／finishLineAuth 的錯誤處理），「‹ 返回」
+  // 回到 renderLoginMenu 重新開始。
+  function renderRegister(container){
     container.innerHTML =
       '<div class="whoami-card glass">' +
         '<div class="whoami-google-btn-wrap" id="wiGoogleBtnWrap"><div class="whoami-loading">Google 登入按鈕載入中…</div></div>' +
         '<div class="whoami-or-divider">或</div>' +
         '<button type="button" class="whoami-line-btn" id="wiLineRegisterBtn">使用 LINE 註冊</button>' +
-        (hideBack ? '' : '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>') +
+        '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>' +
       '</div>';
 
-    if(!hideBack) container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderStart(container); });
+    container.querySelector('#wiBackBtn').addEventListener('click', function(){ renderLoginMenu(container); });
 
     renderGoogleButton(container, container.querySelector('#wiGoogleBtnWrap'), function(c, credential){
       handleRegisterCredential(container, credential);
@@ -250,7 +233,7 @@
         '<div class="auth-error" style="margin:0 0 14px;">' + msg + '</div>' +
         '<button type="button" class="whoami-secondary-btn" id="wiRetryBtn">‹ 返回</button>' +
       '</div>';
-    container.querySelector('#wiRetryBtn').addEventListener('click', function(){ (backTo || renderStart)(container); });
+    container.querySelector('#wiRetryBtn').addEventListener('click', function(){ (backTo || renderLoginMenu)(container); });
   }
 
   // is_admin 存在 sheet 裡可能是布林值也可能是核取方塊讀出來的 'TRUE'
@@ -300,7 +283,7 @@
         '<div class="whoami-sub">目前是在 App 內建瀏覽器開啟，LINE 登入沒辦法在這裡完成。點右上角「⋯」選單 → 選擇「在瀏覽器中開啟」，跳出去後再重新登入。</div>' +
         '<button type="button" class="whoami-secondary-btn" id="wiBackBtn">‹ 返回</button>' +
       '</div>';
-    container.querySelector('#wiBackBtn').addEventListener('click', function(){ (backTo || renderStart)(container); });
+    container.querySelector('#wiBackBtn').addEventListener('click', function(){ (backTo || renderLoginMenu)(container); });
   }
 
   function lineFlowBackTo(mode){
@@ -394,12 +377,12 @@
       if(!document.body.contains(container)) return;
       if(!WhonextLiff.isReady()){
         console.error('LINE redirect-back: liff.init failed (see earlier "liff.init failed" log)');
-        renderError(container, 'LINE 登入失敗，請重新嘗試', pending.mode === 'link' ? function(c){ renderBindPanel(c); } : renderStart);
+        renderError(container, 'LINE 登入失敗，請重新嘗試', pending.mode === 'link' ? function(c){ renderBindPanel(c); } : renderLoginMenu);
         return;
       }
       if(!WhonextLiff.isLoggedIn()){
         console.error('LINE redirect-back: liff.init succeeded but liff.isLoggedIn() is false');
-        renderError(container, 'LINE 登入失敗，請重新嘗試', pending.mode === 'link' ? function(c){ renderBindPanel(c); } : renderStart);
+        renderError(container, 'LINE 登入失敗，請重新嘗試', pending.mode === 'link' ? function(c){ renderBindPanel(c); } : renderLoginMenu);
         return;
       }
       finishLineAuth(container, pending.mode, pending.name, WhonextLiff.getIDToken(), pending.linkPlayerId);
