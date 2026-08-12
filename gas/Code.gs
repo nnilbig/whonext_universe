@@ -438,7 +438,11 @@ function getRoster() {
     }
   }
 
-  const roster = Array.from(allNames).sort((a, b) => a.localeCompare(b)).map(name => {
+  // 故意不重新排序——維持 allNames 塞入的順序(members 分頁列出現的
+  // 先後，再接 players 分頁裡還沒出現在 members 過的 bound_name)，讓
+  // 前端拿到的順序就是 Sheet 本身的順序，需要別種排序(例如 member.html
+  // 的字母排序)由各自畫面自己排，不要在這裡幫全部呼叫端決定。
+  const roster = Array.from(allNames).map(name => {
     const bound = boundByName[name];
     const hasLogin = !!(bound && (bound.google_id || bound.line_user_id));
     return {
