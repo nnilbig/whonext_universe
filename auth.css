@@ -16,6 +16,33 @@ body.is-admin .admin-only.flex{ display:flex; }
 }
 .nav-login-input:focus{ outline:none; border-color: rgba(255,255,255,0.32); }
 
+/* 舊暱稱下拉（identity-picker.js renderNicknamePromptForm）：自己刻的
+   展開鈕，取代原生 <input list=datalist> 那顆手機上很難點準的小箭頭。 */
+.whoami-nickname-wrap{ position:relative; margin-bottom:14px; }
+.whoami-nickname-wrap .nav-login-input{ padding-right:44px; margin-bottom:0; }
+.whoami-nickname-toggle{
+  position:absolute; top:0; right:0; width:44px; height:100%;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--tertiary); font-size:11px;
+}
+.whoami-nickname-toggle::before{ content:'▾'; }
+.whoami-nickname-toggle.open::before{ content:'▴'; }
+.whoami-nickname-list{
+  display:none; max-height:190px; overflow-y:auto;
+  border:1px solid var(--line); border-radius:12px;
+  background: rgba(255,255,255,0.05);
+  margin-top:6px;
+}
+.whoami-nickname-list.open{ display:block; }
+.whoami-nickname-option{
+  display:block; width:100%; text-align:left;
+  font-size:13.5px; font-weight:600; color:var(--label);
+  padding:12px 14px; border-top:1px solid var(--line);
+}
+.whoami-nickname-option:first-child{ border-top:none; }
+.whoami-nickname-option:active{ background: rgba(255,255,255,0.06); }
+.whoami-nickname-empty{ font-size:12px; color:var(--tertiary); padding:12px 14px; }
+
 /* ---------- IDENTITY PICKER (shared, injected by identity-picker.js) ---------- */
 .whoami-card{ padding:20px; margin-bottom:10px; }
 .whoami-title{ font-size:14px; font-weight:800; margin-bottom:4px; }
