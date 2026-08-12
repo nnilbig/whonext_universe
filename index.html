@@ -715,10 +715,11 @@
     const waitlist = Number(ev.waitlist_count) || 0;
 
     const hostName = String(ev.host_name || '').trim();
-    // host_avatar 欄位資料照存（見 resolveHostAvatar），但頭像顯示先只用
-    // 姓名縮寫圓圈，暫不畫真的頭像圖。
+    const hostAvatar = String(ev.host_avatar || '').trim();
     const hostTitle = '發起人：' + escapeHtml(hostName);
-    const hostAvatarInner = '<div class="avatar-host" title="' + hostTitle + '" data-name="' + hostTitle + '">' + avatarInitial(hostName) + '</div>';
+    const hostAvatarInner = hostAvatar
+      ? '<img class="avatar-host" src="' + escapeHtml(hostAvatar) + '" referrerpolicy="no-referrer" title="' + hostTitle + '" data-name="' + hostTitle + '" alt="">'
+      : '<div class="avatar-host" title="' + hostTitle + '" data-name="' + hostTitle + '">' + avatarInitial(hostName) + '</div>';
     const hostHTML = hostName
       ? hostAvatarInner + '<div class="event-host-sep"></div>'
       : '';
@@ -780,6 +781,18 @@
         const skipEntry = !!e.target.closest('.event-cta-tag');
         openEventDetail(Number(card.dataset.index), skipEntry);
       });
+    });
+
+    // 發起人頭像圖失效（連結失效／被擋）就退回姓名縮寫圓圈，跟 nav 頭像同套邏輯。
+    list.querySelectorAll('img.avatar-host').forEach(function(img){
+      img.addEventListener('error', function(){
+        const fallback = document.createElement('div');
+        fallback.className = 'avatar-host';
+        fallback.title = img.title;
+        fallback.dataset.name = img.dataset.name;
+        fallback.textContent = avatarInitial(img.title.replace('發起人：', ''));
+        img.replaceWith(fallback);
+      }, { once:true });
     });
 
     // 點頭像顯示全名（touch 裝置沒有 hover，title 這時候看不到）。
