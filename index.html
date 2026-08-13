@@ -600,13 +600,28 @@
     return isFriendEvent(title) ? 'club-friend' : 'club-whonext';
   }
 
-  // 運動類型判斷跟友團判斷同一套關鍵字比對邏輯：標題含哪個運動關鍵字就歸類，
-  // 之後如果開了新的運動（排球、桌球…）把名字加進這個陣列即可。抓不到關鍵字
-  // 的活動一律不分類（sportOf 回 null），永遠顯示在所有切換分頁底下。
-  const SPORT_KEYWORDS = ['羽球', '排球', '籃球', '匹克球', '網球', '跑步'];
-  function sportOf(title){
-    const t = String(title || '');
-    return SPORT_KEYWORDS.find(function(k){ return t.indexOf(k) !== -1; }) || null;
+  // 運動類型判斷優先看編輯賽事表單裡的「運動項目」欄位（ev.sport，存的是
+  // eventEditSport 那個 select 的英文代碼），這是管理員明確選的，最準。
+  // 舊資料／從沒被編輯過的賽事沒有這個欄位，才退回標題關鍵字比對當備援，
+  // 邏輯跟友團判斷同一套：標題含哪個運動關鍵字就歸類。抓不到的一律不分類
+  // （sportOf 回 null），永遠顯示在所有切換分頁底下。
+  // 跑步類活動命名很雜（輕鬆跑／路跑／慢跑／晨跑…），關鍵字用單一個「跑」字
+  // 廣泛比對，比對到的分類名稱仍固定回傳「跑步」給分頁篩選用。
+  const SPORT_CODE_LABELS = { badminton: '羽球', pickleball: '匹克球', volleyball: '排球', running: '跑步' };
+  const SPORT_KEYWORDS = [
+    { label: '羽球', keys: ['羽'] },
+    { label: '排球', keys: ['排'] },
+    { label: '籃球', keys: ['籃'] },
+    { label: '匹克球', keys: ['匹'] },
+    { label: '網球', keys: ['網'] },
+    { label: '跑步', keys: ['跑'] }
+  ];
+  function sportOf(ev){
+    const codeLabel = SPORT_CODE_LABELS[ev && ev.sport];
+    if(codeLabel) return codeLabel;
+    const t = String((ev && ev.title) || '');
+    const found = SPORT_KEYWORDS.find(function(s){ return s.keys.some(function(k){ return t.indexOf(k) !== -1; }); });
+    return found ? found.label : null;
   }
   // 本週活動上方的分類標籤：固定顯示全部／羽球／匹克球／排球／跑步，同時篩選
   // 本週跟本月活動（見 renderEvents 的 inMonth）。抓不到關鍵字的活動歸在
@@ -979,7 +994,7 @@
     renderSportTabs();
 
     const inMonth = EVENTS.map(function(ev, i){ return i; }).filter(function(i){
-      return isThisCalendarMonth(EVENTS[i].date) && (!sportFilter || sportOf(EVENTS[i].title) === sportFilter);
+      return isThisCalendarMonth(EVENTS[i].date) && (!sportFilter || sportOf(EVENTS[i]) === sportFilter);
     });
     const endedRank = function(i){ return eventStatusMeta(EVENTS[i]).cls === 'ended' ? 1 : 0; };
     const byDate = function(a, b){ return String(EVENTS[a].date).slice(0,10).localeCompare(String(EVENTS[b].date).slice(0,10)); };
