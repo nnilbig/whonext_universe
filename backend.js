@@ -135,9 +135,10 @@ window.WhonextLiff = (function(){
     // 「正常 LIFF 進站、應該放行」還是「野生網址在 LINE 內建瀏覽器打開、
     // 要請使用者跳出去」，不能只看 UA。
     isInClient: function(){ return ready && liff.isInClient(); },
-    // redirectUri 必須是 LINE console 註冊的 LIFF Endpoint URL 本身（或以它
-    // 開頭），不是同網域就好——呼叫方（identity-picker.js）固定帶 index.html
-    // 的網址，不是 index.html 本身時另外記住要導回哪裡。
+    // redirectUri 必須以 LINE console 註冊的 LIFF Endpoint URL 開頭，不是
+    // 同網域就好——Endpoint URL 註冊的是整個 whonext_universe/ 資料夾
+    // （不是單一檔案），所以呼叫方（identity-picker.js）可以直接帶目前
+    // 頁面網址，不管從哪一頁登入，LINE 授權完都會直接導回同一頁。
     login: function(redirectUri){ if (ready) liff.login({ redirectUri: redirectUri }); },
     getIDToken: function(){ return ready ? liff.getIDToken() : null; }
   };

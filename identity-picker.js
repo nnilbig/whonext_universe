@@ -383,19 +383,7 @@
         sessionStorage.removeItem(LINE_PENDING_KEY);
         renderError(container, 'LINE 登入異常，請稍後再試', lineFlowBackTo(mode));
       } else {
-        // liff.login() 的 redirectUri 一定要是 LINE console 註冊的 LIFF
-        // Endpoint URL（本站是各目錄下的 index.html）本身或以它開頭，不是
-        // 「同網域就好」——帶目前頁面網址在 profile.html/finance.html 這種
-        // 非 index.html 的頁面上會被 LINE 判定 invalid url、整頁跳
-        // access.line.me/oauth2/v2.1/error400。所以固定導去 index.html，
-        // 不是 index.html 本身的話先記住要導回哪裡（跟 nav 個人/錢包分頁
-        // 共用同一個 WhonextAuth.setPostLoginRedirect 機制），登入完成後
-        // whonext:playername-change 會接手導回去。
-        var endpointUri = location.origin + location.pathname.replace(/[^/]*$/, 'index.html');
-        if(window.location.href !== endpointUri && window.WhonextAuth && WhonextAuth.setPostLoginRedirect){
-          WhonextAuth.setPostLoginRedirect(window.location.href);
-        }
-        WhonextLiff.login(endpointUri);
+        WhonextLiff.login(window.location.href);
       }
     });
   }
