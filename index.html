@@ -395,7 +395,7 @@
       <button type="button" class="sport-tab-btn" data-sport="羽球">羽球</button>
       <button type="button" class="sport-tab-btn" data-sport="匹克球">匹克球</button>
       <button type="button" class="sport-tab-btn" data-sport="排球">排球</button>
-      <button type="button" class="sport-tab-btn" data-sport="跑團">跑團</button>
+      <button type="button" class="sport-tab-btn" data-sport="跑步">跑步</button>
     </div>
 
     <div class="section-label-row">
@@ -603,7 +603,7 @@
   // 運動類型判斷跟友團判斷同一套關鍵字比對邏輯：標題含哪個運動關鍵字就歸類，
   // 之後如果開了新的運動（排球、桌球…）把名字加進這個陣列即可。抓不到關鍵字
   // 的活動一律不分類（sportOf 回 null），永遠顯示在所有切換分頁底下。
-  const SPORT_KEYWORDS = ['羽球', '排球', '籃球', '匹克球', '網球', '跑團'];
+  const SPORT_KEYWORDS = ['羽球', '排球', '籃球', '匹克球', '網球', '跑步'];
   function sportOf(title){
     const t = String(title || '');
     return SPORT_KEYWORDS.find(function(k){ return t.indexOf(k) !== -1; }) || null;
