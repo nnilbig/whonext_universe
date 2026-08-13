@@ -169,6 +169,20 @@
     if(overlay) overlay.classList.remove('open');
   }
 
+  // 個人／錢包分頁點下去還沒登入，或是 LINE 登入需要整頁導去 access.line.me
+  // 授權再導回來（見 identity-picker.js startLineFlow）——不管哪一種，登入
+  // 成功後要導去的目的地都存在這裡，不能只放記憶體變數：LINE 那趟一定會
+  // 整頁重新載入，記憶體變數會被沖掉，只有 sessionStorage 撐得過去。
+  var POST_LOGIN_REDIRECT_KEY = 'wu_post_login_redirect';
+  function setPostLoginRedirect(url){ sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, url); }
+
+  document.addEventListener('whonext:playername-change', function(){
+    var target = sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY);
+    if(!target) return;
+    sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
+    if(getPlayerName()) window.location.href = target;
+  });
+
   // 管理員不再另外登入——直接點「管理員」在目前已登入的球員身分上切換
   // 視角，是不是真的有權限看 setRole() 裡的 getPlayerIsAdmin() 守著。
   function wireNavRoleToggle(){
@@ -220,6 +234,7 @@
     ROLE_KEY: ROLE_KEY, getRole: getRole, setRole: setRole,
     getPlayerName: getPlayerName, setPlayerName: setPlayerName,
     getPlayerIsAdmin: getPlayerIsAdmin, getPlayerPhoto: getPlayerPhoto,
-    getPlayerId: getPlayerId, openNavLogin: openNavLogin, closeNavLogin: closeNavLogin
+    getPlayerId: getPlayerId, openNavLogin: openNavLogin, closeNavLogin: closeNavLogin,
+    setPostLoginRedirect: setPostLoginRedirect
   };
 })();

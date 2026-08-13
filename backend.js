@@ -135,9 +135,9 @@ window.WhonextLiff = (function(){
     // 「正常 LIFF 進站、應該放行」還是「野生網址在 LINE 內建瀏覽器打開、
     // 要請使用者跳出去」，不能只看 UA。
     isInClient: function(){ return ready && liff.isInClient(); },
-    // redirectUri 網域一定要跟 LIFF app 註冊的網域相同，這裡直接帶目前
-    // 頁面網址，這樣不管從哪一頁點登入，LINE 授權完都會導回同一頁，
-    // 不用像傳統 OAuth code flow 那樣另外弄一個固定的 callback 頁。
+    // redirectUri 必須是 LINE console 註冊的 LIFF Endpoint URL 本身（或以它
+    // 開頭），不是同網域就好——呼叫方（identity-picker.js）固定帶 index.html
+    // 的網址，不是 index.html 本身時另外記住要導回哪裡。
     login: function(redirectUri){ if (ready) liff.login({ redirectUri: redirectUri }); },
     getIDToken: function(){ return ready ? liff.getIDToken() : null; }
   };
