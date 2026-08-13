@@ -3,7 +3,7 @@
 // 所有頁面共用同一個 BACKEND_URL，先讀快取立刻顯示，同時背景重新
 // 抓取最新資料（stale-while-revalidate），首頁會預先暖機常用資料。
 // ---------------------------------------------------------------
-const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbysVPaItjS4Q6xutvZ7AF0RgghDnGwL4ybL3uEIReGWjNTdWXIglTX_AxCgsd60kiif/exec';
+const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbwRmSzX5P2ZAluL19NsFK2aIWGDtdnNN6bIPEK4iCxwcezhAqynEdpR3SI6rhVlkn4z/exec';
 const API_CACHE_PREFIX = 'whonext_api_';
 
 function apiGet(params){
@@ -145,21 +145,16 @@ window.WhonextLiff = (function(){
 })();
 
 // ---------------------------------------------------------------
-// 「我的錢包」餘額規則。members 表目前還沒有專門的餘額欄位，先直接
-// 把 monthly_total_fee 當作錢包餘額的數字來源；之後有專門的儲值／
-// 支付紀錄表時，這裡再換成真的加總算法。
+// 「我的錢包」餘額規則。wallet_balance／is_monthly_member 是掛在球員
+// 身上的欄位（見 gas/Code.gs getRoster），不分月份、一路沿用到管理員
+// 手動關掉為止，不像以前的 members 分頁要每月重新登記月繳名單。
 // ---------------------------------------------------------------
-function walletCalendarMonth(){
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-}
-
-// 月繳名單優先用快取（不分月份的 getMembers）篩本月出來，快取沒有才即時查詢。
-async function getMonthlyMembersCached(month){
-  const cached = getApiCache({ action:'getMembers' });
-  if(cached && cached.members) return cached.members.filter(function(m){ return String(m.month) === month; });
-  const result = await apiGet({ action:'getMembers', month: month });
-  return result.members || [];
+async function getRosterCached(){
+  const cached = getApiCache({ action:'getRoster' });
+  if(cached && cached.roster) return cached.roster;
+  const result = await apiGet({ action:'getRoster' });
+  setApiCache({ action:'getRoster' }, result);
+  return result.roster || [];
 }
 
 // 回傳 { amount, note, alert }，只有 player 身分且已知姓名才算真實餘額。
@@ -168,12 +163,12 @@ async function getWalletStatus(role, name){
     return { amount: 0, note: '儲值功能開發中', alert: false };
   }
   try{
-    const members = await getMonthlyMembersCached(walletCalendarMonth());
-    const record = members.find(function(m){ return m.name === name; });
-    if(!record){
-      return { amount: 0, note: '本月尚無錢包紀錄', alert: false };
+    const roster = await getRosterCached();
+    const record = roster.find(function(p){ return p.name === name; });
+    if(!record || !record.is_monthly_member){
+      return { amount: 0, note: '尚未加入月繳，無錢包紀錄', alert: false };
     }
-    const balance = Number(record.monthly_total_fee) || 0;
+    const balance = Number(record.wallet_balance) || 0;
     return { amount: balance, note: balance > 0 ? '' : '餘額不足，請洽管理員儲值', alert: balance <= 0 };
   } catch(e){
     return { amount: 0, note: '讀取錢包餘額失敗，請稍後再試', alert: false };

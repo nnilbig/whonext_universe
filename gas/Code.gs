@@ -58,6 +58,7 @@ const MEMBERS_SHEET = 'members';
 const EVENTS_SHEET = 'events';
 const SIGNUPS_SHEET = 'signups';
 const PLAYERS_SHEET = 'players';
+const WALLET_LEDGER_SHEET = 'wallet_ledger';
 // 前端 identity-picker.js 用的同一組 Google OAuth Client ID，驗證 ID token
 // 時要確認 token 的 aud 等於這個值，不然任何 Google 專案簽出來的 token 都會過。
 const GOOGLE_CLIENT_ID = '702772011583-5g00roumo9mgruijtn3jhg525bot1cja.apps.googleusercontent.com';
@@ -120,6 +121,10 @@ function doPost(e) {
     result = linkProviderProfile(body.data);
   } else if (action === 'bindCustomName') {
     result = bindCustomName(body.data);
+  } else if (action === 'updatePlayerProfile') {
+    result = updatePlayerProfile(body.data);
+  } else if (action === 'addWalletLedgerEntry') {
+    result = addWalletLedgerEntry(body.data);
   } else {
     result = { error: '未知的 action: ' + action };
   }
@@ -438,6 +443,8 @@ function getRoster() {
     }
   }
 
+  const ledgerBalances = getWalletLedgerBalances_();
+
   // 故意不重新排序——維持 allNames 塞入的順序(members 分頁列出現的
   // 先後，再接 players 分頁裡還沒出現在 members 過的 bound_name)，讓
   // 前端拿到的順序就是 Sheet 本身的順序，需要別種排序(例如 member.html
@@ -453,7 +460,9 @@ function getRoster() {
       display_name: bound ? bound.custom_name : '',
       avatar_url: bound ? bound.avatar_url : '',
       is_admin: bound ? bound.is_admin : false,
-      can_create_events: bound ? bound.can_create_events : false
+      can_create_events: bound ? bound.can_create_events : false,
+      wallet_balance: bound && bound.player_id && ledgerBalances[bound.player_id] !== undefined ? ledgerBalances[bound.player_id] : 0,
+      is_monthly_member: bound ? (bound.is_monthly_member === true || bound.is_monthly_member === 'TRUE') : false
     };
   });
 
@@ -820,6 +829,118 @@ function mergePlaceholderIntoTarget_(target, placeholderRow, placeholderRowIndex
     }
   });
   target.sheet.deleteRow(placeholderRowIndex);
+}
+
+// 用 bound_name 找 players 分頁那一列；找不到就跟 migrateNamesToPlayers.gs
+// 一樣新建一筆佔位列（之後本人登入綁定時，bindCustomName 的
+// mergePlaceholderIntoTarget_ 會自動把這裡掛的資料接回本人那一列）。
+// 回傳的 player_id 保證有值，updatePlayerProfile／addWalletLedgerEntry
+// 共用這個找位置的邏輯。
+function findOrCreatePlayerByName_(name) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(PLAYERS_SHEET);
+  if (!sheet) return null;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const boundNameCol = headers.indexOf('bound_name');
+  const playerIdCol = headers.indexOf('player_id');
+  if (boundNameCol < 0 || playerIdCol < 0) return null;
+
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][boundNameCol]) === name) {
+      return { sheet: sheet, rowIndex: i + 1, headers: headers, player_id: rows[i][playerIdCol] };
+    }
+  }
+
+  const placeholderDefaults = {
+    player_id: Utilities.getUuid(),
+    custom_name: name,
+    bound_name: name,
+    is_bound: true,
+    can_create_events: false,
+    is_admin: false,
+    created_at: new Date()
+  };
+  const newRow = headers.map(h => placeholderDefaults[h] !== undefined ? placeholderDefaults[h] : '');
+  sheet.getRange(sheet.getLastRow() + 1, 1, 1, headers.length).setValues([newRow]);
+  return { sheet: sheet, rowIndex: sheet.getLastRow(), headers: headers, player_id: placeholderDefaults.player_id };
+}
+
+// 球員清單（member.html）直接編輯「是否月繳」——跟人綁定、不跟月份
+// 綁定（不像 members 分頁那種每月覆寫的月繳名單），直接寫回 players
+// 分頁。錢包餘額不在這裡改，是走 wallet_ledger 的交易紀錄（見
+// addWalletLedgerEntry），不能直接覆寫數字。
+function updatePlayerProfile(data) {
+  const name = String((data && data.name) || '').trim();
+  if (!name) return { success: false, reason: 'missing_name' };
+  if (data.is_monthly_member === undefined) return { success: false, reason: 'missing_is_monthly_member' };
+
+  const target = findOrCreatePlayerByName_(name);
+  if (!target) return { success: false, reason: 'missing_players_sheet_or_columns' };
+
+  const col = target.headers.indexOf('is_monthly_member');
+  if (col < 0) return { success: false, reason: 'missing_is_monthly_member_column' };
+  target.sheet.getRange(target.rowIndex, col + 1).setValue(!!data.is_monthly_member);
+
+  return { success: true, name: name };
+}
+
+// wallet_ledger 是逐筆交易的明細表（id/player_id/type/amount/
+// balance_after/note/created_at/created_by），「目前餘額」故意不存
+// 成單一欄位，是每個 player_id 最後一筆交易的 balance_after——sheet
+// 是附加寫入（永遠從最後一列往下加），所以「最後看到的那筆」就是最新。
+function getWalletLedgerBalances_() {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(WALLET_LEDGER_SHEET);
+  if (!sheet) return {};
+  const rows = sheet.getDataRange().getValues();
+  const headers = rows.shift();
+  const playerIdCol = headers.indexOf('player_id');
+  const balanceAfterCol = headers.indexOf('balance_after');
+  if (playerIdCol < 0 || balanceAfterCol < 0) return {};
+
+  const balances = {};
+  rows.forEach(r => {
+    const pid = r[playerIdCol];
+    if (!pid) return;
+    balances[pid] = Number(r[balanceAfterCol]) || 0;
+  });
+  return balances;
+}
+
+// 球員清單「錢包餘額」的編輯方式：管理員直接輸入這筆交易的金額（正數
+// 儲值／負數扣款）＋備註，寫成 wallet_ledger 的新一列，不是覆寫某個
+// 數字欄位——保留每一筆調整的紀錄，餘額永遠是算出來的（見
+// getWalletLedgerBalances_），不是可以被直接改壞的狀態。
+function addWalletLedgerEntry(data) {
+  const name = String((data && data.name) || '').trim();
+  const amount = Number(data && data.amount);
+  if (!name) return { success: false, reason: 'missing_name' };
+  if (!amount) return { success: false, reason: 'missing_amount' };
+
+  const target = findOrCreatePlayerByName_(name);
+  if (!target) return { success: false, reason: 'missing_players_sheet_or_columns' };
+  const playerId = target.player_id;
+
+  const ledgerSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(WALLET_LEDGER_SHEET);
+  if (!ledgerSheet) return { success: false, reason: 'missing_wallet_ledger_sheet' };
+  const headers = ledgerSheet.getRange(1, 1, 1, ledgerSheet.getLastColumn()).getValues()[0];
+
+  const prevBalance = getWalletLedgerBalances_()[playerId] || 0;
+  const newBalance = prevBalance + amount;
+
+  const entry = {
+    id: generateId('wl'),
+    player_id: playerId,
+    type: 'admin_adjustment',
+    amount: amount,
+    balance_after: newBalance,
+    note: String((data && data.note) || ''),
+    created_at: new Date(),
+    created_by: String((data && data.created_by) || '')
+  };
+  const newRow = headers.map(h => entry[h] !== undefined ? entry[h] : '');
+  ledgerSheet.getRange(ledgerSheet.getLastRow() + 1, 1, 1, headers.length).setValues([newRow]);
+
+  return { success: true, name: name, balance: newBalance };
 }
 
 // 已登入狀態下，在個人頁「帳號綁定」面板多綁一個 provider(例如已經用

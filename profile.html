@@ -215,7 +215,7 @@
 
   let EVENTS = [];
   let ALL_WEEKS = [];
-  let ALL_MEMBERS = [];
+  let ALL_ROSTER = [];
 
   function showToast(msg){
     const t = document.getElementById('toast');
@@ -626,9 +626,10 @@
     const month = currentCalendarMonth();
     return ALL_WEEKS.filter(function(w){ return monthOfWeek(w) === month; });
   }
+  // 「是否月繳」是掛在球員身上的旗標（不分月份，見 gas/Code.gs
+  // getRoster），這裡直接照這個旗標帶，不用每月重新登記月繳成員。
   function adminMonthlyNames(){
-    const month = currentCalendarMonth();
-    return ALL_MEMBERS.filter(function(m){ return String(m.month) === month; }).map(function(m){ return m.name; });
+    return ALL_ROSTER.filter(function(p){ return p.is_monthly_member; }).map(function(p){ return p.name; });
   }
   function adminDropinNames(){
     const names = [];
@@ -713,23 +714,23 @@
     if(events) EVENTS = events.events || [];
     const weeks = getApiCache({ action:'getWeeks' });
     if(weeks) ALL_WEEKS = weeks.weeks || [];
-    const members = getApiCache({ action:'getMembers' });
-    if(members) ALL_MEMBERS = members.members || [];
+    const roster = getApiCache({ action:'getRoster' });
+    if(roster) ALL_ROSTER = roster.roster || [];
   }
 
   async function refreshAll(){
     try{
-      const [eventsRes, weeksRes, membersRes] = await Promise.all([
+      const [eventsRes, weeksRes, rosterRes] = await Promise.all([
         apiGet({ action:'getEvents' }),
         apiGet({ action:'getWeeks' }),
-        apiGet({ action:'getMembers' })
+        apiGet({ action:'getRoster' })
       ]);
       setApiCache({ action:'getEvents' }, eventsRes);
       setApiCache({ action:'getWeeks' }, weeksRes);
-      setApiCache({ action:'getMembers' }, membersRes);
+      setApiCache({ action:'getRoster' }, rosterRes);
       EVENTS = eventsRes.events || [];
       ALL_WEEKS = weeksRes.weeks || [];
-      ALL_MEMBERS = membersRes.members || [];
+      ALL_ROSTER = rosterRes.roster || [];
       if(document.body.classList.contains('is-admin')) renderAdminRoster();
       else renderPersonalView();
     } catch(e){

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>當月球員 — WHONEXT UNIVERSE</title>
+<title>球員列表 — WHONEXT UNIVERSE</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -21,7 +21,6 @@
 <link rel="stylesheet" href="common.css">
 <style>
   :root{ --bg-glow-1: rgba(159,179,200,0.09); --bg-glow-2: rgba(201,183,155,0.07); }
-  .month-nav{ margin: 0 4px 20px; }
 
   .member-list{ padding: 6px 6px; margin-bottom: 22px; }
   .row{
@@ -30,6 +29,7 @@
     border-top: 1px solid var(--line);
   }
   .row:first-child{ border-top:none; }
+  .row-clickable{ cursor:pointer; }
   .row-avatar{
     width:36px; height:36px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
@@ -47,6 +47,7 @@
   .row-tag.warn{ color: var(--warn); border-color: rgba(231,161,90,0.4); background: var(--warn-bg); }
   .row-tag.info{ color: var(--info); border-color: rgba(127,168,217,0.4); background: var(--info-bg); }
   .row-stat{ font-size:11px; color:var(--tertiary); flex-shrink:0; margin-top:3px; }
+  .chev{ color:var(--tertiary); font-size:15px; margin-left:2px; flex-shrink:0; }
 
   @keyframes skeletonPulse{
     0%,100%{ opacity:.35; }
@@ -58,25 +59,28 @@
   .skel-name{ width:110px; margin-bottom:8px; }
   .skel-stat{ width:70px; }
 
-  .row-admin{
-    flex-direction:row; align-items:center; justify-content:flex-end; gap:8px;
-    margin-top:9px; padding-top:9px; border-top:1px dashed var(--line);
+  /* ---------- 球員資料編輯面板：是否月繳／錢包餘額，跟人綁定不跟月份綁定 ---------- */
+  .edit-static-name{ font-size:14.5px; font-weight:700; margin: 0 0 16px; }
+  .toggle-row{
+    display:flex; align-items:center; justify-content:space-between; gap:9px;
+    padding: 10px 4px; margin-bottom:14px;
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    font-size:13px; cursor:pointer;
   }
-  .row-btn{
+  .toggle-row:active{ background: rgba(255,255,255,0.04); border-radius:10px; }
+  .toggle-status{
     font-size:11px; font-weight:700; padding:6px 12px; border-radius:999px;
-    border:1px solid var(--line); color: var(--label); background: rgba(255,255,255,0.05);
-    white-space:nowrap;
+    border:1px solid transparent; flex-shrink:0;
   }
-  .row-btn-ghost{ color: var(--secondary); background:none; }
-  .row-btn-danger{ color: var(--warn, #E7A15A); border-color: rgba(231,161,90,0.4); background: rgba(231,161,90,0.1); }
-
-  .add-row{
-    width:100%; text-align:center;
-    padding:14px 6px; margin-top:2px;
-    border-top:1px dashed var(--line);
-    font-size:13px; font-weight:700; color:var(--secondary);
+  .wallet-balance-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 4px 4px 16px; font-size:13px; color:var(--secondary);
   }
-  .add-row:active{ color:var(--label); }
+  .wallet-balance-amount{ font-size:16px; font-weight:800; color:var(--label); font-family: var(--sf-mono); }
+  .edit-save-btn{
+    width:100%; font-size:13px; font-weight:700; padding:10px 0; border-radius:12px;
+    background: var(--label); color:#000; margin-top:4px;
+  }
 </style>
 </head>
 <body>
@@ -86,66 +90,33 @@
     <div class="list-header"><span class="t">球員清單</span><span class="n" id="rosterCount">共 0 位</span></div>
     <div class="member-list glass" id="rosterList"></div>
 
-    <div class="month-nav">
-      <button class="month-btn" id="prevBtn" onclick="stepMonth(-1)" aria-label="上一個月">‹</button>
-      <div class="month-label">
-        <p class="m" id="monthLabel"><span id="monthLabelYear">—</span> 年 <span id="monthLabelMonth">—</span> 月</p>
-        <p class="s">當月球員名單</p>
-      </div>
-      <button class="month-btn" id="nextBtn" onclick="stepMonth(1)" aria-label="下一個月">›</button>
-    </div>
-
-    <div class="list-header"><span class="t">月繳成員</span><span class="n" id="monthlyCount">共 0 位</span></div>
-    <div class="member-list glass" id="monthlyList"></div>
-
-    <div class="list-header"><span class="t">臨打球員</span><span class="n" id="dropinCount">共 0 位</span></div>
-    <div class="member-list glass" id="dropinList"></div>
-
   </div>
 
   <div class="auth-overlay" id="editOverlay">
     <div class="auth-box">
-      <div class="edit-title" id="editTitle">月繳管理</div>
+      <div class="edit-title" id="editTitle">球員資料</div>
 
       <div class="edit-field-label">姓名</div>
-      <input type="text" id="editName" class="edit-input" placeholder="輸入姓名">
+      <div class="edit-static-name" id="editNameDisplay"></div>
 
-      <div class="edit-field-label">單週費用（$）</div>
-      <input type="number" id="editWeekly" class="edit-input" inputmode="numeric">
-      <div class="edit-field-label">錢包餘額（$）</div>
-      <input type="number" id="editTotal" class="edit-input" inputmode="numeric">
-
-      <div class="edit-field-label">Email（選填，聯絡用，登入已改用 LINE）</div>
-      <input type="email" id="editEmail" class="edit-input" placeholder="example@gmail.com">
-      <div class="edit-field-label">推薦人（選填，只在第一次建檔時填）</div>
-      <select id="editReferrer" class="edit-input"><option value="">— 無 —</option></select>
-      <div class="edit-field-label">加入日期</div>
-      <input type="date" id="editRegisteredAt" class="edit-input">
-
-      <div class="edit-actions">
-        <button type="button" class="edit-cancel" id="editCancel">取消</button>
-        <button type="button" class="edit-save" id="editSave">儲存</button>
+      <div class="toggle-row" id="editMonthlyToggle" data-monthly="0">
+        <span>是否月繳</span>
+        <span class="toggle-status" id="editMonthlyStatus">未月繳</span>
       </div>
-    </div>
-  </div>
 
-  <div class="auth-overlay" id="dropinOverlay">
-    <div class="auth-box">
-      <div class="edit-title">新增臨打人員</div>
+      <div class="wallet-balance-row">
+        <span>目前餘額</span>
+        <span class="wallet-balance-amount" id="editBalanceDisplay">$0</span>
+      </div>
 
-      <div class="edit-field-label">姓名</div>
-      <input type="text" id="dropinName" class="edit-input" placeholder="輸入姓名">
+      <div class="edit-field-label">交易金額（$，扣款請輸入負數）</div>
+      <input type="number" id="editTxAmount" class="edit-input" inputmode="numeric" placeholder="例如 500 或 -210">
+      <div class="edit-field-label">備註（選填）</div>
+      <input type="text" id="editTxNote" class="edit-input" placeholder="例如 現金儲值 / 8/13 練習費">
+      <button type="button" class="edit-save-btn" id="addTxBtn">記一筆</button>
 
-      <div class="edit-field-label">邀請人（選填）</div>
-      <select id="dropinReferrer" class="edit-input">
-        <option value="">— 無 —</option>
-      </select>
-
-      <div class="edit-field-label" id="dropinWeekHint"></div>
-
-      <div class="edit-actions">
-        <button type="button" class="edit-cancel" id="dropinCancel">取消</button>
-        <button type="button" class="edit-save" id="dropinSave">新增</button>
+      <div class="edit-actions" style="margin-top:16px;">
+        <button type="button" class="edit-cancel" id="editCancel" style="width:100%;">關閉</button>
       </div>
     </div>
   </div>
@@ -158,29 +129,11 @@
 <script src="identity-picker.js"></script>
 <script src="bottom-nav.js"></script>
 <script>
-  const DEFAULT_WEEKLY = 210;
-  let currentMembers = [];
-  let ALL_MEMBERS = [];
   let ALL_ROSTER = [];
-  let editingName = null;
-  let sheetMode = 'edit';
-  let currentMonth = null;
-  let ALL_WEEKS = [];
+  let editingRosterName = null;
   const PREVIEW_COUNT = 4;
-  let monthlyExpanded = false;
-  let dropinExpanded = false;
   let rosterExpanded = false;
 
-  function splitNames(val){
-    return String(val || '').split(',').map(s=>s.trim()).filter(Boolean);
-  }
-  function parseDropinEntry(entry){
-    const m = String(entry || '').match(/^(.*?)\(([^()]+)\)$/);
-    return m ? { name: m[1].trim(), referrer: m[2].trim() } : { name: String(entry || '').trim(), referrer: '' };
-  }
-  function formatDropinEntry(name, referrer){
-    return referrer ? name + '(' + referrer + ')' : name;
-  }
   function skeletonRowsHTML(count){
     return Array.from({ length: count }).map(()=> `
       <div class="row">
@@ -191,67 +144,6 @@
         </div>
       </div>
     `).join('');
-  }
-  function monthOfWeek(w){ return String(w.week_date || '').slice(0,7); }
-  function months(){ return [...new Set(ALL_WEEKS.map(monthOfWeek))].sort(); }
-  function weeksOfMonth(m){ return ALL_WEEKS.filter(w=> monthOfWeek(w) === m); }
-
-  function loadCachedWeeks(){
-    const cached = getApiCache({ action:'getWeeks' });
-    if(cached) ALL_WEEKS = cached.weeks || [];
-    return !!cached;
-  }
-
-  async function refreshWeeks(){
-    const params = { action:'getWeeks' };
-    try{
-      const result = await apiGet(params);
-      setApiCache(params, result);
-      ALL_WEEKS = result.weeks || [];
-    } catch(e){
-      // 讀取失敗就沿用快取（可能是空陣列），畫面稍後仍會顯示載入失敗的空狀態
-    }
-  }
-
-  function dropinCountsFor(m){
-    const counts = {};
-    weeksOfMonth(m).forEach(w=>{
-      splitNames(w.dropin_names).forEach(entry=>{
-        const name = parseDropinEntry(entry).name;
-        counts[name] = (counts[name] || 0) + 1;
-      });
-    });
-    return counts;
-  }
-  function dropinReferrersFor(m){
-    const referrers = {};
-    weeksOfMonth(m).forEach(w=>{
-      splitNames(w.dropin_names).forEach(entry=>{
-        const { name, referrer } = parseDropinEntry(entry);
-        if(referrer && !referrers[name]) referrers[name] = referrer;
-      });
-    });
-    return referrers;
-  }
-
-  function membersOfMonth(m){
-    return ALL_MEMBERS.filter(x=> String(x.month) === m);
-  }
-
-  function loadCachedMembers(){
-    const cached = getApiCache({ action:'getMembers' });
-    if(cached) ALL_MEMBERS = cached.members || [];
-    return !!cached;
-  }
-
-  async function refreshMembers(){
-    try{
-      const result = await apiGet({ action:'getMembers' });
-      setApiCache({ action:'getMembers' }, result);
-      ALL_MEMBERS = result.members || [];
-    } catch(e){
-      // 讀取失敗就沿用快取（可能是空陣列），畫面稍後仍會顯示載入失敗的空狀態
-    }
   }
 
   function loadCachedRoster(){
@@ -270,22 +162,15 @@
     }
   }
 
-  // 「球員清單」是 getRoster（members 歷史姓名 + players 綁定狀態合併）
-  // 跟月繳資料（members）合併顯示，不是月繳名冊那種按月切換——一律顯示
-  // 「目前」（有資料的最新一個月）的錢包餘額，不受下面月份導覽影響，
-  // 兩者是分開的兩件事。
-  function latestMonthlyBalance(name){
-    const ms = months();
-    if(!ms.length) return null;
-    const latest = ms[ms.length - 1];
-    const rec = ALL_MEMBERS.find(x=> String(x.month) === latest && x.name === name);
-    return rec ? (Number(rec.monthly_total_fee) || 0) : null;
-  }
-
+  // 已註冊（真人登入過）優先顯示，同一組內再照姓名排序。
   function renderRoster(){
     const list = document.getElementById('rosterList');
     if(!list) return;
-    const rows = ALL_ROSTER.slice().sort((a, b)=> String(a.name).localeCompare(String(b.name)));
+    const rows = ALL_ROSTER.slice().sort((a, b)=>{
+      const reg = (b.is_bound ? 1 : 0) - (a.is_bound ? 1 : 0);
+      if(reg) return reg;
+      return String(a.name).localeCompare(String(b.name));
+    });
     document.getElementById('rosterCount').textContent = '共 ' + rows.length + ' 位';
 
     if(!rows.length){
@@ -301,202 +186,117 @@
     const rowsHtml = visible.map(function(p){
       const registered = p.is_bound;
       const isAdmin = p.is_admin === true || p.is_admin === 'TRUE';
-      const balance = latestMonthlyBalance(p.name);
-      return '<div class="row">' +
+      const balance = Number(p.wallet_balance) || 0;
+      return '<div class="row row-clickable" data-name="' + p.name + '">' +
         '<div class="row-avatar">' + avatarInitial(p.name) + '</div>' +
         '<div class="row-main">' +
           '<div class="row-top">' +
             '<div class="row-name">' + p.name + '</div>' +
             '<div class="row-tag ' + (registered ? 'good' : 'warn') + '">' + (registered ? '已註冊' : '未註冊') + '</div>' +
+            (p.is_monthly_member ? '<div class="row-tag info">月繳</div>' : '') +
             (isAdmin ? '<div class="row-tag info">管理員</div>' : '') +
           '</div>' +
-          '<div class="row-stat">' + (balance === null ? '本月無錢包紀錄' : '錢包餘額 $' + balance.toLocaleString()) + '</div>' +
+          '<div class="row-stat">' + (p.is_monthly_member ? '錢包餘額 $' + balance.toLocaleString() : '非月繳成員') + '</div>' +
         '</div>' +
+        '<span class="chev admin-only">›</span>' +
       '</div>';
     }).join('');
 
     list.innerHTML = rowsHtml + moreBtnHtml;
     const moreBtn = document.getElementById('rosterMoreBtn');
     if(moreBtn) moreBtn.addEventListener('click', function(){ rosterExpanded = !rosterExpanded; renderRoster(); });
+
+    list.querySelectorAll('.row-clickable').forEach(function(row){
+      row.addEventListener('click', function(){ openRosterEdit(row.dataset.name); });
+    });
   }
 
-  function replaceMonthInAllMembers(m, updated){
-    ALL_MEMBERS = ALL_MEMBERS.filter(x=> String(x.month) !== m).concat(updated);
-    setApiCache({ action:'getMembers' }, { members: ALL_MEMBERS });
+  function setMonthlyToggleUI(isMonthly){
+    const statusEl = document.getElementById('editMonthlyStatus');
+    statusEl.textContent = isMonthly ? '月繳中' : '未月繳';
+    statusEl.setAttribute('style', isMonthly
+      ? 'color:var(--good); border-color:rgba(127,215,154,0.4); background:var(--good-bg);'
+      : 'color:var(--secondary); border-color:var(--line); background:rgba(255,255,255,0.08);');
+    document.getElementById('editMonthlyToggle').dataset.monthly = isMonthly ? '1' : '0';
   }
 
-  async function removeMember(name){
-    const updated = currentMembers.filter(x=>x.name !== name);
+  // 是否月繳是單純開關，點了就直接存，不用另外按儲存；失敗就把畫面
+  // 切回去，不留使用者以為存到了、其實沒有的狀態。
+  async function toggleMonthly(){
+    if(!editingRosterName) return;
+    const next = document.getElementById('editMonthlyToggle').dataset.monthly !== '1';
+    setMonthlyToggleUI(next);
     try{
-      await apiPost('saveMembers', updated);
-      currentMembers = updated;
-      replaceMonthInAllMembers(currentMonth, updated);
-      renderMonthlyMembers();
-      showToast('已將 ' + name + ' 移出月繳名單');
+      await apiPost('updatePlayerProfile', { name: editingRosterName, is_monthly_member: next });
+      const idx = ALL_ROSTER.findIndex(x=> x.name === editingRosterName);
+      if(idx >= 0){
+        ALL_ROSTER[idx] = Object.assign({}, ALL_ROSTER[idx], { is_monthly_member: next });
+        setApiCache({ action:'getRoster' }, { roster: ALL_ROSTER });
+      }
+      renderRoster();
+      showToast(next ? '已設定為月繳' : '已取消月繳');
     } catch(e){
-      showToast('移除失敗，請稍後再試');
+      setMonthlyToggleUI(!next);
+      showToast('更新失敗，請稍後再試');
     }
   }
+  document.getElementById('editMonthlyToggle').addEventListener('click', toggleMonthly);
 
-  // 「目前狀態」是最近一週的出席／請假紀錄，跟餘額一樣只反映當下，
-  // 不是整月彙總（整月次數還是靠下面的「本月出席」邏輯，只是不再顯示於此列）。
-  function attendanceStatus(name, week){
-    if(!week) return null;
-    if(splitNames(week.present_names).indexOf(name) !== -1) return 'present';
-    if(splitNames(week.leave_names).indexOf(name) !== -1) return 'leave';
-    return null;
-  }
-
-  function renderMonthlyMembers(){
-    document.getElementById('monthlyCount').textContent = '共 ' + currentMembers.length + ' 位';
-    const latestWeek = latestWeekOfMonth(currentMonth);
-    const list = document.getElementById('monthlyList');
-    const visible = monthlyExpanded ? currentMembers : currentMembers.slice(0, PREVIEW_COUNT);
-    const moreBtnHtml = currentMembers.length > PREVIEW_COUNT
-      ? `<button type="button" class="more-row" id="monthlyMoreBtn">${monthlyExpanded ? '收合' : '顯示更多（還有 ' + (currentMembers.length - PREVIEW_COUNT) + ' 位）'}</button>`
-      : '';
-
-    const rowsHtml = visible.map(m=>{
-      const balance = Number(m.monthly_total_fee) || 0;
-      const status = attendanceStatus(m.name, latestWeek);
-      const statusLabel = status === 'present' ? '月繳出席' : status === 'leave' ? '月繳請假' : '月繳';
-      const statusCls = status === 'present' ? 'good' : '';
-      return `
-      <div class="row">
-        <div class="row-avatar">${avatarInitial(m.name)}</div>
-        <div class="row-main">
-          <div class="row-top">
-            <div class="row-name">${m.name}</div>
-            <div class="row-tag ${statusCls}">${statusLabel}</div>
-          </div>
-          <div class="row-stat">錢包餘額 $${balance.toLocaleString()}</div>
-          <div class="row-admin admin-only flex">
-            <button type="button" class="row-btn row-btn-ghost" data-action="edit" data-name="${m.name}">修改</button>
-            <button type="button" class="row-btn row-btn-danger" data-action="remove" data-name="${m.name}">移除</button>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
-
-    list.innerHTML = rowsHtml + moreBtnHtml + `<button type="button" class="add-row admin-only" id="addMemberBtn">＋ 新增月繳成員</button>`;
-
-    list.querySelectorAll('[data-action="edit"]').forEach(btn=>{
-      btn.addEventListener('click', ()=> openEdit(btn.dataset.name));
-    });
-    list.querySelectorAll('[data-action="remove"]').forEach(btn=>{
-      btn.addEventListener('click', ()=> removeMember(btn.dataset.name));
-    });
-    document.getElementById('addMemberBtn').addEventListener('click', openNew);
-    const moreBtn = document.getElementById('monthlyMoreBtn');
-    if(moreBtn) moreBtn.addEventListener('click', ()=>{ monthlyExpanded = !monthlyExpanded; renderMonthlyMembers(); });
-  }
-
-  function todayISO(){
-    const d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  }
-
-  // 找這個人「其他月份」最近一筆有 email/推薦人/加入日期的紀錄，讓新月份
-  // 帶出來不用重填——這幾欄是跟人綁定的，不是跟月份綁定的。
-  function memberProfileFallback(name){
-    const records = ALL_MEMBERS.filter(x=> x.name === name && String(x.month) !== currentMonth)
-      .sort((a,b)=> String(a.month).localeCompare(String(b.month)));
-    return records.length ? records[records.length - 1] : null;
-  }
-
-  function fillProfileFields(profile){
-    document.getElementById('editEmail').value = (profile && profile.email) || '';
-    document.getElementById('editReferrer').value = (profile && profile.referrer) || '';
-    document.getElementById('editRegisteredAt').value = (profile && profile.registered_at) || todayISO();
-  }
-
-  function referrerOptionsHTML(){
-    const names = [...new Set(ALL_MEMBERS.map(m=> m.name))].sort((a,b)=> a.localeCompare(b));
-    return '<option value="">— 無 —</option>' + names.map(n=> '<option value="' + n + '">' + n + '</option>').join('');
-  }
-
-  function openEdit(name){
-    const m = currentMembers.find(x=>x.name === name);
-    if(!m) return;
-    sheetMode = 'edit';
-    editingName = name;
-    document.getElementById('editTitle').textContent = '月繳管理';
-    document.getElementById('editName').value = m.name;
-    document.getElementById('editWeekly').value = m.weekly_fee != null ? m.weekly_fee : DEFAULT_WEEKLY;
-    document.getElementById('editTotal').value = m.monthly_total_fee != null ? m.monthly_total_fee : 0;
-    document.getElementById('editReferrer').innerHTML = referrerOptionsHTML();
-    fillProfileFields(m.email || m.referrer || m.registered_at ? m : memberProfileFallback(name));
-    document.getElementById('editSave').textContent = '儲存';
+  function openRosterEdit(name){
+    if(!document.body.classList.contains('is-admin')) return;
+    const p = ALL_ROSTER.find(x=> x.name === name);
+    if(!p) return;
+    editingRosterName = name;
+    document.getElementById('editNameDisplay').textContent = p.name;
+    setMonthlyToggleUI(!!p.is_monthly_member);
+    document.getElementById('editBalanceDisplay').textContent = '$' + (Number(p.wallet_balance) || 0).toLocaleString();
+    document.getElementById('editTxAmount').value = '';
+    document.getElementById('editTxNote').value = '';
     document.getElementById('editOverlay').classList.add('open');
   }
-  function openNew(){
-    sheetMode = 'new';
-    editingName = null;
-    document.getElementById('editTitle').textContent = '新增月繳成員';
-    document.getElementById('editName').value = '';
-    document.getElementById('editWeekly').value = DEFAULT_WEEKLY;
-    document.getElementById('editTotal').value = 0;
-    document.getElementById('editReferrer').innerHTML = referrerOptionsHTML();
-    fillProfileFields(null);
-    document.getElementById('editSave').textContent = '新增';
-    document.getElementById('editOverlay').classList.add('open');
-    setTimeout(()=> document.getElementById('editName').focus(), 50);
-  }
-  // 新增模式下，姓名如果跟舊月份的人同名（例如回鍋的臨打/月繳成員），
-  // 離開姓名欄時自動把 email/推薦人/加入日期帶出來，不用重填。
-  document.getElementById('editName').addEventListener('blur', function(){
-    if(sheetMode !== 'new') return;
-    const name = this.value.trim();
-    if(!name) return;
-    const known = memberProfileFallback(name);
-    if(known) fillProfileFields(known);
-  });
-  function closeEdit(){
+  function closeRosterEdit(){
     document.getElementById('editOverlay').classList.remove('open');
-    editingName = null;
+    editingRosterName = null;
   }
-  async function saveEdit(){
-    const name = document.getElementById('editName').value.trim();
-    if(!name){ showToast('請輸入姓名'); return; }
-    if(sheetMode === 'new' && currentMembers.some(x=>x.name === name)){
-      showToast('已有同名成員'); return;
-    }
-    const weekly = Math.max(0, Number(document.getElementById('editWeekly').value) || 0);
-    const total = Math.max(0, Number(document.getElementById('editTotal').value) || 0);
-    const email = document.getElementById('editEmail').value.trim();
-    const referrer = document.getElementById('editReferrer').value;
-    const registeredAt = document.getElementById('editRegisteredAt').value;
-    const record = {
-      month: currentMonth, name, weekly_fee: weekly, monthly_total_fee: total,
-      email: email, referrer: referrer, registered_at: registeredAt
-    };
 
-    const updated = sheetMode === 'new'
-      ? currentMembers.concat([record])
-      : currentMembers.map(m=> m.name === editingName ? record : m);
+  // 錢包餘額不能直接改數字——是寫進 wallet_ledger 的一筆交易（正數儲值／
+  // 負數扣款＋備註），餘額是伺服器那邊從交易明細算出來的，存好回傳新
+  // 餘額後才更新畫面。
+  async function addWalletTransaction(){
+    if(!editingRosterName) return;
+    const amount = Number(document.getElementById('editTxAmount').value);
+    if(!amount){ showToast('請輸入交易金額'); return; }
+    const note = document.getElementById('editTxNote').value.trim();
+    const createdBy = (window.WhonextAuth && WhonextAuth.getPlayerName && WhonextAuth.getPlayerName()) || '管理員';
 
-    const saveBtn = document.getElementById('editSave');
-    saveBtn.disabled = true;
-    saveBtn.textContent = '儲存中…';
+    const btn = document.getElementById('addTxBtn');
+    btn.disabled = true;
+    btn.textContent = '記錄中…';
     try{
-      await apiPost('saveMembers', updated);
-      currentMembers = updated;
-      replaceMonthInAllMembers(currentMonth, updated);
-      renderMonthlyMembers();
-      closeEdit();
-      showToast(sheetMode === 'new' ? ('已新增 ' + name + ' 為月繳成員') : ('已更新 ' + name + ' 的月繳資料'));
+      const result = await apiPost('addWalletLedgerEntry', { name: editingRosterName, amount: amount, note: note, created_by: createdBy });
+      const newBalance = Number(result.balance) || 0;
+      const idx = ALL_ROSTER.findIndex(x=> x.name === editingRosterName);
+      if(idx >= 0){
+        ALL_ROSTER[idx] = Object.assign({}, ALL_ROSTER[idx], { wallet_balance: newBalance });
+        setApiCache({ action:'getRoster' }, { roster: ALL_ROSTER });
+      }
+      document.getElementById('editBalanceDisplay').textContent = '$' + newBalance.toLocaleString();
+      document.getElementById('editTxAmount').value = '';
+      document.getElementById('editTxNote').value = '';
+      renderRoster();
+      showToast('已記錄一筆交易');
     } catch(e){
-      showToast('儲存失敗，請稍後再試');
+      showToast('記錄失敗，請稍後再試');
     } finally{
-      saveBtn.disabled = false;
-      saveBtn.textContent = sheetMode === 'new' ? '新增' : '儲存';
+      btn.disabled = false;
+      btn.textContent = '記一筆';
     }
   }
+  document.getElementById('addTxBtn').addEventListener('click', addWalletTransaction);
 
-  document.getElementById('editCancel').addEventListener('click', closeEdit);
-  document.getElementById('editSave').addEventListener('click', saveEdit);
+  document.getElementById('editCancel').addEventListener('click', closeRosterEdit);
   document.getElementById('editOverlay').addEventListener('click', e=>{
-    if(e.target.id === 'editOverlay') closeEdit();
+    if(e.target.id === 'editOverlay') closeRosterEdit();
   });
 
   function showToast(msg){
@@ -507,149 +307,11 @@
     showToast._t = setTimeout(()=> t.classList.remove('show'), 2200);
   }
 
-  function renderDropinMembers(){
-    const counts = dropinCountsFor(currentMonth);
-    const referrers = dropinReferrersFor(currentMonth);
-    const names = Object.keys(counts).sort((a,b)=> counts[b] - counts[a] || a.localeCompare(b));
-    document.getElementById('dropinCount').textContent = '共 ' + names.length + ' 位';
-    const list = document.getElementById('dropinList');
-    const visible = dropinExpanded ? names : names.slice(0, PREVIEW_COUNT);
-    const moreBtnHtml = names.length > PREVIEW_COUNT
-      ? `<button type="button" class="more-row" id="dropinMoreBtn">${dropinExpanded ? '收合' : '顯示更多（還有 ' + (names.length - PREVIEW_COUNT) + ' 位）'}</button>`
-      : '';
-    const rowsHtml = names.length ? visible.map(n=>`
-      <div class="row">
-        <div class="row-avatar">${avatarInitial(n)}</div>
-        <div class="row-main">
-          <div class="row-top">
-            <div class="row-name">${n}</div>
-            <div class="row-tag info">臨打</div>
-          </div>
-          <div class="row-stat">本月出席 ${counts[n]} 次${referrers[n] ? '・由 ' + referrers[n] + ' 邀請' : ''}</div>
-        </div>
-      </div>
-    `).join('') : '<div class="row"><div class="row-stat">本月尚無臨打紀錄</div></div>';
-    list.innerHTML = rowsHtml + moreBtnHtml + `<button type="button" class="add-row admin-only" id="addDropinBtn">＋ 新增臨打人員</button>`;
-
-    const addBtn = document.getElementById('addDropinBtn');
-    if(addBtn) addBtn.addEventListener('click', openAddDropin);
-    const moreBtn = document.getElementById('dropinMoreBtn');
-    if(moreBtn) moreBtn.addEventListener('click', ()=>{ dropinExpanded = !dropinExpanded; renderDropinMembers(); });
-  }
-
-  function latestWeekOfMonth(m){
-    const weeks = weeksOfMonth(m).slice().sort((a,b)=> String(a.week_date).localeCompare(String(b.week_date)));
-    return weeks.length ? weeks[weeks.length - 1] : null;
-  }
-
-  function openAddDropin(){
-    const target = latestWeekOfMonth(currentMonth);
-    if(!target){
-      showToast('本月尚無出席紀錄，無法新增臨打');
-      return;
-    }
-    document.getElementById('dropinName').value = '';
-    const referrerSelect = document.getElementById('dropinReferrer');
-    const referrerNames = [...new Set(
-      currentMembers.map(m=>m.name).concat(Object.keys(dropinCountsFor(currentMonth)))
-    )].sort((a,b)=>a.localeCompare(b));
-    referrerSelect.innerHTML = '<option value="">— 無 —</option>' + referrerNames.map(n=>`<option value="${n}">${n}</option>`).join('');
-    document.getElementById('dropinWeekHint').textContent = '將加入 ' + target.week_date + ' 這週的紀錄';
-    document.getElementById('dropinOverlay').classList.add('open');
-    setTimeout(()=> document.getElementById('dropinName').focus(), 50);
-  }
-  function closeAddDropin(){
-    document.getElementById('dropinOverlay').classList.remove('open');
-  }
-  async function saveAddDropin(){
-    const name = document.getElementById('dropinName').value.trim();
-    if(!name){ showToast('請輸入姓名'); return; }
-    const referrer = document.getElementById('dropinReferrer').value;
-    const target = latestWeekOfMonth(currentMonth);
-    if(!target){ showToast('本月尚無出席紀錄，無法新增臨打'); return; }
-
-    const existingEntries = splitNames(target.dropin_names);
-    if(existingEntries.some(entry=> parseDropinEntry(entry).name === name)){
-      showToast(name + ' 已經在這週的臨打名單裡');
-      return;
-    }
-    const updatedWeek = Object.assign({}, target, {
-      dropin_names: existingEntries.concat([formatDropinEntry(name, referrer)]).join(','),
-      original_week_date: target.week_date
-    });
-
-    const saveBtn = document.getElementById('dropinSave');
-    saveBtn.disabled = true;
-    saveBtn.textContent = '新增中…';
-    try{
-      await apiPost('saveWeek', updatedWeek);
-      const idx = ALL_WEEKS.findIndex(w=> w.week_date === target.week_date);
-      if(idx >= 0) ALL_WEEKS[idx] = updatedWeek;
-      setApiCache({ action:'getWeeks' }, { weeks: ALL_WEEKS });
-      renderDropinMembers();
-      closeAddDropin();
-      showToast('已新增 ' + name + ' 為臨打');
-    } catch(e){
-      showToast('新增失敗，請稍後再試');
-    } finally{
-      saveBtn.disabled = false;
-      saveBtn.textContent = '新增';
-    }
-  }
-
-  document.getElementById('dropinCancel').addEventListener('click', closeAddDropin);
-  document.getElementById('dropinSave').addEventListener('click', saveAddDropin);
-  document.getElementById('dropinOverlay').addEventListener('click', e=>{
-    if(e.target.id === 'dropinOverlay') closeAddDropin();
-  });
-
-  function renderMonth(m){
-    if(currentMonth !== m){
-      monthlyExpanded = false;
-      dropinExpanded = false;
-    }
-    currentMonth = m;
-    const ms = months();
-    const idx = ms.indexOf(m);
-    document.getElementById('prevBtn').disabled = idx <= 0;
-    document.getElementById('nextBtn').disabled = idx >= ms.length - 1;
-    document.getElementById('monthLabelYear').textContent = m.slice(0,4);
-    document.getElementById('monthLabelMonth').textContent = m.slice(5,7);
-    renderDropinMembers();
-    currentMembers = membersOfMonth(m);
-    renderMonthlyMembers();
-  }
-
-  function stepMonth(dir){
-    const ms = months();
-    const idx = ms.indexOf(currentMonth) + dir;
-    if (idx < 0 || idx >= ms.length) return;
-    renderMonth(ms[idx]);
-  }
-
   (async function init(){
     document.getElementById('rosterList').innerHTML = skeletonRowsHTML(5);
-    document.getElementById('monthlyList').innerHTML = skeletonRowsHTML(5);
-    document.getElementById('dropinList').innerHTML = skeletonRowsHTML(5);
-
-    const hadCachedWeeks = loadCachedWeeks();
-    loadCachedMembers();
     if(loadCachedRoster()) renderRoster();
-    if(hadCachedWeeks){
-      const cachedMs = months();
-      if(cachedMs.length) renderMonth(cachedMs[cachedMs.length - 1]);
-    }
-
-    await Promise.all([refreshWeeks(), refreshMembers(), refreshRoster()]);
+    await refreshRoster();
     renderRoster();
-    const ms = months();
-    if(!ms.length){
-      document.getElementById('monthLabel').textContent = '無資料';
-      document.getElementById('dropinList').innerHTML = '<div class="row"><div class="row-stat">尚無出席紀錄</div></div>';
-      document.getElementById('monthlyList').innerHTML = '<div class="row"><div class="row-stat">尚無出席紀錄，無法載入球員名單</div></div>';
-      return;
-    }
-    renderMonth(ms.includes(currentMonth) ? currentMonth : ms[ms.length - 1]);
   })();
 </script>
 </body>
