@@ -2,7 +2,7 @@
   // adminLabel／adminHref 只在管理員視角覆蓋預設值，其餘分頁（卡牌）
   // 兩種身分看到的都一樣，不用另外列。
   const TABS = [
-    { href: 'index.html', accent: 'home', icon: '⌂', label: '首頁' },
+    { href: 'index.html', accent: 'home', icon: '⌂', label: '活動' },
     { href: 'profile.html', adminHref: 'member.html', accent: 'profile', icon: '☺', label: '個人', adminLabel: '球員列表', key: 'profile' },
     { href: 'finance.html', accent: 'finance', icon: '$', label: '錢包', adminLabel: '球隊錢包', key: 'finance' },
     { href: 'ranking.html', accent: 'rank', icon: '★', label: '排行', adminLabel: '排行榜', key: 'ranking' },
