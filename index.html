@@ -302,6 +302,9 @@
   #signupWhoami .whoami-title{ display:none; }
 
   .signup-list{ display:flex; flex-direction:column; gap:6px; }
+  /* 發起活動的出席名單可能很長（整份月繳名單），獨立成自己的下滑區域，
+     不要跟整個表單一起捲，不然存檔按鈕會被推到很下面。 */
+  #eventEditAttendList{ max-height:240px; overflow-y:auto; }
   .signup-empty{ font-size:12.5px; color:var(--tertiary); padding: 4px 2px; }
 
   .guest-add-row{ display:flex; gap:8px; margin-bottom:10px; }
@@ -381,6 +384,13 @@
         <option value="practice">練習</option>
         <option value="project">企劃</option>
         <option value="match">賽事</option>
+      </select>
+
+      <div class="edit-field-label">運動項目</div>
+      <select id="eventEditSport" class="edit-input">
+        <option value="badminton">羽球</option>
+        <option value="pickleball">匹克球</option>
+        <option value="volleyball">排球</option>
       </select>
 
       <div class="edit-field-label">日期</div>
@@ -986,6 +996,7 @@
       title: document.getElementById('eventEditTitle').value,
       host: document.getElementById('eventEditHost').value,
       type: document.getElementById('eventEditType').value,
+      sport: document.getElementById('eventEditSport').value,
       date: document.getElementById('eventEditDate').value,
       timeStart: document.getElementById('eventEditTimeStart').value,
       timeEnd: document.getElementById('eventEditTimeEnd').value,
@@ -1012,6 +1023,7 @@
     document.getElementById('eventEditTitle').value = ev.title;
     document.getElementById('eventEditHost').value = ev.host_name || '';
     document.getElementById('eventEditType').value = (eventTypeMeta(ev.type) || EVENT_TYPES[0]).code;
+    document.getElementById('eventEditSport').value = ev.sport || 'badminton';
     document.getElementById('eventEditDate').value = String(ev.date).slice(0, 10);
     const parsedTime = parseTimeRange(ev.time);
     setTimeSelects(parsedTime.start, parsedTime.end);
@@ -1031,6 +1043,7 @@
     document.getElementById('eventEditTitle').value = '';
     document.getElementById('eventEditHost').value = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
     document.getElementById('eventEditType').value = 'practice';
+    document.getElementById('eventEditSport').value = 'badminton';
     document.getElementById('eventEditDate').value = '';
     setTimeSelects('20:00', '22:00');
     document.getElementById('eventEditLocation').value = '';
@@ -1199,6 +1212,7 @@
     const title = document.getElementById('eventEditTitle').value.trim();
     const hostName = document.getElementById('eventEditHost').value.trim();
     const type = document.getElementById('eventEditType').value;
+    const sport = document.getElementById('eventEditSport').value;
     const date = document.getElementById('eventEditDate').value;
     const timeStart = document.getElementById('eventEditTimeStart').value;
     const timeEnd = document.getElementById('eventEditTimeEnd').value;
@@ -1216,12 +1230,12 @@
 
     if(isNew){
       const hostAvatar = resolveHostAvatar(hostName, '', '');
-      ev = { title, host_name: hostName, host_avatar: hostAvatar, type, date, time, location, status:'open', capacity, overflow_mode: overflowMode };
+      ev = { title, host_name: hostName, host_avatar: hostAvatar, type, sport, date, time, location, status:'open', capacity, overflow_mode: overflowMode };
       EVENTS.push(ev);
       if(document.getElementById('eventEditRecurringWrap').style.display !== 'none'
         && document.getElementById('eventEditRecurring').checked){
         sameWeekdayDatesInMonth(date, 3).forEach(function(d){
-          EVENTS.push({ title, host_name: hostName, host_avatar: hostAvatar, type, date: d, time, location, status:'open', capacity, overflow_mode: overflowMode });
+          EVENTS.push({ title, host_name: hostName, host_avatar: hostAvatar, type, sport, date: d, time, location, status:'open', capacity, overflow_mode: overflowMode });
           createdCount++;
         });
       }
@@ -1232,6 +1246,7 @@
       ev.title = title;
       ev.host_name = hostName;
       ev.type = type;
+      ev.sport = sport;
       ev.date = date;
       ev.time = time;
       ev.location = location;
