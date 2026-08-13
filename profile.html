@@ -327,12 +327,12 @@
     return unit === '人' ? '推薦' + threshold + '位好友參加活動' : '完成' + threshold + '場活動';
   }
 
-  // data-desc：點這個徽章時 toast 顯示的條件說明，未解鎖顯示還差多少，
+  // data-desc：點這個徽章時 toast 顯示的條件說明，未解鎖顯示目前已完成多少，
   // 已解鎖顯示解鎖條件本身，不用另外開說明彈窗。
   function badgeItemHTML(label, threshold, current, unit, levelIdx, levelCount, seriesColor){
     const got = current >= threshold;
     const style = got ? ' style="--tc-alpha:' + badgeTierAlpha(levelIdx, levelCount) + '"' : '';
-    const desc = got ? (label + '：' + badgeConditionText(threshold, unit)) : (label + '：還差 ' + (threshold - current) + ' ' + unit);
+    const desc = got ? (label + '：' + badgeConditionText(threshold, unit)) : (label + '：完成' + current + unit);
     return '<div class="tc-item' + (got ? '' : ' locked') + '" data-desc="' + desc + '">' +
       '<div class="tc-badge' + (got ? ' ' + seriesColor : ' locked') + '"' + style + '>' + threshold + '</div>' +
       '<div class="tc-label">' + label + '</div>' +
