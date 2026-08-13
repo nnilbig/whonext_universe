@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="top-nav.css">
 <link rel="stylesheet" href="bottom-nav.css">
 <link rel="stylesheet" href="common.css">
+<link rel="stylesheet" href="intro-modal.css">
 <style>
   :root{
     --bg-glow-1: rgba(159,179,200,0.09);
@@ -472,6 +473,7 @@
 <script src="auth.js"></script>
 <script src="identity-picker.js"></script>
 <script src="bottom-nav.js"></script>
+<script src="intro-modal.js"></script>
 <script>
   // 賽事資料存在後端 events 分頁。status 是管理員手動控制的三段式：
   // upcoming（即將開放）／open（報名中，實際名額狀態由系統判斷）／closed（已截止），
@@ -1880,6 +1882,7 @@
     const wait = Math.max(0, BRAND_MASK_MIN_MS - (Date.now() - brandMaskShownAt));
     setTimeout(function(){
       mask.classList.add('hide');
+      if(window.WhonextIntroModal) WhonextIntroModal.maybeShow();
       setTimeout(function(){ mask.remove(); }, 400);
     }, wait);
   }

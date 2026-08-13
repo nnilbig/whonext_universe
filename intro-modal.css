@@ -1,0 +1,31 @@
+/* ---------- INTRO MODAL (index.html only, injected by intro-modal.js) ---------- */
+.intro-modal-box{ max-width:380px; max-height:85vh; overflow-y:auto; }
+.intro-modal-eyebrow{ font-size:11px; font-weight:700; letter-spacing:.22em; color:var(--gold); text-transform:uppercase; margin-bottom:4px; }
+.intro-modal-title{ font-family:'Archivo Black', var(--sf); font-weight:400; letter-spacing:.06em; font-size:20px; margin-bottom:16px; }
+
+.intro-section-label{ font-size:10.5px; font-weight:700; letter-spacing:.16em; color:var(--tertiary); text-transform:uppercase; margin: 0 2px 10px; }
+
+.intro-guide-card{ background: var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin: 0 0 18px; }
+.intro-guide-card .g-title{ font-size:13.5px; font-weight:800; margin-bottom:8px; }
+.intro-guide-card .g-list{ margin:0; padding-left:16px; display:flex; flex-direction:column; gap:6px; }
+.intro-guide-card .g-list li{ font-size:12.5px; line-height:1.55; color:var(--secondary); }
+
+.intro-tab-row{ display:flex; flex-direction:column; gap:8px; }
+.intro-tab-card{
+  display:flex; gap:12px; align-items:flex-start;
+  background: var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px;
+}
+.intro-tab-icon{
+  flex-shrink:0; width:34px; height:34px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-family: var(--sf-mono); font-weight:700;
+  background: var(--card-strong); border:1.5px solid var(--line);
+}
+.intro-tab-card[data-accent="home"] .intro-tab-icon{ border-color: var(--gold); color: var(--gold); }
+.intro-tab-card[data-accent="rank"] .intro-tab-icon{ border-color: var(--e-accent); color: var(--e-accent); }
+.intro-tab-card[data-accent="finance"] .intro-tab-icon{ border-color: var(--n-accent); color: var(--n-accent); }
+.intro-tab-card[data-accent="profile"] .intro-tab-icon{ border-color: var(--x-accent); color: var(--x-accent); }
+.intro-tab-card[data-accent="match"] .intro-tab-icon{ border-color: var(--t-accent); color: var(--t-accent); }
+.intro-tab-body{ min-width:0; }
+.intro-tab-name{ font-size:13px; font-weight:800; margin-bottom:2px; }
+.intro-tab-desc{ font-size:11.5px; line-height:1.55; color:var(--secondary); }
