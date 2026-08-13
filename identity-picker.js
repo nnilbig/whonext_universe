@@ -290,6 +290,27 @@
   // 存起來了），就完全不用跳出去，原地驗證完成即可。
   // ---------------------------------------------------------------
   var LINE_PENDING_KEY = 'wu_line_oauth_pending';
+  // liff.login() 導去 LINE 授權頁後，如果使用者按瀏覽器「上一頁」在還沒
+  // 完成驗證前就回來，瀏覽器多半是從 bfcache 還原這一頁（pageshow
+  // persisted:true），不會整頁重新載入，DOMContentLoaded 那段接續驗證
+  // 的邏輯不會跑到，畫面就會卡在 renderVerifying 的「LINE 登入中…」轉圈
+  // 圈，sessionStorage 裡的 pending 旗標也沒清掉。這裡記住觸發當下的
+  // container/mode，pageshow 還原時如果 pending 旗標還在，代表這趟沒有
+  // 真的走完（走完的話 DOMContentLoaded 早就把旗標清掉了），直接當作
+  // 「沒有經過帳號驗證」處理：清旗標、把畫面退回登入選單，不要傻等或
+  // 誤以為要接著送驗證。
+  var pendingLineContainer = null;
+  var pendingLineMode = null;
+  window.addEventListener('pageshow', function(e){
+    if(!e.persisted) return;
+    if(!sessionStorage.getItem(LINE_PENDING_KEY)) return;
+    sessionStorage.removeItem(LINE_PENDING_KEY);
+    if(pendingLineContainer && document.body.contains(pendingLineContainer)){
+      lineFlowBackTo(pendingLineMode)(pendingLineContainer);
+    }
+    pendingLineContainer = null;
+    pendingLineMode = null;
+  });
 
   // FB/IG/WeChat 這些跟 LINE 無關的 App 內建瀏覽器，LIFF 完全用不上，
   // 一律擋。LINE 自己的內建瀏覽器不能只看 UA 有沒有 Line/ 就擋——正常
@@ -330,6 +351,8 @@
     }
     renderVerifying(container, 'LINE 登入中…');
     sessionStorage.setItem(LINE_PENDING_KEY, JSON.stringify({ mode: mode, name: name || '', linkPlayerId: linkPlayerId || '' }));
+    pendingLineContainer = container;
+    pendingLineMode = mode;
     WhonextLiff.ensureReady(function(){
       if(!document.body.contains(container)) return;
       if(!WhonextLiff.isReady()){
