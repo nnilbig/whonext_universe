@@ -328,6 +328,17 @@
     <div class="brand-mask-eyebrow">WHONEXT</div>
     <div class="brand-mask-title">UNIVERSE</div>
   </div>
+  <script>
+    // 品牌遮罩是給第一次進站／還沒登入的人看的開場動畫，已經登入過的球員
+    // （localStorage 有 whonext_player_name）每次點回首頁不用再重看一次。
+    // 同步執行、緊接在 .brand-mask 這段 markup 後面，趕在瀏覽器畫出這一幀
+    // 之前拿掉，才不會先閃一下遮罩才消失；跟下面 hideBrandMask() 的延遲
+    // 淡出是兩回事，那個是給沒有這裡直接拿掉的訪客用的。
+    if(localStorage.getItem('whonext_player_name')){
+      var __skipBrandMask = document.getElementById('brandMask');
+      if(__skipBrandMask) __skipBrandMask.remove();
+    }
+  </script>
 
   <div class="wrap">
 
