@@ -368,12 +368,14 @@
     <div class="brand-mask-title">UNIVERSE</div>
   </div>
   <script>
-    // 品牌遮罩是給第一次進站／還沒登入的人看的開場動畫，已經登入過的球員
-    // （localStorage 有 whonext_player_name）每次點回首頁不用再重看一次。
-    // 同步執行、緊接在 .brand-mask 這段 markup 後面，趕在瀏覽器畫出這一幀
-    // 之前拿掉，才不會先閃一下遮罩才消失；跟下面 hideBrandMask() 的延遲
-    // 淡出是兩回事，那個是給沒有這裡直接拿掉的訪客用的。
-    if(localStorage.getItem('whonext_player_name')){
+    // 品牌遮罩是開場動畫，不論登入登出，只要是直接連進站（網址列、LIFF、
+    // 重新整理、書籤）都要看一次；只有從 nav 點回首頁才跳過——bottom-nav.js
+    // 點擊當下會先寫 sessionStorage 這個 flag。同步執行、緊接在 .brand-mask
+    // 這段 markup 後面，趕在瀏覽器畫出這一幀之前拿掉，才不會先閃一下遮罩
+    // 才消失；跟下面 hideBrandMask() 的延遲淡出是兩回事，那個是給沒有這裡
+    // 直接拿掉的訪客用的。
+    if(sessionStorage.getItem('whonext_nav_to_index')){
+      sessionStorage.removeItem('whonext_nav_to_index');
       var __skipBrandMask = document.getElementById('brandMask');
       if(__skipBrandMask) __skipBrandMask.remove();
     }

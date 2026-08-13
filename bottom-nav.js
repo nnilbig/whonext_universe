@@ -50,6 +50,14 @@
       if(window.WhonextAuth && WhonextAuth.openNavLogin) WhonextAuth.openNavLogin();
     });
 
+    // 從 nav 點回首頁不用再看一次品牌遮罩開場動畫（那是給直接連進站的人
+    // 看的）；離開前先寫 sessionStorage，index.html 開頭那段同步 script
+    // 會讀走並拿掉遮罩。
+    nav.addEventListener('click', function(e){
+      const a = e.target.closest('a');
+      if(a && a.getAttribute('href') === 'index.html') sessionStorage.setItem('whonext_nav_to_index', '1');
+    });
+
     // 切換球員／管理員視角時（不重新整理頁面），有 key 的分頁文字跟
     // 目的地都要跟著更新，不然管理員登入後這些分頁還是停在球員版本。
     const keyed = TABS.filter(function(t){ return t.key; })
