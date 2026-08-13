@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>操作介紹 — WHONEXT UNIVERSE</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WHONEXT">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="top-nav.css">
+<link rel="stylesheet" href="bottom-nav.css">
+<link rel="stylesheet" href="common.css">
+<style>
+  .guide-card{ padding:18px 18px 20px; margin: 0 0 12px; }
+  .guide-card .g-title{ font-size:14.5px; font-weight:800; margin-bottom:8px; }
+  .guide-card .g-list{ margin:0; padding-left:18px; display:flex; flex-direction:column; gap:8px; }
+  .guide-card .g-list li{ font-size:13px; line-height:1.6; color:var(--secondary); }
+
+  .tab-row{ display:flex; flex-direction:column; gap:10px; margin: 0 0 6px; }
+  .tab-card{ display:flex; gap:14px; padding:16px 16px; align-items:flex-start; }
+  .tab-icon{
+    flex-shrink:0; width:38px; height:38px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; font-family: var(--sf-mono); font-weight:700;
+    background: var(--card-strong); border:1.5px solid var(--line);
+  }
+  .tab-card[data-accent="home"] .tab-icon{ border-color: var(--gold); color: var(--gold); }
+  .tab-card[data-accent="rank"] .tab-icon{ border-color: var(--e-accent); color: var(--e-accent); }
+  .tab-card[data-accent="finance"] .tab-icon{ border-color: var(--n-accent); color: var(--n-accent); }
+  .tab-card[data-accent="profile"] .tab-icon{ border-color: var(--x-accent); color: var(--x-accent); }
+  .tab-card[data-accent="match"] .tab-icon{ border-color: var(--t-accent); color: var(--t-accent); }
+  .tab-body{ min-width:0; }
+  .tab-name{ font-size:14px; font-weight:800; margin-bottom:2px; }
+  .tab-desc{ font-size:12.5px; line-height:1.6; color:var(--secondary); }
+</style>
+</head>
+<body>
+
+  <div class="wrap">
+
+    <div class="hero">
+      <div class="hero-eyebrow">GUIDE</div>
+      <div class="wordmark">使用介紹</div>
+      <p>第一次使用可以先看一遍：怎麼登入、每個分頁在做什麼。</p>
+    </div>
+
+    <div class="section-label-row">
+      <div class="section-label">登入身分</div>
+    </div>
+    <div class="guide-card glass">
+      <div class="g-title">快速用 LINE 或 Google 登入</div>
+      <ul class="g-list">
+        <li>還沒登入時，畫面右上角會看到「球員登入」，點下去選 LINE 或 Google 登入即可。</li>
+        <li>如果之前有報名過，登入當下可以選擇以前用過的暱稱，系統就會把你的報名紀錄接回這個帳號；或是之後在「個人」分頁補綁。</li>
+        <li>選到還沒登記過的帳號，登入後會自動帶去註冊，不用自己找入口。</li>
+      </ul>
+    </div>
+
+    <div class="section-label-row">
+      <div class="section-label">五個分頁在做什麼</div>
+    </div>
+    <div class="tab-row">
+
+      <div class="tab-card glass" data-accent="home">
+        <div class="tab-icon">⌂</div>
+        <div class="tab-body">
+          <div class="tab-name">活動</div>
+          <div class="tab-desc">本週／本月活動的報名入口，可以報名、發起活動。</div>
+        </div>
+      </div>
+
+      <div class="tab-card glass" data-accent="profile">
+        <div class="tab-icon">☺</div>
+        <div class="tab-body">
+          <div class="tab-name">個人</div>
+          <div class="tab-desc">個人的活動紀錄跟帳號綁定。</div>
+        </div>
+      </div>
+
+      <div class="tab-card glass" data-accent="finance">
+        <div class="tab-icon">$</div>
+        <div class="tab-body">
+          <div class="tab-name">錢包</div>
+          <div class="tab-desc">自己的錢包餘額、儲值與扣款紀錄。</div>
+        </div>
+      </div>
+
+      <div class="tab-card glass" data-accent="rank">
+        <div class="tab-icon">★</div>
+        <div class="tab-body">
+          <div class="tab-name">排行</div>
+          <div class="tab-desc">歷屆賽事的冠軍榜、賽季挑戰排行榜。</div>
+        </div>
+      </div>
+
+      <div class="tab-card glass" data-accent="match">
+        <div class="tab-icon">⚑</div>
+        <div class="tab-body">
+          <div class="tab-name">卡牌</div>
+          <div class="tab-desc">卡牌賽限定的比賽系統。</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+<script src="top-nav.js"></script>
+<script src="auth.js"></script>
+<script src="identity-picker.js"></script>
+<script src="bottom-nav.js"></script>
+
+</body>
+</html>
