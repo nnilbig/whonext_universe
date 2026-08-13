@@ -320,6 +320,45 @@
   .import-toggle-row:active{ background: rgba(255,255,255,0.07); }
   .import-toggle-status{ font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; flex-shrink:0; }
 
+  /* 出席名單改成頭像＋名字點選（原本是文字列勾選），跟賽事詳情頁的
+     頭像堆疊風格一致；#eventEditAttendList 本身變成可捲動的方格區。 */
+  #eventEditAttendList{
+    display:flex; flex-wrap:wrap; gap:14px 10px; max-height:260px; overflow-y:auto; padding:4px 2px;
+  }
+  .avatar-pick-item{
+    width:58px; display:flex; flex-direction:column; align-items:center; gap:6px;
+    cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .avatar-pick-avatar{
+    position:relative; width:48px; height:48px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; font-weight:800; color:#000;
+    border:2px solid transparent; object-fit:cover;
+    opacity:.4; filter:grayscale(75%);
+    transition: opacity .15s ease, filter .15s ease, border-color .15s ease, transform .1s ease;
+  }
+  .avatar-pick-avatar img{ width:100%; height:100%; border-radius:50%; object-fit:cover; }
+  .avatar-pick-avatar.n{ background: var(--n-accent); }
+  .avatar-pick-avatar.e{ background: var(--e-accent); }
+  .avatar-pick-avatar.x{ background: var(--x-accent); }
+  .avatar-pick-avatar.t{ background: var(--t-accent); }
+  .avatar-pick-item:active .avatar-pick-avatar{ transform:scale(.92); }
+  .avatar-pick-item[data-present="1"] .avatar-pick-avatar{
+    opacity:1; filter:none; border-color: var(--gold);
+  }
+  .avatar-pick-badge{
+    position:absolute; right:-2px; bottom:-2px; width:18px; height:18px; border-radius:50%;
+    background: var(--gold); color:#0a0a0a; font-size:11px; font-weight:900; line-height:1;
+    display:flex; align-items:center; justify-content:center; border:2px solid #0a0a0a;
+    opacity:0; transform:scale(.5); transition: opacity .15s ease, transform .15s ease;
+  }
+  .avatar-pick-item[data-present="1"] .avatar-pick-badge{ opacity:1; transform:scale(1); }
+  .avatar-pick-name{
+    font-size:11px; color:var(--tertiary); text-align:center; line-height:1.2; max-width:58px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .avatar-pick-item[data-present="1"] .avatar-pick-name{ color:var(--label); font-weight:700; }
+
 </style>
 </head>
 <body>
@@ -514,6 +553,17 @@
 <script src="bottom-nav.js"></script>
 <script src="intro-modal.js"></script>
 <script>
+  // demo 頁預設直接是登入好的管理員身分，方便看「發起活動」之類要登入
+  // 才會顯示的功能，不用每次手動走一次登入流程。純前端塞 localStorage
+  // 假身分，不會打真的 Google/LINE 登入 API。但因為跟正式頁面共用同一組
+  // auth.js／localStorage key，這個瀏覽器之後開 index.html／profile.html
+  // 等正式頁面也會顯示還登入著這個假管理員，要看回真實登入狀態的話手動
+  // 登出（或清瀏覽器的 localStorage）即可，不影響任何後端資料。
+  if(window.WhonextAuth && !WhonextAuth.getPlayerName()){
+    WhonextAuth.setPlayerName('示範管理員', true, '', 'demo-admin');
+    WhonextAuth.setRole('admin');
+  }
+
   // 賽事資料存在後端 events 分頁。status 是管理員手動控制的三段式：
   // upcoming（即將開放）／open（報名中，實際名額狀態由系統判斷）／closed（已截止），
   // 管理員點擊狀態標籤依序切換。open 底下的顯示文字再依報名人數/上限/候補設定
@@ -706,6 +756,16 @@
     const week = ALL_WEEKS.find(function(w){ return String(w.week_date).slice(0, 10) === isoDate; });
     if(!week) return null;
     return splitNames(week.present_names).length + splitNames(week.dropin_names).length;
+  }
+  // 出席名單挑人排序用：算每個人歷來（weeks 分頁 present_names）出場過
+  // 幾次，人數多的排前面，方便發起人優先看到常出席的人。ALL_WEEKS 還沒
+  // 載入時全部算 0，就退回原本的字母排序，不會整個排不出來或報錯。
+  function attendanceCounts(){
+    const counts = {};
+    ALL_WEEKS.forEach(function(w){
+      splitNames(w.present_names).forEach(function(n){ counts[n] = (counts[n] || 0) + 1; });
+    });
+    return counts;
   }
   function loadCachedWeeksForEvents(){
     const cached = getApiCache({ action:'getWeeks' });
@@ -1103,12 +1163,17 @@
     listEl.innerHTML = '<div class="signup-empty">載入球員名單中…</div>';
     try{
       const roster = await getRoster();
-      const names = [...new Set(roster.map(function(p){ return p.name; }).filter(Boolean))]
-        .sort(function(a, b){ return a.localeCompare(b); });
-      listEl.innerHTML = names.length
-        ? names.map(function(n){ return importRowHTML(n, false); }).join('')
+      const byName = new Map();
+      roster.forEach(function(p){ if(p.name && !byName.has(p.name)) byName.set(p.name, p); });
+      const counts = attendanceCounts();
+      const people = [...byName.values()].sort(function(a, b){
+        const diff = (counts[b.name] || 0) - (counts[a.name] || 0);
+        return diff !== 0 ? diff : a.name.localeCompare(b.name);
+      });
+      listEl.innerHTML = people.length
+        ? people.map(function(p, idx){ return avatarPickItemHTML(p, false, idx); }).join('')
         : '<div class="signup-empty">尚無球員名單</div>';
-      if(names.length) wireImportToggleRows('eventEditAttendList');
+      if(people.length) wireAvatarPickItems('eventEditAttendList');
     } catch(e){
       listEl.innerHTML = '<div class="signup-empty">讀取球員名單失敗，請稍後再試</div>';
     }
@@ -1119,17 +1184,16 @@
     const name = input.value.trim();
     if(!name) return;
     const listEl = document.getElementById('eventEditAttendList');
-    const existing = [...listEl.querySelectorAll('.import-toggle-row')]
-      .find(function(row){ return row.dataset.name === name; });
+    const existing = [...listEl.querySelectorAll('.avatar-pick-item')]
+      .find(function(item){ return item.dataset.name === name; });
     if(existing){
       existing.dataset.present = '1';
-      existing.querySelector('.import-toggle-status').textContent = '出席';
-      existing.querySelector('.import-toggle-status').setAttribute('style', importStatusStyle(true));
     } else {
       const empty = listEl.querySelector('.signup-empty');
       if(empty) empty.remove();
-      listEl.insertAdjacentHTML('beforeend', importRowHTML(name, true));
-      attachToggleRow(listEl.lastElementChild);
+      const idx = listEl.querySelectorAll('.avatar-pick-item').length;
+      listEl.insertAdjacentHTML('beforeend', avatarPickItemHTML(name, true, idx));
+      attachAvatarPickItem(listEl.lastElementChild);
     }
     input.value = '';
     input.focus();
@@ -1165,13 +1229,20 @@
 
     try{
       const rosterResult = await apiGet({ action:'getRoster' });
-      const names = [...new Set((rosterResult.roster || []).filter(function(p){ return p.is_monthly_member; }).map(function(p){ return p.name; }).filter(Boolean))]
-        .sort(function(a, b){ return a.localeCompare(b); });
+      const byName = new Map();
+      (rosterResult.roster || []).filter(function(p){ return p.is_monthly_member; }).forEach(function(p){
+        if(p.name && !byName.has(p.name)) byName.set(p.name, p);
+      });
+      const counts = attendanceCounts();
+      const people = [...byName.values()].sort(function(a, b){
+        const diff = (counts[b.name] || 0) - (counts[a.name] || 0);
+        return diff !== 0 ? diff : a.name.localeCompare(b.name);
+      });
       document.getElementById('eventEditAttendLabel').textContent = '確認出席名單';
-      document.getElementById('eventEditAttendList').innerHTML = names.length
-        ? names.map(function(n){ return importRowHTML(n, true); }).join('')
+      document.getElementById('eventEditAttendList').innerHTML = people.length
+        ? people.map(function(p, idx){ return avatarPickItemHTML(p, true, idx); }).join('')
         : '<div class="signup-empty">目前尚無月繳名單</div>';
-      if(names.length) wireImportToggleRows('eventEditAttendList');
+      if(people.length) wireAvatarPickItems('eventEditAttendList');
       document.getElementById('eventEditAttendWrap').style.display = '';
       document.getElementById('eventEditRecurringWrap').style.display = '';
       document.getElementById('eventEditRecurring').checked = false;
@@ -1241,7 +1312,7 @@
 
     const attendNames = [];
     if(isNew){
-      document.querySelectorAll('#eventEditAttendList .import-toggle-row').forEach(function(row){
+      document.querySelectorAll('#eventEditAttendList .avatar-pick-item').forEach(function(row){
         if(row.dataset.present === '1') attendNames.push(row.dataset.name);
       });
     }
@@ -1926,6 +1997,37 @@
 
   function wireImportToggleRows(containerId){
     document.querySelectorAll('#' + containerId + ' .import-toggle-row').forEach(attachToggleRow);
+  }
+
+  // 出席名單挑人改成頭像＋名字點選（原本是文字列勾選）。person 可以是
+  // 純姓名字串（手動新增的訪客，沒有頭像），也可以是 getRoster 回來的
+  // 物件（有 avatar_url 就顯示真人頭像，沒有就退回姓名縮寫色塊）。
+  function avatarPickItemHTML(person, present, idx){
+    const isObj = person && typeof person === 'object';
+    const name = isObj ? person.name : person;
+    const avatarUrl = isObj ? person.avatar_url : '';
+    const isPresent = present !== false;
+    const safeName = escapeHtml(name);
+    const colorClass = AVATAR_COLORS[(idx || 0) % AVATAR_COLORS.length];
+    const avatarInner = avatarUrl
+      ? '<img src="' + escapeHtml(avatarUrl) + '" referrerpolicy="no-referrer" alt="">'
+      : avatarInitial(name);
+    return '<div class="avatar-pick-item" data-name="' + safeName + '" data-present="' + (isPresent ? '1' : '0') + '">' +
+      '<div class="avatar-pick-avatar' + (avatarUrl ? '' : ' ' + colorClass) + '">' + avatarInner +
+        '<span class="avatar-pick-badge">✓</span>' +
+      '</div>' +
+      '<div class="avatar-pick-name">' + safeName + '</div>' +
+    '</div>';
+  }
+
+  function attachAvatarPickItem(item){
+    item.addEventListener('click', function(){
+      item.dataset.present = item.dataset.present === '1' ? '0' : '1';
+    });
+  }
+
+  function wireAvatarPickItems(containerId){
+    document.querySelectorAll('#' + containerId + ' .avatar-pick-item').forEach(attachAvatarPickItem);
   }
 
   function showToast(msg){
