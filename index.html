@@ -608,7 +608,7 @@
     const t = String(title || '');
     return SPORT_KEYWORDS.find(function(k){ return t.indexOf(k) !== -1; }) || null;
   }
-  // 本週活動上方的分類標籤：固定顯示全部／羽球／匹克球／排球／跑團，同時篩選
+  // 本週活動上方的分類標籤：固定顯示全部／羽球／匹克球／排球／跑步，同時篩選
   // 本週跟本月活動（見 renderEvents 的 inMonth）。抓不到關鍵字的活動歸在
   // 全部底下，不會消失。
   let sportFilter = null;
