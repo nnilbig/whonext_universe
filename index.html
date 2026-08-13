@@ -50,6 +50,14 @@
   }
 
   /* ---------- EVENTS ---------- */
+  /* 本週活動是唯一「這週該去哪打」的入口，标题用金底黑字的小膠囊把它從
+     本月活動那種純文字 label 裡跳出來，跟下面卡片的金色微光呼應。只挑
+     這一個 section-label 特化，本月活動／其他頁的 section-label 維持原樣。 */
+  .section-label-week{
+    display:inline-block; padding:5px 13px; border-radius:999px;
+    background: var(--gold); color: var(--bg);
+    box-shadow: 0 2px 12px -4px rgba(242,196,85,0.55);
+  }
   .event-add-btn{
     font-size:11px; font-weight:700; padding:5px 11px; border-radius:999px;
     border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
@@ -324,7 +332,7 @@
   <div class="wrap">
 
     <div class="section-label-row">
-      <div class="section-label">本週活動</div>
+      <div class="section-label section-label-week">本週活動</div>
       <button type="button" class="event-add-btn" id="eventAddBtn" style="display:none">＋ 發起活動</button>
     </div>
     <div class="event-list" id="eventListWeek"></div>
