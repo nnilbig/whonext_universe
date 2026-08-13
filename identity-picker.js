@@ -145,9 +145,9 @@
   function renderNicknamePromptForm(container, profile, provider, names){
     container.innerHTML =
       '<div class="whoami-card glass">' +
-        '<div class="whoami-title">要順便綁定舊球員身份嗎？</div>' +
-        '<div class="whoami-sub">如果你是舊球員，輸入以前用的暱稱就能接回報名/錢包紀錄；不是的話可以先略過，之後在個人頁也能補綁。</div>' +
-        '<input type="text" id="wiBindNickname" class="nav-login-input" placeholder="輸入或選擇舊暱稱" autocomplete="off">' +
+        '<div class="whoami-title">選擇綁定球員暱稱嗎？</div>' +
+        '<div class="whoami-sub">輸入之前的報名暱稱就能接回報名紀錄；不需要也可以先略過。</div>' +
+        '<input type="text" id="wiBindNickname" class="nav-login-input" placeholder="輸入或選擇暱稱" autocomplete="off">' +
         '<div class="whoami-nickname-list" id="wiBindNicknameList"></div>' +
         '<div class="auth-error" id="wiBindNicknameError" style="display:none">請先輸入暱稱</div>' +
         '<button type="button" class="whoami-primary-btn" id="wiBindNicknameBtn">綁定暱稱</button>' +
@@ -162,7 +162,7 @@
       const matches = q ? names.filter(function(n){ return n.toLowerCase().indexOf(q) >= 0; }) : names;
       listEl.innerHTML = matches.length
         ? matches.map(function(n){ return '<button type="button" class="whoami-nickname-option">' + escapeHtml_(n) + '</button>'; }).join('')
-        : '<div class="whoami-nickname-empty">沒有符合的舊暱稱</div>';
+        : '<div class="whoami-nickname-empty">沒有符合的暱稱</div>';
     }
     renderOptions('');
 
