@@ -184,6 +184,10 @@
       }
       if(action === 'logout'){
         setPlayerName('');
+        // 個人頁/錢包頁登出後畫面已經沒東西可看（會立刻跳登入彈窗擋住），
+        // 直接跳回首頁比留在原地更乾脆。
+        var page = location.pathname.split('/').pop();
+        if(page === 'profile.html' || page === 'finance.html') window.location.href = 'index.html';
         return;
       }
       if(action === 'identity'){
