@@ -372,6 +372,16 @@
       if(WhonextLiff.isLoggedIn()){
         sessionStorage.removeItem(LINE_PENDING_KEY);
         finishLineAuth(container, mode, name, WhonextLiff.getIDToken(), linkPlayerId);
+      } else if(WhonextLiff.isInClient()){
+        // liff.login() 只能用在外部瀏覽器——真的透過 liff.line.me 啟動、
+        // 在 LINE App 裡開啟的話，使用者理應已經是登入狀態，isLoggedIn()
+        // 卻是 false 代表 LIFF 這邊的授權出了問題（例如 scope 沒生效），
+        // 這時候硬呼叫 liff.login() 在 in-client 環境下不受支援，SDK
+        // 會整頁導去 access.line.me 授權頁再被 LINE 擋掉、回 400 Bad
+        // Request（使用者會看到「此為外部網站」），不是真的能完成登入，
+        // 所以直接顯示錯誤讓使用者重試，不要嘗試導頁。
+        sessionStorage.removeItem(LINE_PENDING_KEY);
+        renderError(container, 'LINE 登入異常，請稍後再試', lineFlowBackTo(mode));
       } else {
         WhonextLiff.login(window.location.href);
       }
