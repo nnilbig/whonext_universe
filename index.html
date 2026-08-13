@@ -63,13 +63,18 @@
     border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
   }
 
-  /* 運動類型切換：只有本月活動裡出現一種以上運動時才會出現（見 renderEvents）。 */
-  .sport-toggle-row{ display:flex; gap:6px; }
-  .sport-toggle-btn{
-    font-size:11px; font-weight:700; padding:5px 11px; border-radius:999px;
-    border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
+  /* 運動分類標籤：固定在本週活動上方，橫向可滑動，同時篩選本週／本月活動。 */
+  .sport-tab-row{
+    display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+    margin: 0 4px 14px; padding-bottom:2px; scrollbar-width:none;
   }
-  .sport-toggle-btn.active{ background: var(--good-bg); color: var(--good); border-color: transparent; }
+  .sport-tab-row::-webkit-scrollbar{ display:none; }
+  .sport-tab-btn{
+    flex-shrink:0; font-size:12px; font-weight:700; padding:6px 14px; border-radius:999px;
+    border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
+    white-space:nowrap;
+  }
+  .sport-tab-btn.active{ background: var(--good-bg); color: var(--good); border-color: transparent; }
 
   .event-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:26px; }
   .event-card{
@@ -385,6 +390,14 @@
 
   <div class="wrap">
 
+    <div class="sport-tab-row" id="sportTabRow">
+      <button type="button" class="sport-tab-btn active" data-sport="">全部</button>
+      <button type="button" class="sport-tab-btn" data-sport="羽球">羽球</button>
+      <button type="button" class="sport-tab-btn" data-sport="匹克球">匹克球</button>
+      <button type="button" class="sport-tab-btn" data-sport="排球">排球</button>
+      <button type="button" class="sport-tab-btn" data-sport="跑團">跑團</button>
+    </div>
+
     <div class="section-label-row">
       <div class="section-label section-label-week">本週活動</div>
       <button type="button" class="event-add-btn" id="eventAddBtn" style="display:none">＋ 發起活動</button>
@@ -393,7 +406,6 @@
 
     <div class="section-label-row">
       <div class="section-label">本月活動</div>
-      <div class="sport-toggle-row" id="sportToggleRow"></div>
     </div>
     <div class="event-list" id="eventListMonth"></div>
 
@@ -591,32 +603,24 @@
   // 運動類型判斷跟友團判斷同一套關鍵字比對邏輯：標題含哪個運動關鍵字就歸類，
   // 之後如果開了新的運動（排球、桌球…）把名字加進這個陣列即可。抓不到關鍵字
   // 的活動一律不分類（sportOf 回 null），永遠顯示在所有切換分頁底下。
-  const SPORT_KEYWORDS = ['羽球', '排球', '籃球', '匹克球', '網球'];
+  const SPORT_KEYWORDS = ['羽球', '排球', '籃球', '匹克球', '網球', '跑團'];
   function sportOf(title){
     const t = String(title || '');
     return SPORT_KEYWORDS.find(function(k){ return t.indexOf(k) !== -1; }) || null;
   }
-  // 本月活動旁的運動切換鈕：只有目前活動橫跨兩種以上運動才會出現，單一運動
-  // 的社團（目前只有羽球）畫面上完全看不到這排按鈕。
+  // 本週活動上方的分類標籤：固定顯示全部／羽球／匹克球／排球／跑團，同時篩選
+  // 本週跟本月活動（見 renderEvents 的 inMonth）。抓不到關鍵字的活動歸在
+  // 全部底下，不會消失。
   let sportFilter = null;
-  function renderSportToggle(){
-    const row = document.getElementById('sportToggleRow');
-    const sports = [...new Set(EVENTS.map(function(ev){ return sportOf(ev.title); }).filter(Boolean))];
-    if(sports.length < 2){
-      row.innerHTML = '';
-      sportFilter = null;
-      return;
-    }
-    if(sportFilter && sports.indexOf(sportFilter) === -1) sportFilter = null;
-    row.innerHTML = sports.map(function(s){
-      return '<button type="button" class="sport-toggle-btn' + (sportFilter === s ? ' active' : '') + '" data-sport="' + s + '">' + s + '</button>';
-    }).join('');
+  function renderSportTabs(){
+    document.querySelectorAll('#sportTabRow .sport-tab-btn').forEach(function(btn){
+      btn.classList.toggle('active', btn.dataset.sport === (sportFilter || ''));
+    });
   }
-  document.getElementById('sportToggleRow').addEventListener('click', function(e){
-    const btn = e.target.closest('.sport-toggle-btn');
+  document.getElementById('sportTabRow').addEventListener('click', function(e){
+    const btn = e.target.closest('.sport-tab-btn');
     if(!btn) return;
-    const s = btn.dataset.sport;
-    sportFilter = sportFilter === s ? null : s;
+    sportFilter = btn.dataset.sport || null;
     renderEvents();
   });
 
@@ -972,7 +976,7 @@
       return;
     }
 
-    renderSportToggle();
+    renderSportTabs();
 
     const inMonth = EVENTS.map(function(ev, i){ return i; }).filter(function(i){
       return isThisCalendarMonth(EVENTS[i].date) && (!sportFilter || sportOf(EVENTS[i].title) === sportFilter);
