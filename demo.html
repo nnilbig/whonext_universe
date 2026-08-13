@@ -1191,9 +1191,10 @@
     } else {
       const empty = listEl.querySelector('.signup-empty');
       if(empty) empty.remove();
-      const idx = listEl.querySelectorAll('.avatar-pick-item').length;
-      listEl.insertAdjacentHTML('beforeend', avatarPickItemHTML(name, true, idx));
-      attachAvatarPickItem(listEl.lastElementChild);
+      // 手動新增的訪客不算在出場次數排序裡，固定插在名單最前面，
+      // 讓發起人一眼就找得到剛打的名字，不用往下滑去找。
+      listEl.insertAdjacentHTML('afterbegin', avatarPickItemHTML(name, true, 0));
+      attachAvatarPickItem(listEl.firstElementChild);
     }
     input.value = '';
     input.focus();
