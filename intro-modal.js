@@ -31,8 +31,18 @@
       '<div class="modal-box-wrap">' +
         '<button type="button" class="modal-close-btn" id="introModalCloseBtn" aria-label="關閉">×</button>' +
         '<div class="auth-box intro-modal-box">' +
-          '<div class="intro-modal-eyebrow">GUIDE</div>' +
-          '<div class="intro-modal-title">使用介紹</div>' +
+          '<div class="intro-modal-eyebrow">WHONEXT UNIVERSE 賽事大平台</div>' +
+          '<div class="intro-modal-title">系統指南</div>' +
+
+          '<div class="intro-section-label">平台介紹</div>' +
+          '<div class="intro-guide-card">' +
+            '<ul class="g-list">' +
+              '<li>一鍵急速報名與預約。</li>' +
+              '<li>自動解鎖個人成就徽章並挑戰賽季英雄榜。</li>' +
+              '<li>連動錢包自動扣款。</li>' +
+              '<li>實體結合卡牌對戰系統。</li>' +
+            '</ul>' +
+          '</div>' +
 
           '<div class="intro-section-label">登入身分</div>' +
           '<div class="intro-guide-card">' +
