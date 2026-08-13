@@ -218,10 +218,7 @@
       row.innerHTML = '<div class="rank-card glass" style="flex:0 0 100%"><div class="rank-empty">尚無資料</div></div>';
       return;
     }
-    let items = top6.map(function(p, i){ return { p: p, rank: top6Ranks[i], cls: RANK_CLS[i] || '' }; });
-    if(items.length >= 3){
-      items = [items[1], items[0], items[2]].concat(items.slice(3));
-    }
+    const items = top6.map(function(p, i){ return { p: p, rank: top6Ranks[i], cls: RANK_CLS[i] || '' }; });
     row.innerHTML = items.map(function(item){
       return '<div class="rank-card ' + item.cls + ' glass">' +
         '<div class="rank-no">NO.' + item.rank + '</div>' +
