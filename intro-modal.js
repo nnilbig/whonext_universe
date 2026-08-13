@@ -38,8 +38,8 @@
           '<div class="intro-guide-card">' +
             '<div class="g-title">快速用 LINE 或 Google 登入</div>' +
             '<ul class="g-list">' +
-              '<li>可以透過畫面右上角的「球員登入」，選擇 LINE 登入即可。</li>' +
-              '<li>瀏覽器開啟可以另外選擇 Google 登入。</li>' +
+              '<li>可以透過畫面右上角的「球員登入」，快速註冊登入。</li>' +
+              '<li>瀏覽器開啟可以選擇 LINE 或 Google 註冊登入。</li>' +
               '<li>如果之前有報名羽球活動，註冊當下可以選擇以前用過的暱稱，系統就會把你的報名紀錄接回這個帳號；或是之後在「個人」分頁補綁。</li>' +
             '</ul>' +
           '</div>' +
