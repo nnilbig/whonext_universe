@@ -266,7 +266,7 @@
   }
   .guest-queue-remove:active{ background: rgba(255,255,255,0.06); }
   .guest-queue-remove:disabled{ opacity:.5; }
-  .help-guest-referred{ margin-top:14px; }
+  .help-guest-referred{ margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
 
   .guest-cancel-link{
     width:100%; font-size:12px; font-weight:700; color:var(--tertiary); text-decoration:underline;
@@ -457,12 +457,15 @@
           </div>
           <div class="signup-list" id="helpGuestList"></div>
           <button type="button" class="signup-submit" id="helpGuestSubmit">送出球友報名</button>
-
-          <div class="help-guest-referred">
-            <div class="edit-field-label">你推薦報名的球友</div>
-            <div class="signup-list" id="helpGuestReferredList"></div>
-          </div>
         </div>
+      </div>
+
+      <!-- 不管這場自己有沒有報名（包含報名後又取消），只要之前推薦過球友
+           報名，都要能在這裡看到、取消——不然球友的報名卡在自己取消
+           球員報名之後就沒地方能收回，只能麻煩管理員。見 openEventDetail。 -->
+      <div class="help-guest-referred" id="myReferredGuestsSection" style="display:none">
+        <div class="edit-field-label">你推薦報名的球友</div>
+        <div class="signup-list" id="helpGuestReferredList"></div>
       </div>
 
       <div class="signup-entry-row" id="signupEntryRow">
@@ -1149,15 +1152,14 @@
     document.getElementById('eventEditAttendWrap').style.display = '';
     document.getElementById('eventEditAttendList').innerHTML = '<div class="signup-empty">載入月繳名單中…</div>';
 
-    const month = currentCalendarMonth();
     try{
-      const memberResult = await apiGet({ action:'getMembers', month: month });
-      const names = [...new Set((memberResult.members || []).map(function(m){ return m.name; }).filter(Boolean))]
+      const rosterResult = await apiGet({ action:'getRoster' });
+      const names = [...new Set((rosterResult.roster || []).filter(function(p){ return p.is_monthly_member; }).map(function(p){ return p.name; }).filter(Boolean))]
         .sort(function(a, b){ return a.localeCompare(b); });
-      document.getElementById('eventEditAttendLabel').textContent = '確認出席名單（' + month + '）';
+      document.getElementById('eventEditAttendLabel').textContent = '確認出席名單';
       document.getElementById('eventEditAttendList').innerHTML = names.length
         ? names.map(function(n){ return importRowHTML(n, true); }).join('')
-        : '<div class="signup-empty">本月尚無月繳名單</div>';
+        : '<div class="signup-empty">目前尚無月繳名單</div>';
       if(names.length) wireImportToggleRows('eventEditAttendList');
       document.getElementById('eventEditAttendWrap').style.display = '';
       document.getElementById('eventEditRecurringWrap').style.display = '';
@@ -1325,9 +1327,9 @@
   let helpGuestQueueIndex = null;
 
   function currentMemberNames(){
-    const cached = getApiCache({ action:'getMembers' });
-    const members = (cached && cached.members) || [];
-    return [...new Set(members.map(function(m){ return m.name; }).filter(Boolean))]
+    const cached = getApiCache({ action:'getRoster' });
+    const roster = (cached && cached.roster) || [];
+    return [...new Set(roster.map(function(p){ return p.name; }).filter(Boolean))]
       .sort(function(a, b){ return a.localeCompare(b); });
   }
 
@@ -1532,13 +1534,18 @@
   // 球友，不用麻煩管理員。只認 type:'guest' 且 referrer 是自己，不會動到
   // 任何球員（member 型別）的報名紀錄。
   async function loadHelpGuestSignups(ev, currentName){
+    const section = document.getElementById('myReferredGuestsSection');
     const listEl = document.getElementById('helpGuestReferredList');
+    section.style.display = '';
     listEl.innerHTML = '<div class="signup-empty">載入中…</div>';
     try{
       const result = await apiGet({ action:'getEventSignups', event_id: ev.id });
       const referred = (result.signups || []).filter(function(s){
         return s.type === 'guest' && s.referrer === currentName && (s.status === 'confirmed' || s.status === 'waitlist');
       });
+      // 這場沒有推薦任何球友的話整塊收起來，不留一個空的「你推薦報名的
+      // 球友」標題卡在那裡（尤其是自己沒報名這場時，不然畫面會很空洞）。
+      section.style.display = referred.length ? '' : 'none';
       listEl.innerHTML = referred.length
         ? referred.map(function(s){
             return '<div class="guest-queue-row">' +
@@ -1548,6 +1555,7 @@
           }).join('')
         : '';
     } catch(e){
+      section.style.display = '';
       listEl.innerHTML = '<div class="signup-empty">讀取失敗，請稍後再試</div>';
     }
   }
@@ -1716,6 +1724,7 @@
       document.getElementById('eventSignupSection').style.display = 'none';
       document.getElementById('adminManageSection').style.display = '';
       document.getElementById('adminAddPlayerName').value = '';
+      document.getElementById('myReferredGuestsSection').style.display = 'none';
       loadAdminSignupList(ev);
       loadAdminAddPlayerOptions();
       document.getElementById('eventDetailOverlay').classList.add('open');
@@ -1740,6 +1749,11 @@
 
     const selfSigned = currentPlayerSignedUp(ev);
     document.getElementById('selfSignedSection').style.display = selfSigned ? '' : 'none';
+    // 「你推薦報名的球友」跟自己這場有沒有報名是兩件事——即使沒報名
+    // （或報名後取消了），只要之前推薦過球友，還是要看得到、能取消，
+    // 先收起來，下面兩個「已登入」分支各自呼叫 loadHelpGuestSignups
+    // 決定要不要打開（沒有登入就沒有身份可以比對 referrer，維持收起）。
+    document.getElementById('myReferredGuestsSection').style.display = 'none';
 
     if(selfSigned){
       // 每次重新打開都把按鈕文字重置成「取消報名」，不要沿用上一次
@@ -1764,6 +1778,7 @@
       document.getElementById('signupMemberFields').style.display = '';
       document.getElementById('signupGuestFields').style.display = 'none';
       renderMemberFields(currentName);
+      loadHelpGuestSignups(ev, currentName);
     } else if(skipEntry && !signupState.disabled){
       // 從卡片上的「我要報名」標籤點進來：跳過中間的入口按鈕，
       // 直接展開球員報名／訪客報名的選擇。
@@ -1962,7 +1977,6 @@
   // 再暖機其他子頁面用的資料，避免跟 GAS 執行配額擠在一起拖慢賽事回應。
   // getWeeks 額外拿來算「進行中／已結束」賽事卡片的實際出席人數，所以讀完要重繪一次。
   refreshWeeksForEvents();
-  apiPrefetch({ action:'getMembers' });
   apiPrefetch({ action:'getRoster' });
 </script>
 </body>
