@@ -76,6 +76,12 @@
      跟「什麼性質」。 */
   .event-card.club-whonext{ border-color: rgba(159,179,200,0.45); }
   .event-card.club-friend{ border-color: rgba(201,183,155,0.45); }
+  /* 本週活動用金色微邊框＋淡光暈把視覺焦點自然拉到第一張卡片，本月活動
+     維持原本的暗色／主辦方外框不變。 */
+  #eventListWeek .event-card{
+    border-color: rgba(242,196,85,0.4);
+    box-shadow: 0 0 0 1px rgba(242,196,85,0.1), 0 0 22px -6px rgba(242,196,85,0.35);
+  }
   .event-date{
     width:52px; flex-shrink:0; text-align:center;
     padding: 8px 0; border-radius:14px;
