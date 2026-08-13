@@ -329,9 +329,9 @@
   }
 
   // 徽章解鎖條件的白話說法：出席系列講「完成N場活動」，WHO朋引伴系列
-  // 講「推薦N位新球員」，取代單純顯示門檻數字。
+  // 講「推薦N位好友參加活動」，取代單純顯示門檻數字。
   function badgeConditionText(threshold, unit){
-    return unit === '人' ? '推薦' + threshold + '位新球員' : '完成' + threshold + '場活動';
+    return unit === '人' ? '推薦' + threshold + '位好友參加活動' : '完成' + threshold + '場活動';
   }
 
   // data-desc：點這個徽章時 toast 顯示的條件說明，未解鎖顯示還差多少，
