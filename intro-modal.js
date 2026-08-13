@@ -36,21 +36,20 @@
 
           '<div class="intro-section-label">登入身分</div>' +
           '<div class="intro-guide-card">' +
-            '<div class="g-title">快速用 LINE 或 Google 登入</div>' +
+            '<div class="g-title">快速登入與歷史對接</div>' +
             '<ul class="g-list">' +
-              '<li>可以透過畫面右上角的「球員登入」，快速註冊登入。</li>' +
-              '<li>瀏覽器開啟可以選擇 LINE 或 Google 註冊登入。</li>' +
-              '<li>如果之前有報名羽球活動，註冊當下可以選擇以前用過的暱稱，系統就會把你的報名紀錄接回這個帳號；或是之後在「個人」分頁補綁。</li>' +
+              '<li>可以透過畫面右上角的「球員登入」，支援 LINE 或 Google 一鍵登入。</li>' +
+              '<li>綁定以前的暱稱，系統就會把你的報名紀錄接回這個帳號。</li>' +
             '</ul>' +
           '</div>' +
 
-          '<div class="intro-section-label">主要功能</div>' +
+          '<div class="intro-section-label">核心功能</div>' +
           '<div class="intro-tab-row">' +
-            introTab('home', '⌂', '活動', '活動的報名入口，可以報名發起活動。') +
-            introTab('profile', '☺', '個人', '個人的活動紀錄跟帳號綁定。') +
-            introTab('finance', '$', '錢包', '自己的錢包餘額、儲值與扣款紀錄。') +
-            introTab('rank', '★', '排行', '歷屆賽事的冠軍榜、賽季挑戰排行榜。') +
-            introTab('match', '⚑', '卡牌', '卡牌賽限定的比賽系統。') +
+            introTab('home', '⌂', '活動', '活動報名入口，亦可發起活動。') +
+            introTab('profile', '☺', '個人', '個人的活動紀錄、成就徽章。') +
+            introTab('finance', '$', '錢包', '個人儲值餘額與扣款紀錄。') +
+            introTab('rank', '★', '排行', '賽季挑戰榜以及歷屆賽事排行榜。') +
+            introTab('match', '⚑', '卡牌', '卡牌賽限定，結合實體與卡牌系統的比賽模式。') +
           '</div>' +
         '</div>' +
       '</div>';
