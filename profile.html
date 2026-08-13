@@ -150,8 +150,6 @@
     <!-- ---------- 球員：個人頁 ---------- -->
     <div id="personalView" style="display:none">
 
-      <div id="whoamiContainer" style="display:none"></div>
-
       <div id="personalContent" style="display:none">
 
         <div class="section-label-row">
@@ -261,12 +259,7 @@
   // ---------------------------------------------------------------
   function getPlayerName(){ return WhonextAuth.getPlayerName(); }
 
-  // top nav 清空身分（切換/登出）時，把登入流程重置回第一步，
-  // 不要停在上一次登入流程跑到一半的畫面。
   document.addEventListener('whonext:playername-change', function(){
-    if(!getPlayerName()){
-      document.getElementById('whoamiContainer').innerHTML = '';
-    }
     renderPersonalView();
   });
 
@@ -678,19 +671,17 @@
   // ---------------------------------------------------------------
   function renderPersonalView(){
     const name = getPlayerName();
-    const whoamiContainer = document.getElementById('whoamiContainer');
     const content = document.getElementById('personalContent');
 
     if(!name){
-      // 只在第一次（容器還是空的）才渲染，避免資料重新整理時把使用者
-      // 正在操作的 Google 登入流程（選擇身份中）整個重繪回第一步。
-      if(!whoamiContainer.childElementCount) WhonextIdentityPicker.render(whoamiContainer);
-      whoamiContainer.style.display = '';
+      // 個人頁不登入就沒東西可看，不在頁面裡另外畫一份登入卡片——直接
+      // 跳出跟 nav「球員登入」同一顆彈窗（WhonextAuth.openNavLogin() 本身
+      // 已經擋掉重複開啟，不會沖掉使用者正在操作的登入流程）。
       content.style.display = 'none';
+      WhonextAuth.openNavLogin();
       return;
     }
 
-    whoamiContainer.style.display = 'none';
     content.style.display = '';
 
     historyExpanded = false;

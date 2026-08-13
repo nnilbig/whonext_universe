@@ -155,6 +155,10 @@
     var overlay = document.getElementById('navLoginOverlay');
     var container = document.getElementById('navLoginContainer');
     if(!overlay || !container || !window.WhonextIdentityPicker) return;
+    // 已經開著就不要重畫——例如個人頁/錢包頁沒登入會自動跳出這個彈窗，
+    // 資料重新整理時可能再呼叫一次，這時使用者可能正在裡面操作登入流程
+    // （選擇身份中／等 Google 驗證），重畫回第一步會把使用者手上的操作沖掉。
+    if(overlay.classList.contains('open')) return;
     container.innerHTML = '';
     WhonextIdentityPicker.renderLoginMenu(container);
     overlay.classList.add('open');
@@ -212,6 +216,6 @@
     ROLE_KEY: ROLE_KEY, getRole: getRole, setRole: setRole,
     getPlayerName: getPlayerName, setPlayerName: setPlayerName,
     getPlayerIsAdmin: getPlayerIsAdmin, getPlayerPhoto: getPlayerPhoto,
-    getPlayerId: getPlayerId
+    getPlayerId: getPlayerId, openNavLogin: openNavLogin, closeNavLogin: closeNavLogin
   };
 })();

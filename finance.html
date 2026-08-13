@@ -174,8 +174,6 @@
       <p id="myWalletNote" style="margin:14px 0 0; font-size:12px; color:var(--tertiary); line-height:1.6; white-space:pre-line;">載入中…</p>
     </div>
 
-    <div id="walletLoginRequired" style="display:none"></div>
-
   </div>
 
   <div class="sheet-overlay" id="detailOverlay" onclick="if(event.target===this)closeSheet()">
@@ -679,19 +677,19 @@ function setWalletNote(text, alert){
   noteEl.style.fontWeight = alert ? '700' : '400';
 }
 
-// 還沒綁定身分（whonext_player_name 是空的）就不算登入，錢包餘額要先擋起來。
-// 登入畫面跟「我的活動」共用同一份 identity-picker.js，選完身分後
-// whonext:playername-change 事件會讓這裡重新渲染成真正的餘額。
+// 還沒綁定身分（whonext_player_name 是空的）就不算登入，錢包餘額要先擋起來，
+// 改跳出 nav 的球員登入彈窗。選完身分後 whonext:playername-change 事件會
+// 讓這裡重新渲染成真正的餘額。
 async function updateMyWallet(){
   const role = WhonextAuth.getRole();
   const name = WhonextAuth.getPlayerName();
   const needsLogin = role !== 'admin' && !name;
-  const loginEl = document.getElementById('walletLoginRequired');
-  loginEl.style.display = needsLogin ? '' : 'none';
   document.getElementById('myWalletLabel').style.display = needsLogin ? 'none' : '';
   document.getElementById('myWalletView').style.display = needsLogin ? 'none' : '';
   if(needsLogin){
-    WhonextIdentityPicker.render(loginEl);
+    // 錢包頁沒登入就沒東西可看，不在頁面裡另外畫一份登入卡片——直接跳出
+    // 跟 nav「球員登入」同一顆彈窗（openNavLogin 本身已經擋掉重複開啟）。
+    WhonextAuth.openNavLogin();
     return;
   }
 
@@ -708,7 +706,6 @@ function updateWalletMode(){
   if(isAdmin){
     document.getElementById('myWalletLabel').style.display = 'none';
     document.getElementById('myWalletView').style.display = 'none';
-    document.getElementById('walletLoginRequired').style.display = 'none';
   } else {
     updateMyWallet();
   }
