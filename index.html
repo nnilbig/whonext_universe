@@ -55,6 +55,14 @@
     border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
   }
 
+  /* 運動類型切換：只有本月活動裡出現一種以上運動時才會出現（見 renderEvents）。 */
+  .sport-toggle-row{ display:flex; gap:6px; }
+  .sport-toggle-btn{
+    font-size:11px; font-weight:700; padding:5px 11px; border-radius:999px;
+    border:1px solid var(--line); color: var(--secondary); background: rgba(255,255,255,0.03);
+  }
+  .sport-toggle-btn.active{ background: var(--good-bg); color: var(--good); border-color: transparent; }
+
   .event-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:26px; }
   .event-card{
     display:flex; gap:14px; padding:16px;
@@ -150,7 +158,9 @@
 
   .event-empty{
     display:flex; align-items:center; justify-content:center;
-    min-height:100px; padding:16px 18px; text-align:center; font-size:13px; color:var(--tertiary);
+    /* 跟有資料的 .event-card 同高（單行標題卡片實測 ~118.75px），避免本週
+       沒活動時佔位框看起來比下方本月卡片矮一截。 */
+    min-height:118.75px; padding:16px 18px; text-align:center; font-size:13px; color:var(--tertiary);
   }
 
   .event-attendees{ display:flex; align-items:center; gap:8px; margin-top:10px; min-height:26px; }
@@ -315,6 +325,7 @@
 
     <div class="section-label-row">
       <div class="section-label">本月活動</div>
+      <div class="sport-toggle-row" id="sportToggleRow"></div>
     </div>
     <div class="event-list" id="eventListMonth"></div>
 
@@ -497,6 +508,38 @@
   function clubClass(title){
     return isFriendEvent(title) ? 'club-friend' : 'club-whonext';
   }
+
+  // 運動類型判斷跟友團判斷同一套關鍵字比對邏輯：標題含哪個運動關鍵字就歸類，
+  // 之後如果開了新的運動（排球、桌球…）把名字加進這個陣列即可。抓不到關鍵字
+  // 的活動一律不分類（sportOf 回 null），永遠顯示在所有切換分頁底下。
+  const SPORT_KEYWORDS = ['羽球', '排球', '籃球', '匹克球', '網球'];
+  function sportOf(title){
+    const t = String(title || '');
+    return SPORT_KEYWORDS.find(function(k){ return t.indexOf(k) !== -1; }) || null;
+  }
+  // 本月活動旁的運動切換鈕：只有目前活動橫跨兩種以上運動才會出現，單一運動
+  // 的社團（目前只有羽球）畫面上完全看不到這排按鈕。
+  let sportFilter = null;
+  function renderSportToggle(){
+    const row = document.getElementById('sportToggleRow');
+    const sports = [...new Set(EVENTS.map(function(ev){ return sportOf(ev.title); }).filter(Boolean))];
+    if(sports.length < 2){
+      row.innerHTML = '';
+      sportFilter = null;
+      return;
+    }
+    if(sportFilter && sports.indexOf(sportFilter) === -1) sportFilter = null;
+    row.innerHTML = sports.map(function(s){
+      return '<button type="button" class="sport-toggle-btn' + (sportFilter === s ? ' active' : '') + '" data-sport="' + s + '">' + s + '</button>';
+    }).join('');
+  }
+  document.getElementById('sportToggleRow').addEventListener('click', function(e){
+    const btn = e.target.closest('.sport-toggle-btn');
+    if(!btn) return;
+    const s = btn.dataset.sport;
+    sportFilter = sportFilter === s ? null : s;
+    renderEvents();
+  });
 
   async function getRoster(){
     const cached = getApiCache({ action:'getRoster' });
@@ -840,7 +883,11 @@
       return;
     }
 
-    const inMonth = EVENTS.map(function(ev, i){ return i; }).filter(function(i){ return isThisCalendarMonth(EVENTS[i].date); });
+    renderSportToggle();
+
+    const inMonth = EVENTS.map(function(ev, i){ return i; }).filter(function(i){
+      return isThisCalendarMonth(EVENTS[i].date) && (!sportFilter || sportOf(EVENTS[i].title) === sportFilter);
+    });
     const endedRank = function(i){ return eventStatusMeta(EVENTS[i]).cls === 'ended' ? 1 : 0; };
     const byDate = function(a, b){ return String(EVENTS[a].date).slice(0,10).localeCompare(String(EVENTS[b].date).slice(0,10)); };
 
