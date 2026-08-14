@@ -248,13 +248,11 @@
 
   #detailAttendees{ margin-top:20px; }
   .detail-attendees-empty{ font-size:12px; color:var(--tertiary); }
-  .detail-attendees-grid{
-    display:flex; flex-wrap:wrap; gap:8px;
-  }
-  .detail-attendees-grid .avatar{
-    margin-left:0; cursor:pointer;
-    width:44px; height:44px; font-size:15px;
-  }
+  /* 球員自己看的「已報名名單」是唯讀版，跟管理員可編輯的頭像格共用
+     avatar-pick-grid／avatarPickItemHTML，只是不掛點擊事件，這裡把
+     游標跟按下去的縮放回饋關掉，避免看起來像能點但點了沒反應。 */
+  .avatar-pick-grid.readonly .avatar-pick-item{ cursor:default; }
+  .avatar-pick-grid.readonly .avatar-pick-item:active .avatar-pick-avatar{ transform:none; }
 
   .self-signed-note{
     font-size:12.5px; font-weight:700; color:var(--gold); text-align:center; margin-bottom:10px;
@@ -325,6 +323,19 @@
     background: rgba(255,255,255,0.05); border:1px solid var(--line); color: var(--label);
   }
   .guest-add-btn:active{ background: rgba(255,255,255,0.09); }
+
+  /* 管理員點頭像改成一律先暫存，異動要等按「確認更新」才真的打 API，
+     這條 bar 平常收起來，一有暫存的異動才浮出來提醒還沒送出。 */
+  .admin-confirm-bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-top:10px; padding:9px 12px; border-radius:12px;
+    background: var(--gold-bg); border:1px solid rgba(242,196,85,0.35);
+  }
+  .admin-confirm-count{ font-size:12.5px; font-weight:700; color: var(--gold); }
+  .admin-confirm-actions{ display:flex; gap:8px; flex-shrink:0; }
+  .admin-confirm-actions button{
+    font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:10px;
+  }
 
   .import-toggle-row{
     display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -525,12 +536,19 @@
         <div class="edit-field-label">已報名名單</div>
         <div class="signup-list avatar-pick-grid" id="adminSignupList"></div>
 
-        <div class="edit-field-label" style="margin-top:16px">幫球員報名</div>
+        <div class="edit-field-label" style="margin-top:16px">新增訪客</div>
         <div class="guest-add-row">
-          <input type="text" id="adminAddPlayerName" class="edit-input" list="adminAddPlayerList" placeholder="輸入或選擇球員姓名" autocomplete="off">
+          <input type="text" id="adminAddPlayerName" class="edit-input" placeholder="輸入訪客姓名" autocomplete="off">
           <button type="button" class="guest-add-btn" id="adminAddPlayerBtn">新增</button>
         </div>
-        <datalist id="adminAddPlayerList"></datalist>
+
+        <div class="admin-confirm-bar" id="adminSignupConfirmBar" style="display:none">
+          <span class="admin-confirm-count" id="adminSignupConfirmCount"></span>
+          <div class="admin-confirm-actions">
+            <button type="button" class="edit-cancel" id="adminSignupRevertBtn">取消變更</button>
+            <button type="button" class="edit-save" id="adminSignupConfirmBtn">確認更新</button>
+          </div>
+        </div>
       </div>
 
       <div id="selfSignedSection" style="display:none">
@@ -1464,12 +1482,72 @@
   }
 
   // 報名頭像＋名單，欄位塞得下就直接全部列出來，不用再多一層展開收合。
-  function detailAttendeesHTML(ev){
-    const names = Array.isArray(ev.signup_names) ? ev.signup_names : [];
-    if(!names.length) return '<div class="detail-attendees-empty">尚無人報名</div>';
-    return '<div class="detail-attendees-grid">' + names.map(function(n, idx){
-      return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '" title="' + escapeHtml(n) + '" data-name="' + escapeHtml(n) + '">' + avatarInitial(n) + '</div>';
-    }).join('') + '</div>';
+  // 「已報名名單」的人選範圍（球員唯讀版跟管理員可編輯版共用）＝
+  // 月繳會員（不管這場報了沒）∪ 目前有效報名（含非月繳、訪客）。
+  // 從沒跟這場賽事沾上邊、也不是月繳的其他球員不列入，避免唯讀版
+  // 把整份球員名單都攤出來，管理員版也不用大海撈針找人。
+  // activeMap：name -> { id, type, status }，只收 confirmed/waitlist，
+  // 取消要用的 id 跟原本身份（member/guest）都從這裡查。
+  function buildAttendeePopulation(roster, signups){
+    const activeMap = {};
+    (signups || []).forEach(function(s){
+      if(s.status !== 'confirmed' && s.status !== 'waitlist') return;
+      const name = s.type === 'guest' ? s.guest_name : s.member_name;
+      if(name) activeMap[name] = { id: s.id, type: s.type, status: s.status };
+    });
+    const byName = new Map();
+    roster.forEach(function(p){
+      if(p.name && p.is_monthly_member && !byName.has(p.name)) byName.set(p.name, p);
+    });
+    Object.keys(activeMap).forEach(function(name){
+      if(byName.has(name)) return;
+      const rosterPerson = roster.find(function(p){ return p.name === name; });
+      byName.set(name, rosterPerson || name);
+    });
+    return { activeMap: activeMap, people: [...byName.values()] };
+  }
+
+  // 排序優先順序：已報名（不管月繳與否）優先，再來月繳（這場還沒報的
+  // 月繳會員），同一層再照出場次數多寡排。
+  function sortAttendeesByPriority(people, activeMap){
+    const counts = attendanceCounts();
+    return people.slice().sort(function(a, b){
+      const an = (a && typeof a === 'object') ? a.name : a;
+      const bn = (b && typeof b === 'object') ? b.name : b;
+      const aTier = activeMap[an] ? 0 : 1;
+      const bTier = activeMap[bn] ? 0 : 1;
+      if(aTier !== bTier) return aTier - bTier;
+      const diff = (counts[bn] || 0) - (counts[an] || 0);
+      return diff !== 0 ? diff : an.localeCompare(bn);
+    });
+  }
+
+  // 球員自己看賽事詳情的「已報名名單」，跟管理員編輯版共用同一組人選／
+  // 排序邏輯（buildAttendeePopulation／sortAttendeesByPriority），只是
+  // 唯讀不掛點擊事件——見 openEventDetail 的非管理員分支。
+  async function renderDetailAttendees(ev){
+    const container = document.getElementById('detailAttendees');
+    container.innerHTML = '<div class="detail-attendees-empty">載入中…</div>';
+    try{
+      const [roster, result] = await Promise.all([
+        getRoster(),
+        apiGet({ action:'getEventSignups', event_id: ev.id })
+      ]);
+      const { activeMap, people } = buildAttendeePopulation(roster, result.signups || []);
+      if(!people.length){
+        container.innerHTML = '<div class="detail-attendees-empty">尚無人報名</div>';
+        return;
+      }
+      const sorted = sortAttendeesByPriority(people, activeMap);
+      container.innerHTML = '<div class="signup-list avatar-pick-grid readonly">' + sorted.map(function(p, idx){
+        const name = (p && typeof p === 'object') ? p.name : p;
+        const entry = activeMap[name];
+        const tag = entry && entry.status === 'waitlist' ? '候補' : '';
+        return avatarPickItemHTML(p, !!entry, idx, tag);
+      }).join('') + '</div>';
+    } catch(e){
+      container.innerHTML = '<div class="detail-attendees-empty">讀取失敗，請稍後再試</div>';
+    }
   }
 
   // 已報名時要取消，需要這筆報名紀錄的 id（getEvents 的 signup_names
@@ -1500,12 +1578,6 @@
     if(name) return '<div class="signup-self-note">以 <b>' + name + '</b> 身份報名</div>';
     return '<div id="signupWhoami"></div>';
   }
-
-  // 點頭像顯示全名（touch 裝置沒有 hover，title 這時候看不到）。
-  document.getElementById('detailAttendees').addEventListener('click', function(e){
-    const el = e.target.closest('[data-name]');
-    if(el) showToast(el.dataset.name);
-  });
 
   function renderMemberFields(currentName){
     document.getElementById('signupAsSelf').innerHTML = signupAsSelfHTML(currentName);
@@ -1711,139 +1783,142 @@
   });
 
   // ---------------------------------------------------------------
-  // 管理員：卡片點進去直接管理這場的報名名單（取消任何人／幫球員手動
-  // 報名），跟球員自己的報名流程完全分開，見 openEventDetail。
+  // 管理員：卡片點進去直接管理這場的報名名單（取消任何人／新增訪客），
+  // 跟球員自己的報名流程完全分開，見 openEventDetail。
   // ---------------------------------------------------------------
   // 已報名名單改用跟「建立活動」出席名單同一份頭像格點選元件
   // （avatarPickItemHTML／attachAvatarPickItem／wireAvatarPickItems），
-  // 點頭像直接切換：從沒報名點成報名＝立刻幫他報名，反過來點掉＝立刻
-  // 取消。跟建立活動不同的是這裡管理的是已經存在的賽事，沒有「存檔時
-  // 才一次送出」這個緩衝，每次點擊都要馬上打對應的 API，失敗要把頭像
-  // 點回原本的狀態，不能留在使用者剛點出來、但後端其實沒成功的樣子。
+  // 人選範圍跟球員唯讀版共用 buildAttendeePopulation／
+  // sortAttendeesByPriority（見 renderDetailAttendees）。
+  // 點頭像只改本地 data-present，不會馬上打 API；要等按「確認更新」
+  // 才把異動一次送出，避免手滑點一下就馬上動到資料庫。
   // adminSignupMap 記每個目前有效報名的人對應的 signup id／type，取消
-  // 要用 id，補報名時如果他本來是用訪客身分報的則沿用 type:'guest'。
+  // 要用 id；adminSignupBaseline 記載入當下誰是有效報名，畫面上的
+  // data-present 要跟它比對才知道哪些是真的異動過的。
   let adminSignupMap = {};
+  let adminSignupBaseline = {};
   async function loadAdminSignupList(ev){
     const listEl = document.getElementById('adminSignupList');
     listEl.innerHTML = '<div class="signup-empty">載入中…</div>';
+    document.getElementById('adminSignupConfirmBar').style.display = 'none';
     try{
       const [roster, result] = await Promise.all([
         getRoster(),
         apiGet({ action:'getEventSignups', event_id: ev.id })
       ]);
-      const active = (result.signups || []).filter(function(s){ return s.status === 'confirmed' || s.status === 'waitlist'; });
-      adminSignupMap = {};
-      active.forEach(function(s){
-        const name = s.type === 'guest' ? s.guest_name : s.member_name;
-        if(name) adminSignupMap[name] = { id: s.id, type: s.type, status: s.status };
-      });
+      const { activeMap, people } = buildAttendeePopulation(roster, result.signups || []);
+      adminSignupMap = activeMap;
+      adminSignupBaseline = {};
+      Object.keys(activeMap).forEach(function(name){ adminSignupBaseline[name] = true; });
 
-      // 名單來源＝完整球員名單 ∪ 目前有效報名（含不在球員名單裡的訪客），
-      // 不然訪客報名點不到、也取消不了。
-      const byName = new Map();
-      roster.forEach(function(p){ if(p.name && !byName.has(p.name)) byName.set(p.name, p); });
-      active.forEach(function(s){
-        const name = s.type === 'guest' ? s.guest_name : s.member_name;
-        if(name && !byName.has(name)) byName.set(name, name);
-      });
-
-      const counts = attendanceCounts();
-      const people = [...byName.values()].sort(function(a, b){
-        const an = (a && typeof a === 'object') ? a.name : a;
-        const bn = (b && typeof b === 'object') ? b.name : b;
-        const diff = (counts[bn] || 0) - (counts[an] || 0);
-        return diff !== 0 ? diff : an.localeCompare(bn);
-      });
-
-      listEl.innerHTML = people.length
-        ? people.map(function(p, idx){
+      const sorted = sortAttendeesByPriority(people, activeMap);
+      listEl.innerHTML = sorted.length
+        ? sorted.map(function(p, idx){
             const name = (p && typeof p === 'object') ? p.name : p;
-            const entry = adminSignupMap[name];
+            const entry = activeMap[name];
             const tag = entry && entry.status === 'waitlist' ? '候補' : '';
             return avatarPickItemHTML(p, !!entry, idx, tag);
           }).join('')
-        : '<div class="signup-empty">尚無球員名單</div>';
-      if(people.length) wireAvatarPickItems('adminSignupList', handleAdminSignupToggle);
+        : '<div class="signup-empty">尚無月繳球員或報名紀錄</div>';
+      if(sorted.length) wireAvatarPickItems('adminSignupList', handleAdminSignupToggle);
     } catch(e){
       listEl.innerHTML = '<div class="signup-empty">讀取失敗，請稍後再試</div>';
     }
   }
 
-  async function handleAdminSignupToggle(item, present){
+  function handleAdminSignupToggle(){
+    updateAdminConfirmBar();
+  }
+
+  function adminSignupDirtyRows(){
+    return [...document.querySelectorAll('#adminSignupList .avatar-pick-item')].filter(function(row){
+      const isPresent = row.dataset.present === '1';
+      return isPresent !== !!adminSignupBaseline[row.dataset.name];
+    });
+  }
+
+  function updateAdminConfirmBar(){
+    const dirty = adminSignupDirtyRows();
+    document.getElementById('adminSignupConfirmBar').style.display = dirty.length ? '' : 'none';
+    document.getElementById('adminSignupConfirmCount').textContent = dirty.length ? ('異動 ' + dirty.length + ' 筆待確認') : '';
+  }
+
+  // 確認送出：逐一比對每筆異動是新增還是取消，各自打 signupEvent／
+  // cancelSignup，全部跑完才 refreshEvents 並重新載入整個詳情頁
+  // （順便把 baseline 重置成伺服器最新狀態）。
+  async function confirmAdminSignupChanges(){
     if(detailIndex === null) return;
+    const dirty = adminSignupDirtyRows();
+    if(!dirty.length) return;
     const ev = EVENTS[detailIndex];
-    const name = item.dataset.name;
-    item.style.pointerEvents = 'none';
-    try{
-      if(present){
-        const asGuest = adminSignupMap[name] && adminSignupMap[name].type === 'guest';
-        const payload = asGuest
-          ? { event_id: ev.id, type:'guest', guest_name: name }
-          : { event_id: ev.id, type:'member', member_name: name };
-        const result = await apiPost('signupEvent', payload);
-        if(!(result && result.success)){
-          item.dataset.present = '0';
-          showToast(SIGNUP_FAIL_MSG[result && result.reason] || '報名失敗，請稍後再試');
-          item.style.pointerEvents = '';
-          return;
+    const confirmBtn = document.getElementById('adminSignupConfirmBtn');
+    const revertBtn = document.getElementById('adminSignupRevertBtn');
+    confirmBtn.disabled = true;
+    revertBtn.disabled = true;
+    confirmBtn.textContent = '更新中…';
+    let failCount = 0;
+    await Promise.all(dirty.map(async function(row){
+      const name = row.dataset.name;
+      const nowPresent = row.dataset.present === '1';
+      try{
+        if(nowPresent){
+          const asGuest = row.dataset.type === 'guest';
+          const payload = asGuest
+            ? { event_id: ev.id, type:'guest', guest_name: name }
+            : { event_id: ev.id, type:'member', member_name: name };
+          const result = await apiPost('signupEvent', payload);
+          if(!(result && result.success)) failCount++;
+        } else {
+          const existing = adminSignupMap[name];
+          if(!existing) return;
+          const result = await apiPost('cancelSignup', { id: existing.id });
+          if(!(result && result.success)) failCount++;
         }
-        showToast(result.status === 'waitlist' ? '已加入候補名單' : '已幫 ' + name + ' 報名');
-      } else {
-        const existing = adminSignupMap[name];
-        if(!existing){ item.dataset.present = '1'; item.style.pointerEvents = ''; return; }
-        const result = await apiPost('cancelSignup', { id: existing.id });
-        if(!(result && result.success)){
-          item.dataset.present = '1';
-          showToast('取消失敗，請稍後再試');
-          item.style.pointerEvents = '';
-          return;
-        }
-        showToast('已取消報名');
+      } catch(e){
+        failCount++;
       }
-      await refreshEvents();
-      if(detailIndex !== null) openEventDetail(detailIndex);
-    } catch(e){
-      item.dataset.present = present ? '0' : '1';
-      showToast('操作失敗，請稍後再試');
-      item.style.pointerEvents = '';
-    }
+    }));
+    await refreshEvents();
+    showToast(failCount ? ('已更新，但 ' + failCount + ' 筆異動失敗') : '已更新報名名單');
+    if(detailIndex !== null) openEventDetail(detailIndex);
   }
 
-  async function loadAdminAddPlayerOptions(){
-    const roster = await getRoster();
-    const names = [...new Set(roster.map(function(p){ return p.name; }).filter(Boolean))]
-      .sort(function(a, b){ return a.localeCompare(b); });
-    document.getElementById('adminAddPlayerList').innerHTML = names.map(function(n){ return '<option value="' + n + '">'; }).join('');
+  // 取消變更：不打任何 API，直接重新載入伺服器現況，本地異動整個丟棄。
+  function revertAdminSignupChanges(){
+    if(detailIndex !== null) openEventDetail(detailIndex);
   }
 
-  async function adminAddPlayerSignup(){
-    if(detailIndex === null) return;
+  document.getElementById('adminSignupConfirmBtn').addEventListener('click', confirmAdminSignupChanges);
+  document.getElementById('adminSignupRevertBtn').addEventListener('click', revertAdminSignupChanges);
+
+  // 「新增訪客」只給不在球員名單裡的人手動輸入姓名用——球員（不管是不是
+  // 月繳）都已經在上面的頭像格裡，點頭像就能新增／取消，不需要再打字選。
+  // 跟建立活動的 addGuestAttendRow 同一個模式：先插進本地清單，等
+  // 「確認更新」按下去才真的送出。
+  function addAdminGuestRow(){
     const input = document.getElementById('adminAddPlayerName');
     const name = input.value.trim();
     if(!name) return;
-    const ev = EVENTS[detailIndex];
-    const btn = document.getElementById('adminAddPlayerBtn');
-    btn.disabled = true;
-    btn.textContent = '新增中…';
-    try{
-      const result = await apiPost('signupEvent', { event_id: ev.id, type:'member', member_name: name });
-      if(result && result.success){
-        showToast(result.status === 'waitlist' ? '已加入候補名單' : '已幫 ' + name + ' 報名');
-        input.value = '';
-        await refreshEvents();
-        if(detailIndex !== null) openEventDetail(detailIndex);
-        return;
-      }
-      showToast(SIGNUP_FAIL_MSG[result && result.reason] || '報名失敗，請稍後再試');
-    } catch(e){
-      showToast('報名失敗，請稍後再試');
+    const listEl = document.getElementById('adminSignupList');
+    const existing = [...listEl.querySelectorAll('.avatar-pick-item')]
+      .find(function(item){ return item.dataset.name === name; });
+    if(existing){
+      existing.dataset.present = '1';
+    } else {
+      const empty = listEl.querySelector('.signup-empty');
+      if(empty) empty.remove();
+      listEl.insertAdjacentHTML('afterbegin', avatarPickItemHTML(name, true, 0));
+      const row = listEl.firstElementChild;
+      row.dataset.type = 'guest';
+      attachAvatarPickItem(row, handleAdminSignupToggle);
     }
-    btn.disabled = false;
-    btn.textContent = '新增';
+    input.value = '';
+    input.focus();
+    updateAdminConfirmBar();
   }
-  document.getElementById('adminAddPlayerBtn').addEventListener('click', adminAddPlayerSignup);
+  document.getElementById('adminAddPlayerBtn').addEventListener('click', addAdminGuestRow);
   document.getElementById('adminAddPlayerName').addEventListener('keydown', function(e){
-    if(e.key === 'Enter'){ e.preventDefault(); adminAddPlayerSignup(); }
+    if(e.key === 'Enter'){ e.preventDefault(); addAdminGuestRow(); }
   });
 
   // 訪客報名不用登入，取消時只能靠自己輸入姓名去比對，安全起見一定要
@@ -1898,11 +1973,13 @@
     document.getElementById('detailTitle').textContent = ev.title;
     document.getElementById('detailMeta').textContent = (ev.type ? eventTypeLabel(ev.type) + '　' : '') + String(ev.date).slice(0, 10) + '　' + ev.time + '　' + ev.location;
     document.getElementById('detailProgress').innerHTML = progressHTML(ev, statusMeta);
-    document.getElementById('detailAttendees').innerHTML = detailAttendeesHTML(ev);
 
     // 管理員點卡片是管理報名名單（取消/幫球員報名），不走下面球員自己
-    // 報名的步驟，兩邊完全分開顯示。
+    // 報名的步驟，兩邊完全分開顯示。上面唯讀的已報名名單改由
+    // adminManageSection 那份可編輯的頭像格取代，不用重複顯示兩份一樣
+    // 的名單，也省一次 getEventSignups。
     if(document.body.classList.contains('is-admin')){
+      document.getElementById('detailAttendees').innerHTML = '';
       document.getElementById('selfSignedSection').style.display = 'none';
       document.getElementById('signupEntryRow').style.display = 'none';
       document.getElementById('eventSignupSection').style.display = 'none';
@@ -1910,11 +1987,11 @@
       document.getElementById('adminAddPlayerName').value = '';
       document.getElementById('myReferredGuestsSection').style.display = 'none';
       loadAdminSignupList(ev);
-      loadAdminAddPlayerOptions();
       document.getElementById('eventDetailOverlay').classList.add('open');
       return;
     }
     document.getElementById('adminManageSection').style.display = 'none';
+    renderDetailAttendees(ev);
 
     const currentName = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
     document.getElementById('signupGuestName').value = '';
@@ -2124,9 +2201,10 @@
     '</div>';
   }
 
-  // onToggle 是可選的非同步 callback，管理員名單（既有賽事）點一下要
-  // 立刻打 API；建立活動那邊沒有傳，維持原本「只改本地 dataset，存檔
-  // 時才一次讀出來」的行為。
+  // onToggle 是可選的 callback，只用來通知呼叫方「本地 dataset 改了」
+  // （例如管理員名單要更新確認鈕的顯示／筆數），不會在這裡直接打 API——
+  // 不管是建立活動還是管理員編輯既有賽事，都是先只改本地 dataset，
+  // 等使用者按下對應的送出／確認鈕才一次讀出來送出。
   function attachAvatarPickItem(item, onToggle){
     item.addEventListener('click', function(){
       const next = item.dataset.present === '1' ? '0' : '1';
