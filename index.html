@@ -78,20 +78,10 @@
   }
   .sport-tab-btn.active{ background: var(--good-bg); color: var(--good); border-color: transparent; }
 
-  /* 本週／本月活動改橫向滑動卡片（跟 ranking.html 的 trophy-row/rank-row
-     用同一套 scroll-snap 手法，維持全站一致）：一次專注看一場、露出下一張
-     卡片的邊緣暗示還能滑，取代原本直向列表要一路往下滑過全部活動。 */
-  .event-list{
-    display:flex; flex-direction:row; gap:12px; margin-bottom:26px;
-    overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none;
-    padding: 2px 2px 4px;
-  }
-  .event-list::-webkit-scrollbar{ display:none; }
+  .event-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:26px; }
   .event-card{
     display:flex; gap:14px; padding:16px;
-    flex:0 0 86%; box-sizing:border-box; scroll-snap-align:start;
   }
-  .event-list .event-empty{ flex:0 0 100%; box-sizing:border-box; }
   /* 賽事／企劃／練習用很淡的底色漸層做低調區分，不搶走狀態標籤的視覺重點。 */
   .event-card.et-practice{ background: linear-gradient(180deg, rgba(159,179,200,0.10), var(--card)); }
   .event-card.et-project{ background: linear-gradient(180deg, rgba(201,183,155,0.10), var(--card)); }
