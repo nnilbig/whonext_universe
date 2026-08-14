@@ -1774,32 +1774,26 @@
 
   // 列出「這個人推薦報名」的球友，讓已報名的球員自己就能取消推薦報名的
   // 球友，不用麻煩管理員。只認 type:'guest' 且 referrer 是自己，不會動到
-  // 任何球員（member 型別）的報名紀錄。
-  async function loadHelpGuestSignups(ev, currentName){
+  // 任何球員（member 型別）的報名紀錄。ev.signups 跟 getEvents 一起回來
+  // （見 gas/Code.gs getSignupsByEvent），不用開卡片時再另外打一次
+  // getEventSignups，直接同步算完，不會閃一下「載入中」。
+  function loadHelpGuestSignups(ev, currentName){
     const section = document.getElementById('myReferredGuestsSection');
     const listEl = document.getElementById('helpGuestReferredList');
-    section.style.display = '';
-    listEl.innerHTML = '<div class="signup-empty">載入中…</div>';
-    try{
-      const result = await apiGet({ action:'getEventSignups', event_id: ev.id });
-      const referred = (result.signups || []).filter(function(s){
-        return s.type === 'guest' && s.referrer === currentName && (s.status === 'confirmed' || s.status === 'waitlist');
-      });
-      // 這場沒有推薦任何球友的話整塊收起來，不留一個空的「你推薦報名的
-      // 球友」標題卡在那裡（尤其是自己沒報名這場時，不然畫面會很空洞）。
-      section.style.display = referred.length ? '' : 'none';
-      listEl.innerHTML = referred.length
-        ? referred.map(function(s){
-            return '<div class="guest-queue-row">' +
-              '<span>' + escapeHtml(s.guest_name) + (s.status === 'waitlist' ? '（候補）' : '') + '</span>' +
-              '<button type="button" class="guest-queue-remove" data-cancel-id="' + escapeHtml(s.id) + '">取消</button>' +
-            '</div>';
-          }).join('')
-        : '';
-    } catch(e){
-      section.style.display = '';
-      listEl.innerHTML = '<div class="signup-empty">讀取失敗，請稍後再試</div>';
-    }
+    const referred = (ev.signups || []).filter(function(s){
+      return s.type === 'guest' && s.referrer === currentName && (s.status === 'confirmed' || s.status === 'waitlist');
+    });
+    // 這場沒有推薦任何球友的話整塊收起來，不留一個空的「你推薦報名的
+    // 球友」標題卡在那裡（尤其是自己沒報名這場時，不然畫面會很空洞）。
+    section.style.display = referred.length ? '' : 'none';
+    listEl.innerHTML = referred.length
+      ? referred.map(function(s){
+          return '<div class="guest-queue-row">' +
+            '<span>' + escapeHtml(s.guest_name) + (s.status === 'waitlist' ? '（候補）' : '') + '</span>' +
+            '<button type="button" class="guest-queue-remove" data-cancel-id="' + escapeHtml(s.id) + '">取消</button>' +
+          '</div>';
+        }).join('')
+      : '';
   }
   document.getElementById('helpGuestReferredList').addEventListener('click', async function(e){
     const btn = e.target.closest('[data-cancel-id]');
