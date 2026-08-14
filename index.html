@@ -682,6 +682,13 @@
       return [];
     }
   }
+  // 同步版本，只在已經有快取（見 initialLoad 底部的 apiPrefetch）時
+  // 才有值——賽事詳情頁的出席名單靠這個做到「開卡片不用等」，命中
+  // 快取就直接同步算、不用等 await 那一輪 microtask／loading 畫面。
+  function cachedRoster(){
+    const cached = getApiCache({ action:'getRoster' });
+    return cached ? (cached.roster || []) : null;
+  }
   // 「＋發起活動」任何人都能用，唯一的門檻是要先登入（不看
   // can_create_events 那個舊權限欄位，也不特別看是不是管理員）。
   function updateEventAddBtn(){
@@ -1522,32 +1529,35 @@
     });
   }
 
+  // buildAttendeePopulation ＋ sortAttendeesByPriority 包一起，球員唯讀版
+  // 跟管理員編輯版共用同一份人選＋排序結果。
+  function computeSortedAttendees(roster, signups){
+    const { activeMap, people } = buildAttendeePopulation(roster, signups);
+    return { activeMap: activeMap, sorted: sortAttendeesByPriority(people, activeMap) };
+  }
+
   // 球員自己看賽事詳情的「已報名名單」，跟管理員編輯版共用同一組人選／
-  // 排序邏輯（buildAttendeePopulation／sortAttendeesByPriority），只是
-  // 唯讀不掛點擊事件——見 openEventDetail 的非管理員分支。
+  // 排序邏輯，只是唯讀不掛點擊事件——見 openEventDetail 的非管理員分支。
+  // signups 現在跟著 getEvents 一起回來（ev.signups），不用開卡片時再
+  // 另外打一次 getEventSignups；roster 也是先看 sessionStorage 快取
+  // （initialLoad 底部已經 apiPrefetch 過），命中的話直接同步算完，
+  // 不會閃一下「載入中」。
   async function renderDetailAttendees(ev){
     const container = document.getElementById('detailAttendees');
-    container.innerHTML = '<div class="detail-attendees-empty">載入中…</div>';
-    try{
-      const [roster, result] = await Promise.all([
-        getRoster(),
-        apiGet({ action:'getEventSignups', event_id: ev.id })
-      ]);
-      const { activeMap, people } = buildAttendeePopulation(roster, result.signups || []);
-      if(!people.length){
-        container.innerHTML = '<div class="detail-attendees-empty">尚無人報名</div>';
-        return;
-      }
-      const sorted = sortAttendeesByPriority(people, activeMap);
-      container.innerHTML = '<div class="signup-list avatar-pick-grid readonly">' + sorted.map(function(p, idx){
-        const name = (p && typeof p === 'object') ? p.name : p;
-        const entry = activeMap[name];
-        const tag = entry && entry.status === 'waitlist' ? '候補' : '';
-        return avatarPickItemHTML(p, !!entry, idx, tag);
-      }).join('') + '</div>';
-    } catch(e){
-      container.innerHTML = '<div class="detail-attendees-empty">讀取失敗，請稍後再試</div>';
+    const cached = cachedRoster();
+    if(!cached) container.innerHTML = '<div class="detail-attendees-empty">載入中…</div>';
+    const roster = cached || await getRoster();
+    const { activeMap, sorted } = computeSortedAttendees(roster, ev.signups || []);
+    if(!sorted.length){
+      container.innerHTML = '<div class="detail-attendees-empty">尚無人報名</div>';
+      return;
     }
+    container.innerHTML = '<div class="signup-list avatar-pick-grid readonly">' + sorted.map(function(p, idx){
+      const name = (p && typeof p === 'object') ? p.name : p;
+      const entry = activeMap[name];
+      const tag = entry && entry.status === 'waitlist' ? '候補' : '';
+      return avatarPickItemHTML(p, !!entry, idx, tag);
+    }).join('') + '</div>';
   }
 
   // 已報名時要取消，需要這筆報名紀錄的 id（getEvents 的 signup_names
@@ -1797,33 +1807,29 @@
   // data-present 要跟它比對才知道哪些是真的異動過的。
   let adminSignupMap = {};
   let adminSignupBaseline = {};
+  // signups 一樣直接吃 ev.signups（跟 getEvents 一起回來），roster 優先
+  // 用同步快取，命中就不用等——理由同 renderDetailAttendees。
   async function loadAdminSignupList(ev){
     const listEl = document.getElementById('adminSignupList');
-    listEl.innerHTML = '<div class="signup-empty">載入中…</div>';
     document.getElementById('adminSignupConfirmBar').style.display = 'none';
-    try{
-      const [roster, result] = await Promise.all([
-        getRoster(),
-        apiGet({ action:'getEventSignups', event_id: ev.id })
-      ]);
-      const { activeMap, people } = buildAttendeePopulation(roster, result.signups || []);
-      adminSignupMap = activeMap;
-      adminSignupBaseline = {};
-      Object.keys(activeMap).forEach(function(name){ adminSignupBaseline[name] = true; });
+    const cached = cachedRoster();
+    if(!cached) listEl.innerHTML = '<div class="signup-empty">載入中…</div>';
+    const roster = cached || await getRoster();
 
-      const sorted = sortAttendeesByPriority(people, activeMap);
-      listEl.innerHTML = sorted.length
-        ? sorted.map(function(p, idx){
-            const name = (p && typeof p === 'object') ? p.name : p;
-            const entry = activeMap[name];
-            const tag = entry && entry.status === 'waitlist' ? '候補' : '';
-            return avatarPickItemHTML(p, !!entry, idx, tag);
-          }).join('')
-        : '<div class="signup-empty">尚無月繳球員或報名紀錄</div>';
-      if(sorted.length) wireAvatarPickItems('adminSignupList', handleAdminSignupToggle);
-    } catch(e){
-      listEl.innerHTML = '<div class="signup-empty">讀取失敗，請稍後再試</div>';
-    }
+    const { activeMap, sorted } = computeSortedAttendees(roster, ev.signups || []);
+    adminSignupMap = activeMap;
+    adminSignupBaseline = {};
+    Object.keys(activeMap).forEach(function(name){ adminSignupBaseline[name] = true; });
+
+    listEl.innerHTML = sorted.length
+      ? sorted.map(function(p, idx){
+          const name = (p && typeof p === 'object') ? p.name : p;
+          const entry = activeMap[name];
+          const tag = entry && entry.status === 'waitlist' ? '候補' : '';
+          return avatarPickItemHTML(p, !!entry, idx, tag);
+        }).join('')
+      : '<div class="signup-empty">尚無月繳球員或報名紀錄</div>';
+    if(sorted.length) wireAvatarPickItems('adminSignupList', handleAdminSignupToggle);
   }
 
   function handleAdminSignupToggle(){

@@ -262,25 +262,29 @@ function getEvents() {
       return obj;
     });
 
-  const counts = getSignupCounts();
+  const bySignup = getSignupsByEvent();
   events.forEach(ev => {
-    const c = counts[ev.id] || { confirmed: 0, waitlist: 0, names: [] };
-    ev.signup_count = c.confirmed;
-    ev.waitlist_count = c.waitlist;
-    ev.signup_names = c.names;
+    const s = bySignup[ev.id] || { confirmed: 0, waitlist: 0, names: [], signups: [] };
+    ev.signup_count = s.confirmed;
+    ev.waitlist_count = s.waitlist;
+    ev.signup_names = s.names;
+    ev.signups = s.signups;
   });
 
   return { events };
 }
 
-// 依 event_id 聚合每個賽事目前 confirmed / waitlist 的人數，
-// 同時收集 confirmed 名單（member_name 或 guest_name），
-// 給首頁賽事卡片的頭像疊圖用，不用另外多打一次 API。
-function getSignupCounts() {
+// 依 event_id 聚合每個賽事目前 confirmed / waitlist 的人數、confirmed
+// 名單（給首頁卡片頭像疊圖用）、以及完整的 signups 明細（id/type/
+// member_name/guest_name/status，給賽事詳情頁「出席人員」跟管理員
+// 編輯名單用）。這樣 getEvents 一次回來就帶齊，前端開卡片不用再另外
+// 打一次 getEventSignups。
+function getSignupsByEvent() {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SIGNUPS_SHEET);
   if (!sheet) return {};
   const rows = sheet.getDataRange().getValues();
   const headers = rows.shift();
+  const idCol = headers.indexOf('id');
   const eventIdCol = headers.indexOf('event_id');
   const statusCol = headers.indexOf('status');
   const typeCol = headers.indexOf('type');
@@ -288,19 +292,24 @@ function getSignupCounts() {
   const guestNameCol = headers.indexOf('guest_name');
   if (eventIdCol < 0 || statusCol < 0) return {};
 
-  const counts = {};
+  const result = {};
   rows.forEach(r => {
     const eventId = r[eventIdCol];
     const status = r[statusCol];
     if (!eventId || (status !== 'confirmed' && status !== 'waitlist')) return;
-    if (!counts[eventId]) counts[eventId] = { confirmed: 0, waitlist: 0, names: [] };
-    counts[eventId][status]++;
-    if (status === 'confirmed') {
-      const name = r[typeCol] === 'guest' ? r[guestNameCol] : r[memberNameCol];
-      if (name) counts[eventId].names.push(String(name));
-    }
+    if (!result[eventId]) result[eventId] = { confirmed: 0, waitlist: 0, names: [], signups: [] };
+    result[eventId][status]++;
+    const name = r[typeCol] === 'guest' ? r[guestNameCol] : r[memberNameCol];
+    if (status === 'confirmed' && name) result[eventId].names.push(String(name));
+    result[eventId].signups.push({
+      id: r[idCol],
+      type: r[typeCol],
+      member_name: r[memberNameCol] || '',
+      guest_name: r[guestNameCol] || '',
+      status: status
+    });
   });
-  return counts;
+  return result;
 }
 
 function getEventSignups(eventId) {
