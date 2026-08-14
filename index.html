@@ -826,6 +826,29 @@
     });
     return counts;
   }
+
+  // 球員名單去重（同名只留一筆），可選 filterFn 先篩過一輪——發起活動
+  // 手動挑人／管理員名單／賽事詳情唯讀版都是同一份 getRoster() 結果，
+  // 只是要不要先篩月繳不同，共用這個函式。
+  function dedupeRosterByName(roster, filterFn){
+    const byName = new Map();
+    roster.forEach(function(p){
+      if(p.name && (!filterFn || filterFn(p)) && !byName.has(p.name)) byName.set(p.name, p);
+    });
+    return [...byName.values()];
+  }
+
+  // 出場次數多的排前面，同票數再照姓名排——發起活動的頭像格排序、賽事
+  // 詳情/管理員名單排序的同層 tie-break 都是同一套規則，共用這個
+  // comparator。getName 讓呼叫方決定 person 是物件還是純姓名字串。
+  function attendanceTieBreak(getName){
+    const counts = attendanceCounts();
+    return function(a, b){
+      const an = getName(a), bn = getName(b);
+      const diff = (counts[bn] || 0) - (counts[an] || 0);
+      return diff !== 0 ? diff : an.localeCompare(bn);
+    };
+  }
   function loadCachedWeeksForEvents(){
     const cached = getApiCache({ action:'getWeeks' });
     if(cached) ALL_WEEKS = cached.weeks || [];
@@ -1221,32 +1244,40 @@
     }
   };
 
-  // 手動新增（非範本）時，出席名單從完整球員名單（getRoster：members 歷史
-  // 姓名 + players 綁定狀態）勾選，預設全部未選，由發起人自己挑誰出席；
-  // 也能在下面手動加訪客姓名。
+  // 發起活動的出席名單挑人（getRoster：members 歷史姓名 + players 綁定
+  // 狀態），手動新增跟套 WHONEXT 羽球範本共用這個 render：population
+  // （去重後的完整球員名單，不是只有月繳）跟排序（出場次數多寡）都
+  // 一樣，差別只在 presentFn（誰預設打勾）跟要不要繞過快取抓最新
+  // 月繳狀態。forceFresh 只有套範本會用到——月繳身分決定誰預設帶入，
+  // 要盡量準；手動新增全部預設未選，用快取就好，開表單快一點。也能在
+  // 下面手動加訪客姓名（見 addGuestAttendRow）。
+  async function renderAttendRosterPicker(presentFn, opts){
+    const listEl = document.getElementById('eventEditAttendList');
+    listEl.innerHTML = '<div class="signup-empty">' + opts.loadingText + '</div>';
+    try{
+      const roster = opts.forceFresh ? ((await apiGet({ action:'getRoster' })).roster || []) : await getRoster();
+      const people = dedupeRosterByName(roster).sort(attendanceTieBreak(function(p){ return p.name; }));
+      listEl.innerHTML = people.length
+        ? people.map(function(p, idx){ return avatarPickItemHTML(p, presentFn(p), idx); }).join('')
+        : '<div class="signup-empty">' + opts.emptyText + '</div>';
+      if(people.length) wireAvatarPickItems('eventEditAttendList');
+      return true;
+    } catch(e){
+      listEl.innerHTML = '<div class="signup-empty">' + opts.errorText + '</div>';
+      return false;
+    }
+  }
+
   async function loadAttendRosterPicker(){
     document.getElementById('eventEditAttendLabel').textContent = '出席名單';
     document.getElementById('eventEditRecurringWrap').style.display = 'none';
     document.getElementById('eventEditRecurring').checked = false;
     document.getElementById('eventEditAttendWrap').style.display = '';
-    const listEl = document.getElementById('eventEditAttendList');
-    listEl.innerHTML = '<div class="signup-empty">載入球員名單中…</div>';
-    try{
-      const roster = await getRoster();
-      const byName = new Map();
-      roster.forEach(function(p){ if(p.name && !byName.has(p.name)) byName.set(p.name, p); });
-      const counts = attendanceCounts();
-      const people = [...byName.values()].sort(function(a, b){
-        const diff = (counts[b.name] || 0) - (counts[a.name] || 0);
-        return diff !== 0 ? diff : a.name.localeCompare(b.name);
-      });
-      listEl.innerHTML = people.length
-        ? people.map(function(p, idx){ return avatarPickItemHTML(p, false, idx); }).join('')
-        : '<div class="signup-empty">尚無球員名單</div>';
-      if(people.length) wireAvatarPickItems('eventEditAttendList');
-    } catch(e){
-      listEl.innerHTML = '<div class="signup-empty">讀取球員名單失敗，請稍後再試</div>';
-    }
+    await renderAttendRosterPicker(function(){ return false; }, {
+      loadingText: '載入球員名單中…',
+      emptyText: '尚無球員名單',
+      errorText: '讀取球員名單失敗，請稍後再試'
+    });
   }
 
   function addGuestAttendRow(){
@@ -1291,39 +1322,24 @@
     document.getElementById('eventEditCapacity').value = tpl.capacity;
     document.getElementById('eventEditOverflow').value = tpl.overflow_mode;
 
-    // 名單還在抓的時候先鎖住儲存鈕，避免手速太快在清單填好前就存檔，
-    // 導致賽事建立成功但月繳名單沒有一起匯入、卻完全沒有提示。
+    document.getElementById('eventEditAttendLabel').textContent = '確認出席名單';
+    document.getElementById('eventEditAttendWrap').style.display = '';
+    document.getElementById('eventEditRecurringWrap').style.display = '';
+    document.getElementById('eventEditRecurring').checked = false;
+
+    // 名單還在抓的時候先鎖住儲存鈕，避免手速太快在月繳名單勾好之前就
+    // 存檔，變成一個人都沒匯入。範本預設帶入月繳會員（打勾），但完整
+    // 球員名單都在，發起人可以自己再加減人——所以用 forceFresh 繞過
+    // 快取，盡量拿最新的月繳身分來決定預設打勾狀態。
     const saveBtn = document.getElementById('eventEditSave');
     saveBtn.disabled = true;
-    document.getElementById('eventEditAttendWrap').style.display = '';
-    document.getElementById('eventEditAttendList').innerHTML = '<div class="signup-empty">載入月繳名單中…</div>';
-
-    try{
-      const rosterResult = await apiGet({ action:'getRoster' });
-      const byName = new Map();
-      (rosterResult.roster || []).filter(function(p){ return p.is_monthly_member; }).forEach(function(p){
-        if(p.name && !byName.has(p.name)) byName.set(p.name, p);
-      });
-      const counts = attendanceCounts();
-      const people = [...byName.values()].sort(function(a, b){
-        const diff = (counts[b.name] || 0) - (counts[a.name] || 0);
-        return diff !== 0 ? diff : a.name.localeCompare(b.name);
-      });
-      document.getElementById('eventEditAttendLabel').textContent = '確認出席名單';
-      document.getElementById('eventEditAttendList').innerHTML = people.length
-        ? people.map(function(p, idx){ return avatarPickItemHTML(p, true, idx); }).join('')
-        : '<div class="signup-empty">目前尚無月繳名單</div>';
-      if(people.length) wireAvatarPickItems('eventEditAttendList');
-      document.getElementById('eventEditAttendWrap').style.display = '';
-      document.getElementById('eventEditRecurringWrap').style.display = '';
-      document.getElementById('eventEditRecurring').checked = false;
-    } catch(e){
-      document.getElementById('eventEditAttendWrap').style.display = 'none';
-      document.getElementById('eventEditRecurringWrap').style.display = 'none';
-      showToast('讀取月繳名單失敗，請稍後再試');
-    } finally {
-      saveBtn.disabled = false;
-    }
+    await renderAttendRosterPicker(function(p){ return !!p.is_monthly_member; }, {
+      forceFresh: true,
+      loadingText: '載入球員名單中…',
+      emptyText: '尚無球員名單',
+      errorText: '讀取球員名單失敗，請稍後再試'
+    });
+    saveBtn.disabled = false;
   }
 
   // 發起人頭像只信任「目前登入的這個人」自己的頭像 URL，不去猜別人的
@@ -1507,9 +1523,8 @@
       if(name) activeMap[name] = { id: s.id, type: s.type, status: s.status };
     });
     const byName = new Map();
-    roster.forEach(function(p){
-      if(p.name && p.is_monthly_member && !byName.has(p.name)) byName.set(p.name, p);
-    });
+    dedupeRosterByName(roster, function(p){ return p.is_monthly_member; })
+      .forEach(function(p){ byName.set(p.name, p); });
     Object.keys(activeMap).forEach(function(name){
       if(byName.has(name)) return;
       const rosterPerson = roster.find(function(p){ return p.name === name; });
@@ -1523,15 +1538,12 @@
   // 跟從沒報過的月繳會員排序、外觀（灰階、沒有勾勾）完全一樣，不特別
   // 標「已取消」文字。
   function sortAttendeesByPriority(people, activeMap){
-    const counts = attendanceCounts();
+    const nameOf = function(p){ return (p && typeof p === 'object') ? p.name : p; };
+    const tieBreak = attendanceTieBreak(nameOf);
     return people.slice().sort(function(a, b){
-      const an = (a && typeof a === 'object') ? a.name : a;
-      const bn = (b && typeof b === 'object') ? b.name : b;
-      const aTier = activeMap[an] ? 0 : 1;
-      const bTier = activeMap[bn] ? 0 : 1;
-      if(aTier !== bTier) return aTier - bTier;
-      const diff = (counts[bn] || 0) - (counts[an] || 0);
-      return diff !== 0 ? diff : an.localeCompare(bn);
+      const aTier = activeMap[nameOf(a)] ? 0 : 1;
+      const bTier = activeMap[nameOf(b)] ? 0 : 1;
+      return aTier !== bTier ? aTier - bTier : tieBreak(a, b);
     });
   }
 
