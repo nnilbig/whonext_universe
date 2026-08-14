@@ -51,8 +51,10 @@
 
   /* ---------- EVENTS ---------- */
   /* 本週活動是唯一「這週該去哪打」的入口，标题用金底黑字的小膠囊把它從
-     本月活動那種純文字 label 裡跳出來，跟下面卡片的金色微光呼應。只挑
-     這一個 section-label 特化，本月活動／其他頁的 section-label 維持原樣。 */
+     本月活動／已結束那種純文字 label 裡跳出來，跟下面卡片的金色微光呼應。
+     只挑這一個 section-label 特化，本月活動／已結束／其他頁的
+     section-label 維持原樣。已結束是獨立的第三個區塊（不是切換按鈕），
+     跟本週／本月一樣直接堆疊顯示，見 renderEvents。 */
   .section-label-week{
     display:inline-block; padding:5px 13px; border-radius:999px;
     background: var(--gold); color: var(--bg);
@@ -76,10 +78,20 @@
   }
   .sport-tab-btn.active{ background: var(--good-bg); color: var(--good); border-color: transparent; }
 
-  .event-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:26px; }
+  /* 本週／本月活動改橫向滑動卡片（跟 ranking.html 的 trophy-row/rank-row
+     用同一套 scroll-snap 手法，維持全站一致）：一次專注看一場、露出下一張
+     卡片的邊緣暗示還能滑，取代原本直向列表要一路往下滑過全部活動。 */
+  .event-list{
+    display:flex; flex-direction:row; gap:12px; margin-bottom:26px;
+    overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none;
+    padding: 2px 2px 4px;
+  }
+  .event-list::-webkit-scrollbar{ display:none; }
   .event-card{
     display:flex; gap:14px; padding:16px;
+    flex:0 0 86%; box-sizing:border-box; scroll-snap-align:start;
   }
+  .event-list .event-empty{ flex:0 0 100%; box-sizing:border-box; }
   /* 賽事／企劃／練習用很淡的底色漸層做低調區分，不搶走狀態標籤的視覺重點。 */
   .event-card.et-practice{ background: linear-gradient(180deg, rgba(159,179,200,0.10), var(--card)); }
   .event-card.et-project{ background: linear-gradient(180deg, rgba(201,183,155,0.10), var(--card)); }
@@ -89,11 +101,18 @@
      跟「什麼性質」。 */
   .event-card.club-whonext{ border-color: rgba(159,179,200,0.45); }
   .event-card.club-friend{ border-color: rgba(201,183,155,0.45); }
-  /* 本週活動用金色微邊框＋淡光暈把視覺焦點自然拉到第一張卡片，本月活動
-     維持原本的暗色／主辦方外框不變。 */
+  /* 本週活動用金色微邊框＋淡光暈把視覺焦點自然拉到卡片上，本月活動／
+     已結束維持原本的暗色／主辦方外框不變。已結束的賽事已經被分流到
+     #eventListEnded，本週列表本來就不會出現，不用再額外排除。 */
   #eventListWeek .event-card{
     border-color: rgba(242,196,85,0.4);
     box-shadow: 0 0 0 1px rgba(242,196,85,0.1), 0 0 22px -6px rgba(242,196,85,0.35);
+  }
+  /* 已結束分頁的卡片統一降不透明度＋去彩度，跟其他分頁的正常卡片做出
+     區隔，即使已結束卡片獨立成頁，視覺上還是該一眼認出「這頁都是過去
+     的賽事」。 */
+  .event-card.is-ended{
+    opacity:.7; filter: grayscale(1) brightness(.82);
   }
   .event-date{
     width:52px; flex-shrink:0; text-align:center;
@@ -408,6 +427,11 @@
       <div class="section-label">本月活動</div>
     </div>
     <div class="event-list" id="eventListMonth"></div>
+
+    <div class="section-label-row">
+      <div class="section-label">已結束</div>
+    </div>
+    <div class="event-list" id="eventListEnded"></div>
 
   </div>
 
@@ -906,7 +930,7 @@
     const dd = isoDate.slice(8,10);
     const wd = WEEKDAYS[new Date(isoDate + 'T00:00:00').getDay()];
     const statusMeta = eventStatusMeta(ev);
-    return '<div class="event-card glass ' + eventTypeClass(ev.type) + ' ' + clubClass(ev.title) + '" data-index="' + i + '">' +
+    return '<div class="event-card glass ' + eventTypeClass(ev.type) + ' ' + clubClass(ev.title) + (statusMeta.cls === 'ended' ? ' is-ended' : '') + '" data-index="' + i + '">' +
       '<div class="event-date">' +
         '<div class="ed-month">' + mm + '月</div>' +
         '<div class="ed-day">' + dd + '</div>' +
@@ -980,14 +1004,18 @@
     });
   }
 
-  // 本週活動優先顯示已經報名的（已結束的一律沉到最後）；本月其餘活動
-  // （本月內、但不在本週）維持單純照日期排序，不特別把已報名的往前提。
+  // 本週／本月／已結束三個區塊一起顯示（不是切換按鈕）：本週優先顯示
+  // 已經報名的，本月其餘活動（本月內、但不在本週）單純照日期排序，
+  // 已結束的一律獨立成自己的區塊、按日期新到舊排（最近打完的賽事排
+  // 最前面，比從舊到新更常被查）。三個區塊都各自是橫向滑動列表。
   function renderEvents(){
     const weekList = document.getElementById('eventListWeek');
     const monthList = document.getElementById('eventListMonth');
+    const endedList = document.getElementById('eventListEnded');
     if(!eventsLoaded){
       weekList.innerHTML = '<div class="event-empty glass">載入賽事中…</div>';
       monthList.innerHTML = '';
+      endedList.innerHTML = '';
       return;
     }
 
@@ -996,22 +1024,17 @@
     const inMonth = EVENTS.map(function(ev, i){ return i; }).filter(function(i){
       return isThisCalendarMonth(EVENTS[i].date) && (!sportFilter || sportOf(EVENTS[i]) === sportFilter);
     });
-    const endedRank = function(i){ return eventStatusMeta(EVENTS[i]).cls === 'ended' ? 1 : 0; };
+    const isEnded = function(i){ return eventStatusMeta(EVENTS[i]).cls === 'ended'; };
     const byDate = function(a, b){ return String(EVENTS[a].date).slice(0,10).localeCompare(String(EVENTS[b].date).slice(0,10)); };
 
-    const week = inMonth.filter(function(i){ return isThisWeek(EVENTS[i].date); }).sort(function(a, b){
-      const er = endedRank(a) - endedRank(b);
-      if(er) return er;
+    const week = inMonth.filter(function(i){ return isThisWeek(EVENTS[i].date) && !isEnded(i); }).sort(function(a, b){
       const sa = currentPlayerSignedUp(EVENTS[a]) ? 0 : 1;
       const sb = currentPlayerSignedUp(EVENTS[b]) ? 0 : 1;
       if(sa !== sb) return sa - sb;
       return byDate(a, b);
     });
-    const restMonth = inMonth.filter(function(i){ return !isThisWeek(EVENTS[i].date); }).sort(function(a, b){
-      const er = endedRank(a) - endedRank(b);
-      if(er) return er;
-      return byDate(a, b);
-    });
+    const restMonth = inMonth.filter(function(i){ return !isThisWeek(EVENTS[i].date) && !isEnded(i); }).sort(byDate);
+    const ended = inMonth.filter(isEnded).sort(function(a, b){ return byDate(b, a); });
 
     weekList.innerHTML = week.length
       ? week.map(eventCardHTML).join('')
@@ -1019,9 +1042,13 @@
     monthList.innerHTML = restMonth.length
       ? restMonth.map(eventCardHTML).join('')
       : '<div class="event-empty glass">本月其他時間目前沒有排定的活動</div>';
+    endedList.innerHTML = ended.length
+      ? ended.map(eventCardHTML).join('')
+      : '<div class="event-empty glass">本月沒有已結束的賽事</div>';
 
     wireEventList(weekList);
     wireEventList(monthList);
+    wireEventList(endedList);
   }
 
   let editingIndex = null;
