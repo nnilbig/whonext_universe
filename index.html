@@ -1423,7 +1423,7 @@
         if(newEvents.length === createdCount){
           try{
             const bulkResults = await Promise.all(newEvents.map(function(newEv){
-              return apiPost('bulkSignupEvent', { event_id: newEv.id, names: attendNames });
+              return apiPost('bulkSignupEvent', { event_id: newEv.id, names: attendNames, actor: currentActor() });
             }));
             const failed = bulkResults.some(function(r){ return !r || !r.success; });
             if(!failed){
@@ -1502,6 +1502,14 @@
     const roster = (cached && cached.roster) || [];
     return [...new Set(roster.map(function(p){ return p.name; }).filter(Boolean))]
       .sort(function(a, b){ return a.localeCompare(b); });
+  }
+
+  // signups 分頁的 updated_by 欄位用——不管是自己報名/取消、幫別人推薦、
+  // 還是管理員代為異動，一律記錄「目前登入的這個人」，不特別區分角色：
+  // 值剛好等於這筆報名的 member_name/guest_name 就是本人操作，不同就
+  // 是被別人（通常是管理員）代為異動。
+  function currentActor(){
+    return window.WhonextAuth ? (WhonextAuth.getPlayerName() || '') : '';
   }
 
   // 報名頭像＋名單，欄位塞得下就直接全部列出來，不用再多一層展開收合。
@@ -1745,7 +1753,7 @@
     btn.textContent = '送出中…';
     try{
       const results = await Promise.all(helpGuestQueue.map(function(name){
-        return apiPost('signupEvent', { event_id: ev.id, type:'guest', guest_name: name, referrer: currentName });
+        return apiPost('signupEvent', { event_id: ev.id, type:'guest', guest_name: name, referrer: currentName, actor: currentName });
       }));
       const okCount = results.filter(function(r){ return r && r.success; }).length;
       const failCount = results.length - okCount;
@@ -1799,7 +1807,7 @@
     btn.disabled = true;
     btn.textContent = '取消中…';
     try{
-      const result = await apiPost('cancelSignup', { id: btn.dataset.cancelId });
+      const result = await apiPost('cancelSignup', { id: btn.dataset.cancelId, actor: currentActor() });
       if(result && result.success){
         showToast('已取消該球友報名');
         await refreshEvents();
@@ -1883,6 +1891,7 @@
     revertBtn.disabled = true;
     confirmBtn.textContent = '更新中…';
     let failCount = 0;
+    const actor = currentActor();
     await Promise.all(dirty.map(async function(row){
       const name = row.dataset.name;
       const nowPresent = row.dataset.present === '1';
@@ -1890,14 +1899,14 @@
         if(nowPresent){
           const asGuest = row.dataset.type === 'guest';
           const payload = asGuest
-            ? { event_id: ev.id, type:'guest', guest_name: name }
-            : { event_id: ev.id, type:'member', member_name: name };
+            ? { event_id: ev.id, type:'guest', guest_name: name, actor: actor }
+            : { event_id: ev.id, type:'member', member_name: name, actor: actor };
           const result = await apiPost('signupEvent', payload);
           if(!(result && result.success)) failCount++;
         } else {
           const existing = adminSignupMap[name];
           if(!existing) return;
-          const result = await apiPost('cancelSignup', { id: existing.id });
+          const result = await apiPost('cancelSignup', { id: existing.id, actor: actor });
           if(!(result && result.success)) failCount++;
         }
       } catch(e){
@@ -1972,7 +1981,7 @@
       if(!match){
         showToast('找不到這個姓名的訪客報名紀錄');
       } else {
-        const cancelResult = await apiPost('cancelSignup', { id: match.id });
+        const cancelResult = await apiPost('cancelSignup', { id: match.id, actor: name });
         if(cancelResult && cancelResult.success){
           showToast('已取消報名');
           nameInput.value = '';
@@ -2092,7 +2101,7 @@
     btn.disabled = true;
     btn.textContent = '取消中…';
     try{
-      const result = await apiPost('cancelSignup', { id: detailSelfSignupId });
+      const result = await apiPost('cancelSignup', { id: detailSelfSignupId, actor: currentActor() });
       if(result && result.success){
         showToast('已取消報名');
         await refreshEvents();
@@ -2124,6 +2133,7 @@
       const name = window.WhonextAuth ? WhonextAuth.getPlayerName() : '';
       if(!name){ showToast('請先登入才能以球員身份報名'); return; }
       payload.member_name = name;
+      payload.actor = name;
     } else {
       const guestNameInput = document.getElementById('signupGuestName');
       const guestName = guestNameInput.value.trim();
@@ -2136,6 +2146,7 @@
       guestNameInput.classList.remove('invalid');
       payload.guest_name = guestName;
       payload.referrer = document.getElementById('signupReferrer').value;
+      payload.actor = guestName;
     }
 
     const btn = document.getElementById('signupSubmit');

@@ -1045,6 +1045,10 @@ function signupEvent(data) {
     const statusCol = signupHeaders.indexOf('status');
     const typeCol = signupHeaders.indexOf('type');
     const memberNameCol = signupHeaders.indexOf('member_name');
+    const guestNameCol = signupHeaders.indexOf('guest_name');
+    const referrerCol = signupHeaders.indexOf('referrer');
+    const createdAtCol = signupHeaders.indexOf('created_at');
+    const updatedByCol = signupHeaders.indexOf('updated_by');
 
     const eventSignups = allRows.filter(r => String(r[eventIdCol]) === String(data.event_id));
     const confirmedCount = eventSignups.filter(r => r[statusCol] === 'confirmed').length;
@@ -1067,6 +1071,32 @@ function signupEvent(data) {
       return { success: false, reason: 'full' };
     }
 
+    const name = data.type === 'guest' ? data.guest_name : data.member_name;
+
+    // 取消過又重新報名，直接把原本那筆 cancelled 的列改回來，不要再開
+    // 一筆新的 su id——不然同一個人同一場賽事會累積好幾筆歷史紀錄，
+    // 讀的時候還要另外判斷哪筆才是最新的（見 getSignupsByEvent 的
+    // 註解）。created_at 一定要刷新成現在，不然候補遞補（cancelSignup
+    // 撿「最早候補」比 created_at）會被半年前的舊時間戳記插隊到最前面。
+    let reuseRowIndex = -1;
+    for (let i = 0; i < allRows.length; i++) {
+      const r = allRows[i];
+      if (String(r[eventIdCol]) !== String(data.event_id)) continue;
+      if (r[typeCol] !== data.type) continue;
+      const rName = data.type === 'guest' ? r[guestNameCol] : r[memberNameCol];
+      if (rName !== name) continue;
+      if (r[statusCol] === 'cancelled') { reuseRowIndex = i; break; }
+    }
+
+    if (reuseRowIndex >= 0) {
+      const sheetRow = reuseRowIndex + 2;
+      signupsSheet.getRange(sheetRow, statusCol + 1).setValue(status);
+      if (createdAtCol >= 0) signupsSheet.getRange(sheetRow, createdAtCol + 1).setValue(new Date());
+      if (referrerCol >= 0) signupsSheet.getRange(sheetRow, referrerCol + 1).setValue(data.referrer || '');
+      if (updatedByCol >= 0) signupsSheet.getRange(sheetRow, updatedByCol + 1).setValue(data.actor || '');
+      return { success: true, status };
+    }
+
     const newRow = signupHeaders.map(h => {
       if (h === 'id') return generateId('su');
       if (h === 'event_id') return data.event_id;
@@ -1076,6 +1106,7 @@ function signupEvent(data) {
       if (h === 'referrer') return data.referrer || '';
       if (h === 'status') return status;
       if (h === 'created_at') return new Date();
+      if (h === 'updated_by') return data.actor || '';
       return '';
     });
     signupsSheet.getRange(signupsSheet.getLastRow() + 1, 1, 1, signupHeaders.length).setValues([newRow]);
@@ -1154,6 +1185,7 @@ function bulkSignupEvent(data) {
         if (h === 'member_name') return name;
         if (h === 'status') return status;
         if (h === 'created_at') return new Date();
+        if (h === 'updated_by') return data.actor || '';
         return '';
       }));
     });
@@ -1181,6 +1213,7 @@ function cancelSignup(data) {
     const eventIdCol = headers.indexOf('event_id');
     const statusCol = headers.indexOf('status');
     const createdAtCol = headers.indexOf('created_at');
+    const updatedByCol = headers.indexOf('updated_by');
 
     let targetRowIndex = -1;
     let targetEventId = null;
@@ -1196,6 +1229,7 @@ function cancelSignup(data) {
     if (targetRowIndex < 0) return { success: false, reason: 'not_found' };
 
     sheet.getRange(targetRowIndex, statusCol + 1).setValue('cancelled');
+    if (updatedByCol >= 0) sheet.getRange(targetRowIndex, updatedByCol + 1).setValue(data.actor || '');
 
     if (targetStatus === 'confirmed') {
       let earliestRow = -1;
