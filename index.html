@@ -200,7 +200,21 @@
     cursor:pointer; object-fit:cover;
   }
   .event-host-sep{ width:1px; height:14px; background:var(--line); flex-shrink:0; }
-  .avatar-stack{ display:flex; margin-right:6px; }
+  /* 卡片頭像疊圖超過 4 個就不再截斷成「+N」，改成可以往右滑的橫向列表：
+     固定寬度只露出 4 個完整頭像＋第 5 個的半截，右側疊一層淡黑漸層當
+     提示，滑過去就能看到剩下的人。has-more 只在真的超過 4 個時才加，
+     人數少的卡片不會平白多一條看起來卡住的黑邊。 */
+  .avatar-stack-wrap{
+    position:relative; max-width:99px; overflow-x:auto; flex-shrink:0; margin-right:6px;
+    scrollbar-width:none; -ms-overflow-style:none;
+  }
+  .avatar-stack-wrap::-webkit-scrollbar{ display:none; }
+  .avatar-stack-wrap.has-more::after{
+    content:''; position:absolute; top:0; right:0; bottom:0; width:20px;
+    background: linear-gradient(to right, transparent, rgba(0,0,0,0.55));
+    pointer-events:none;
+  }
+  .avatar-stack{ display:flex; }
   .avatar{
     width:26px; height:26px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
@@ -918,7 +932,8 @@
     return FRIEND_ATTENDEE_OVERRIDE.find(function(h){ return h.keywords.some(function(k){ return t.indexOf(k) !== -1; }); }) || null;
   }
 
-  // 卡片列表用頭像疊圖取代長條進度圖，最多顯示 4 個頭像 + 剩餘人數。
+  // 卡片列表用頭像疊圖取代長條進度圖，超過 4 個就露出第 5 個的半截＋
+  // 右側淡黑漸層，可以往右滑看完整份名單（見下面 avatar-stack-wrap）。
   // ev.signup_names 是後端 getEvents 才會回傳的名單快照，舊快取或後端還沒
   // 部署新版時會是 undefined，這裡退回只顯示人數，不會整張卡片壞掉。
   function attendeesHTML(ev, statusMeta){
@@ -943,20 +958,25 @@
       return '<div class="event-attendees">' + hostHTML + '<div class="event-attendees-label">尚無人報名</div></div>';
     }
 
-    const shown = names.slice(0, 4);
+    // 不再只取前 4 個＋「+N」文字，改成全部頭像都放進去，讓卡片上的
+    // 頭像列可以往右滑看到每一個人；extra 通常是 0，只有已結束賽事用
+    // 實際出席人數（跟報名名單對不上）或好友賽事手動覆蓋人數時才 > 0，
+    // 這種情況一樣併進同一條可滑動列表最後面。
+    const shown = names;
     const extra = count - shown.length;
     // 行動裝置沒有滑鼠 hover，title 顯示不出全名，所以頭像另外掛
     // data-name，點擊時改用 toast 顯示（見 renderEvents 的點擊委派）。
     const avatarsHTML = shown.map(function(n, idx){
       return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '" title="' + escapeHtml(n) + '" data-name="' + escapeHtml(n) + '">' + avatarInitial(n) + '</div>';
     }).join('') + (extra > 0 ? '<div class="avatar-more">+' + extra + '</div>' : '');
+    const hasMore = (shown.length + (extra > 0 ? 1 : 0)) > 4;
 
     let label = count + (attendance !== null ? ' 人出席' : ' 人已報名');
     if(attendance === null && waitlist > 0) label += '・候補 ' + waitlist;
 
     return '<div class="event-attendees">' +
       hostHTML +
-      (avatarsHTML ? '<div class="avatar-stack">' + avatarsHTML + '</div>' : '') +
+      (avatarsHTML ? '<div class="avatar-stack-wrap' + (hasMore ? ' has-more' : '') + '"><div class="avatar-stack">' + avatarsHTML + '</div></div>' : '') +
       '<div class="event-attendees-label">' + label + '</div>' +
     '</div>';
   }
