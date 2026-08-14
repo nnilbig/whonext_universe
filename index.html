@@ -200,21 +200,7 @@
     cursor:pointer; object-fit:cover;
   }
   .event-host-sep{ width:1px; height:14px; background:var(--line); flex-shrink:0; }
-  /* 卡片頭像疊圖超過 4 個就不再截斷成「+N」，改成可以往右滑的橫向列表：
-     固定寬度只露出 4 個完整頭像＋第 5 個的半截，右側疊一層淡黑漸層當
-     提示，滑過去就能看到剩下的人。has-more 只在真的超過 4 個時才加，
-     人數少的卡片不會平白多一條看起來卡住的黑邊。 */
-  .avatar-stack-wrap{
-    position:relative; max-width:99px; overflow-x:auto; flex-shrink:0; margin-right:6px;
-    scrollbar-width:none; -ms-overflow-style:none;
-  }
-  .avatar-stack-wrap::-webkit-scrollbar{ display:none; }
-  .avatar-stack-wrap.has-more::after{
-    content:''; position:absolute; top:0; right:0; bottom:0; width:20px;
-    background: linear-gradient(to right, transparent, rgba(0,0,0,0.55));
-    pointer-events:none;
-  }
-  .avatar-stack{ display:flex; }
+  .avatar-stack{ display:flex; margin-right:6px; }
   .avatar{
     width:26px; height:26px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
@@ -365,6 +351,16 @@
   .avatar-pick-grid{
     display:flex; flex-wrap:wrap; gap:14px 10px; max-height:260px; overflow-y:auto; padding:4px 2px;
   }
+  /* 名單超過可視高度、實際能往下捲動時，底部疊一層淡黑漸層提示還有
+     內容（不是猜人數，是量完 scrollHeight/clientHeight 才加 has-more，
+     見 markScrollableHint）。三邊（建立活動選人／管理員編輯／球員
+     唯讀）都是同一個 wrap 包一層 .avatar-pick-grid 就套用。 */
+  .avatar-pick-grid-wrap{ position:relative; }
+  .avatar-pick-grid-wrap.has-more::after{
+    content:''; position:absolute; left:0; right:0; bottom:0; height:28px;
+    background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.55));
+    pointer-events:none;
+  }
   .avatar-pick-item{
     width:58px; display:flex; flex-direction:column; align-items:center; gap:6px;
     cursor:pointer; -webkit-tap-highlight-color:transparent;
@@ -513,7 +509,7 @@
           <input type="text" id="eventEditGuestName" class="edit-input" placeholder="手動新增訪客姓名">
           <button type="button" class="guest-add-btn" id="eventEditGuestAdd">新增</button>
         </div>
-        <div class="signup-list avatar-pick-grid" id="eventEditAttendList"></div>
+        <div class="avatar-pick-grid-wrap"><div class="signup-list avatar-pick-grid" id="eventEditAttendList"></div></div>
       </div>
 
       <div id="eventEditRecurringWrap" style="display:none; margin-bottom:14px;">
@@ -548,7 +544,7 @@
            isAdmin 分支。 -->
       <div id="adminManageSection" style="display:none">
         <div class="edit-field-label">已報名名單</div>
-        <div class="signup-list avatar-pick-grid" id="adminSignupList"></div>
+        <div class="avatar-pick-grid-wrap"><div class="signup-list avatar-pick-grid" id="adminSignupList"></div></div>
 
         <div class="edit-field-label" style="margin-top:16px">新增訪客</div>
         <div class="guest-add-row">
@@ -932,8 +928,7 @@
     return FRIEND_ATTENDEE_OVERRIDE.find(function(h){ return h.keywords.some(function(k){ return t.indexOf(k) !== -1; }); }) || null;
   }
 
-  // 卡片列表用頭像疊圖取代長條進度圖，超過 4 個就露出第 5 個的半截＋
-  // 右側淡黑漸層，可以往右滑看完整份名單（見下面 avatar-stack-wrap）。
+  // 卡片列表用頭像疊圖取代長條進度圖，最多顯示 4 個頭像 + 剩餘人數。
   // ev.signup_names 是後端 getEvents 才會回傳的名單快照，舊快取或後端還沒
   // 部署新版時會是 undefined，這裡退回只顯示人數，不會整張卡片壞掉。
   function attendeesHTML(ev, statusMeta){
@@ -958,25 +953,20 @@
       return '<div class="event-attendees">' + hostHTML + '<div class="event-attendees-label">尚無人報名</div></div>';
     }
 
-    // 不再只取前 4 個＋「+N」文字，改成全部頭像都放進去，讓卡片上的
-    // 頭像列可以往右滑看到每一個人；extra 通常是 0，只有已結束賽事用
-    // 實際出席人數（跟報名名單對不上）或好友賽事手動覆蓋人數時才 > 0，
-    // 這種情況一樣併進同一條可滑動列表最後面。
-    const shown = names;
+    const shown = names.slice(0, 4);
     const extra = count - shown.length;
     // 行動裝置沒有滑鼠 hover，title 顯示不出全名，所以頭像另外掛
     // data-name，點擊時改用 toast 顯示（見 renderEvents 的點擊委派）。
     const avatarsHTML = shown.map(function(n, idx){
       return '<div class="avatar ' + AVATAR_COLORS[idx % AVATAR_COLORS.length] + '" title="' + escapeHtml(n) + '" data-name="' + escapeHtml(n) + '">' + avatarInitial(n) + '</div>';
     }).join('') + (extra > 0 ? '<div class="avatar-more">+' + extra + '</div>' : '');
-    const hasMore = (shown.length + (extra > 0 ? 1 : 0)) > 4;
 
     let label = count + (attendance !== null ? ' 人出席' : ' 人已報名');
     if(attendance === null && waitlist > 0) label += '・候補 ' + waitlist;
 
     return '<div class="event-attendees">' +
       hostHTML +
-      (avatarsHTML ? '<div class="avatar-stack-wrap' + (hasMore ? ' has-more' : '') + '"><div class="avatar-stack">' + avatarsHTML + '</div></div>' : '') +
+      (avatarsHTML ? '<div class="avatar-stack">' + avatarsHTML + '</div>' : '') +
       '<div class="event-attendees-label">' + label + '</div>' +
     '</div>';
   }
@@ -1281,6 +1271,7 @@
         ? people.map(function(p, idx){ return avatarPickItemHTML(p, presentFn(p), idx); }).join('')
         : '<div class="signup-empty">' + opts.emptyText + '</div>';
       if(people.length) wireAvatarPickItems('eventEditAttendList');
+      markScrollableHint(listEl);
       return true;
     } catch(e){
       listEl.innerHTML = '<div class="signup-empty">' + opts.errorText + '</div>';
@@ -1316,6 +1307,7 @@
       // 讓發起人一眼就找得到剛打的名字，不用往下滑去找。
       listEl.insertAdjacentHTML('afterbegin', avatarPickItemHTML(name, true, 0));
       attachAvatarPickItem(listEl.firstElementChild);
+      markScrollableHint(listEl);
     }
     input.value = '';
     input.focus();
@@ -1604,10 +1596,11 @@
       container.innerHTML = '<div class="detail-attendees-empty">尚無人報名</div>';
       return;
     }
-    container.innerHTML = '<div class="signup-list avatar-pick-grid readonly">' + sorted.map(function(p, idx){
+    container.innerHTML = '<div class="avatar-pick-grid-wrap"><div class="signup-list avatar-pick-grid readonly">' + sorted.map(function(p, idx){
       const name = (p && typeof p === 'object') ? p.name : p;
       return avatarPickItemHTML(p, !!activeMap[name], idx, attendeeTag(name, activeMap));
-    }).join('') + '</div>';
+    }).join('') + '</div></div>';
+    markScrollableHint(container.querySelector('.avatar-pick-grid'));
   }
 
   // 已報名時要取消，需要這筆報名紀錄的 id（getEvents 的 signup_names
@@ -1880,6 +1873,7 @@
         }).join('')
       : '<div class="signup-empty">尚無月繳球員或報名紀錄</div>';
     if(sorted.length) wireAvatarPickItems('adminSignupList', handleAdminSignupToggle);
+    markScrollableHint(listEl);
   }
 
   function handleAdminSignupToggle(){
@@ -1966,6 +1960,7 @@
       if(empty) empty.remove();
       listEl.insertAdjacentHTML('afterbegin', avatarPickItemHTML(name, true, 0));
       attachAvatarPickItem(listEl.firstElementChild, handleAdminSignupToggle);
+      markScrollableHint(listEl);
     }
     input.value = '';
     input.focus();
@@ -2277,6 +2272,17 @@
     document.querySelectorAll('#' + containerId + ' .avatar-pick-item').forEach(function(item){
       attachAvatarPickItem(item, onToggle);
     });
+  }
+
+  // 名單是不是真的能往下捲動（scrollHeight > clientHeight），能就在
+  // 外層 .avatar-pick-grid-wrap 加 has-more 疊一層底部漸層提示——不用
+  // 猜人數，螢幕寬度不同、換行結果不同都準；渲染完 innerHTML 後同一輪
+  // 呼叫，瀏覽器量高度是同步的，不用等下一輪 frame。
+  function markScrollableHint(gridEl){
+    if(!gridEl) return;
+    const wrap = gridEl.closest('.avatar-pick-grid-wrap');
+    if(!wrap) return;
+    wrap.classList.toggle('has-more', gridEl.scrollHeight > gridEl.clientHeight + 1);
   }
 
   function showToast(msg){
