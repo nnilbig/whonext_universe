@@ -385,10 +385,6 @@
   }
   .avatar-pick-item[data-present="1"] .avatar-pick-name{ color:var(--label); font-weight:700; }
   .avatar-pick-tag{ color:var(--gold); font-weight:700; }
-  /* 「已取消」跟「候補」共用同一個標籤位置，但取消是灰調的過去式狀態，
-     不該用金色（金色在這一整套標籤語意裡＝機會/行動），改用最淡的
-     tertiary，跟灰階的頭像互相呼應。 */
-  .avatar-pick-tag.muted{ color:var(--tertiary); font-weight:700; }
 
 </style>
 </head>
@@ -1494,51 +1490,46 @@
 
   // 報名頭像＋名單，欄位塞得下就直接全部列出來，不用再多一層展開收合。
   // 「已報名名單」的人選範圍（球員唯讀版跟管理員可編輯版共用）＝
-  // 月繳會員（不管這場報了沒）∪ 這場有過報名紀錄的人（含非月繳、訪客、
-  // 已取消）。從沒跟這場賽事沾上邊、也不是月繳的其他球員不列入。
+  // 月繳會員（不管這場報了沒、包括取消了的）∪ 目前有效報名（含非月繳、
+  // 訪客）。非月繳／訪客一旦取消就整個從名單消失（不像月繳會員那樣
+  // 會留著灰階），因為月繳是固定班底、缺席也要看得到；訪客取消了
+  // 通常就是沒這回事，留著反而佔位置。從沒跟這場賽事沾上邊、也不是
+  // 月繳的其他球員不列入。
   // ev.signups 現在是後端已經去重過的「每個人最新一筆」（見 gas/Code.gs
   // getSignupsByEvent），這裡不用再自己判斷哪筆才是最新的。
   // activeMap：name -> { id, type, status }，只收目前還有效（confirmed/
-  // waitlist）的人，用來畫勾勾／排序；historyMap：name -> 最新一筆
-  // （含 cancelled），用來判斷「這個人是不是曾經報名、後來取消了」，
-  // 讓取消的人也留在名單裡灰階顯示，而不是整個消失。
+  // waitlist）的人，用來畫勾勾／排序／取消時查 id。
   function buildAttendeePopulation(roster, signups){
     const activeMap = {};
-    const historyMap = {};
     (signups || []).forEach(function(s){
+      if(s.status !== 'confirmed' && s.status !== 'waitlist') return;
       const name = s.type === 'guest' ? s.guest_name : s.member_name;
-      if(!name) return;
-      historyMap[name] = { id: s.id, type: s.type, status: s.status };
-      if(s.status === 'confirmed' || s.status === 'waitlist') activeMap[name] = historyMap[name];
+      if(name) activeMap[name] = { id: s.id, type: s.type, status: s.status };
     });
     const byName = new Map();
     roster.forEach(function(p){
       if(p.name && p.is_monthly_member && !byName.has(p.name)) byName.set(p.name, p);
     });
-    Object.keys(historyMap).forEach(function(name){
+    Object.keys(activeMap).forEach(function(name){
       if(byName.has(name)) return;
       const rosterPerson = roster.find(function(p){ return p.name === name; });
       byName.set(name, rosterPerson || name);
     });
-    return { activeMap: activeMap, historyMap: historyMap, people: [...byName.values()] };
+    return { activeMap: activeMap, people: [...byName.values()] };
   }
 
   // 排序優先順序：已報名（不管月繳與否）優先，再來月繳（這場還沒報的
-  // 月繳會員），最後才是曾經報名、後來取消的非月繳／訪客；同一層再照
-  // 出場次數多寡排。
+  // 或取消了的月繳會員），同一層再照出場次數多寡排。月繳但取消的人
+  // 跟從沒報過的月繳會員排序、外觀（灰階、沒有勾勾）完全一樣，不特別
+  // 標「已取消」文字。
   function sortAttendeesByPriority(people, activeMap){
     const counts = attendanceCounts();
-    function tierOf(p){
-      const name = (p && typeof p === 'object') ? p.name : p;
-      if(activeMap[name]) return 0;
-      if(p && typeof p === 'object' && p.is_monthly_member) return 1;
-      return 2;
-    }
     return people.slice().sort(function(a, b){
-      const aTier = tierOf(a), bTier = tierOf(b);
-      if(aTier !== bTier) return aTier - bTier;
       const an = (a && typeof a === 'object') ? a.name : a;
       const bn = (b && typeof b === 'object') ? b.name : b;
+      const aTier = activeMap[an] ? 0 : 1;
+      const bTier = activeMap[bn] ? 0 : 1;
+      if(aTier !== bTier) return aTier - bTier;
       const diff = (counts[bn] || 0) - (counts[an] || 0);
       return diff !== 0 ? diff : an.localeCompare(bn);
     });
@@ -1547,16 +1538,14 @@
   // buildAttendeePopulation ＋ sortAttendeesByPriority 包一起，球員唯讀版
   // 跟管理員編輯版共用同一份人選＋排序結果。
   function computeSortedAttendees(roster, signups){
-    const { activeMap, historyMap, people } = buildAttendeePopulation(roster, signups);
-    return { activeMap: activeMap, historyMap: historyMap, sorted: sortAttendeesByPriority(people, activeMap) };
+    const { activeMap, people } = buildAttendeePopulation(roster, signups);
+    return { activeMap: activeMap, sorted: sortAttendeesByPriority(people, activeMap) };
   }
 
-  // 候補／已取消的小標籤，兩份名單（唯讀／管理員可編輯）共用同一個判斷。
-  function attendeeTag(name, activeMap, historyMap){
+  // 候補的小標籤，兩份名單（唯讀／管理員可編輯）共用同一個判斷。
+  function attendeeTag(name, activeMap){
     const entry = activeMap[name];
-    if(entry) return entry.status === 'waitlist' ? '候補' : '';
-    const hist = historyMap[name];
-    return hist && hist.status === 'cancelled' ? '已取消' : '';
+    return entry && entry.status === 'waitlist' ? '候補' : '';
   }
 
   // 球員自己看賽事詳情的「已報名名單」，跟管理員編輯版共用同一組人選／
@@ -1570,14 +1559,14 @@
     const cached = cachedRoster();
     if(!cached) container.innerHTML = '<div class="detail-attendees-empty">載入中…</div>';
     const roster = cached || await getRoster();
-    const { activeMap, historyMap, sorted } = computeSortedAttendees(roster, ev.signups || []);
+    const { activeMap, sorted } = computeSortedAttendees(roster, ev.signups || []);
     if(!sorted.length){
       container.innerHTML = '<div class="detail-attendees-empty">尚無人報名</div>';
       return;
     }
     container.innerHTML = '<div class="signup-list avatar-pick-grid readonly">' + sorted.map(function(p, idx){
       const name = (p && typeof p === 'object') ? p.name : p;
-      return avatarPickItemHTML(p, !!activeMap[name], idx, attendeeTag(name, activeMap, historyMap));
+      return avatarPickItemHTML(p, !!activeMap[name], idx, attendeeTag(name, activeMap));
     }).join('') + '</div>';
   }
 
@@ -1837,7 +1826,7 @@
     if(!cached) listEl.innerHTML = '<div class="signup-empty">載入中…</div>';
     const roster = cached || await getRoster();
 
-    const { activeMap, historyMap, sorted } = computeSortedAttendees(roster, ev.signups || []);
+    const { activeMap, sorted } = computeSortedAttendees(roster, ev.signups || []);
     adminSignupMap = activeMap;
     adminSignupBaseline = {};
     Object.keys(activeMap).forEach(function(name){ adminSignupBaseline[name] = true; });
@@ -1845,7 +1834,7 @@
     listEl.innerHTML = sorted.length
       ? sorted.map(function(p, idx){
           const name = (p && typeof p === 'object') ? p.name : p;
-          return avatarPickItemHTML(p, !!activeMap[name], idx, attendeeTag(name, activeMap, historyMap));
+          return avatarPickItemHTML(p, !!activeMap[name], idx, attendeeTag(name, activeMap));
         }).join('')
       : '<div class="signup-empty">尚無月繳球員或報名紀錄</div>';
     if(sorted.length) wireAvatarPickItems('adminSignupList', handleAdminSignupToggle);
@@ -2207,8 +2196,8 @@
   // 真人頭像，沒有就退回姓名縮寫色塊）。data-type 就直接用是不是物件
   // 來判斷 member/guest——管理員確認送出時要靠這個決定打哪種 signupEvent
   // payload，不能漏掉，不然既有訪客報名被重新勾選時會被誤送成 member。
-  // tag 是可選的小標籤（候補／已取消），建立活動那邊的呼叫方沒有傳就
-  // 不會印出來，行為不變。
+  // tag 是可選的小標籤（目前只有「候補」在用），建立活動那邊的呼叫方
+  // 沒有傳就不會印出來，行為不變。
   function avatarPickItemHTML(person, present, idx, tag){
     const isObj = person && typeof person === 'object';
     const name = isObj ? person.name : person;
@@ -2223,7 +2212,7 @@
       '<div class="avatar-pick-avatar' + (avatarUrl ? '' : ' ' + colorClass) + '">' + avatarInner +
         '<span class="avatar-pick-badge">✓</span>' +
       '</div>' +
-      '<div class="avatar-pick-name">' + safeName + (tag ? ' <span class="avatar-pick-tag' + (tag === '已取消' ? ' muted' : '') + '">' + escapeHtml(tag) + '</span>' : '') + '</div>' +
+      '<div class="avatar-pick-name">' + safeName + (tag ? ' <span class="avatar-pick-tag">' + escapeHtml(tag) + '</span>' : '') + '</div>' +
     '</div>';
   }
 
