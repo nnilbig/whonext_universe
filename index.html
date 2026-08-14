@@ -235,6 +235,12 @@
   /* ---------- EVENT DETAIL / SIGNUP ---------- */
   /* 固定高度先把文字跟報名欄位的空間留好，展開表單時內容不會整個跳動，
      「我要報名」按鈕（跟展開後表單裡的送出按鈕）都貼齊底部。 */
+  /* 賽事詳情／編輯彈窗開著的時候鎖住背景捲動——彈窗本身是
+     position:fixed 蓋滿全螢幕，但底下的頁面內容沒有另外鎖住的話，
+     手機上在彈窗空白處（不是列表本身）滑動還是會穿透到背景一起捲動。
+     見下面 initialLoad 附近的 MutationObserver，兩個彈窗只要開著
+     任一個就鎖，都關了才解鎖。 */
+  body.scroll-locked{ overflow:hidden; }
   .detail-box{
     max-width:420px; max-height:85vh; min-height:420px;
     overflow-y:auto; display:flex; flex-direction:column; justify-content:space-between;
@@ -2330,6 +2336,24 @@
       setTimeout(function(){ mask.remove(); }, 400);
     }, wait);
   }
+
+  // 兩個彈窗（賽事詳情／編輯）只要有任一個開著就鎖住背景捲動，都關了
+  // 才解鎖。用 MutationObserver 盯 class 變化，不用在每個開/關彈窗的
+  // 地方各自加鎖解鎖，才不會漏掉哪個關閉路徑（點 X、點遮罩、儲存後
+  // 自動關閉…）忘記解鎖。
+  (function setupOverlayScrollLock(){
+    const overlays = [document.getElementById('eventEditOverlay'), document.getElementById('eventDetailOverlay')]
+      .filter(Boolean);
+    if(!overlays.length) return;
+    function updateLock(){
+      const anyOpen = overlays.some(function(el){ return el.classList.contains('open'); });
+      document.body.classList.toggle('scroll-locked', anyOpen);
+    }
+    overlays.forEach(function(el){
+      new MutationObserver(updateLock).observe(el, { attributes:true, attributeFilter:['class'] });
+    });
+    updateLock();
+  })();
 
   (async function initialLoad(){
     const hadCache = loadCachedEvents();
