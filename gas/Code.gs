@@ -1078,6 +1078,11 @@ function signupEvent(data) {
     // 讀的時候還要另外判斷哪筆才是最新的（見 getSignupsByEvent 的
     // 註解）。created_at 一定要刷新成現在，不然候補遞補（cancelSignup
     // 撿「最早候補」比 created_at）會被半年前的舊時間戳記插隊到最前面。
+    // 故意不在第一筆命中就 break，要找「最後一筆」cancelled 的列——
+    // 在還沒跑過 migrate_dedupe_signups 的舊資料裡，同一人同一場可能
+    // 留有好幾筆 cancelled 歷史紀錄，getSignupsByEvent 判斷「最新一筆」
+    // 是看 sheet 由上到下最後一列，這裡要跟它一致，不然改到的不是
+    // 畫面上顯示的那一筆，看起來就像「改了但沒生效」。
     let reuseRowIndex = -1;
     for (let i = 0; i < allRows.length; i++) {
       const r = allRows[i];
@@ -1085,7 +1090,7 @@ function signupEvent(data) {
       if (r[typeCol] !== data.type) continue;
       const rName = data.type === 'guest' ? r[guestNameCol] : r[memberNameCol];
       if (rName !== name) continue;
-      if (r[statusCol] === 'cancelled') { reuseRowIndex = i; break; }
+      if (r[statusCol] === 'cancelled') reuseRowIndex = i;
     }
 
     if (reuseRowIndex >= 0) {

@@ -1842,6 +1842,14 @@
   async function loadAdminSignupList(ev){
     const listEl = document.getElementById('adminSignupList');
     document.getElementById('adminSignupConfirmBar').style.display = 'none';
+    // 每次重新載入名單都把確認／取消按鈕重置回可按狀態——不然上一輪
+    // confirmAdminSignupChanges 送出後按鈕還停在 disabled／「更新中…」，
+    // 這輪 bar 一浮出來就是卡死的樣子，點了沒反應。
+    const confirmBtn = document.getElementById('adminSignupConfirmBtn');
+    const revertBtn = document.getElementById('adminSignupRevertBtn');
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = '確認更新';
+    revertBtn.disabled = false;
     const cached = cachedRoster();
     if(!cached) listEl.innerHTML = '<div class="signup-empty">載入中…</div>';
     const roster = cached || await getRoster();
