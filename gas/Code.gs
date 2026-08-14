@@ -279,6 +279,14 @@ function getEvents() {
 // member_name/guest_name/status，給賽事詳情頁「出席人員」跟管理員
 // 編輯名單用）。這樣 getEvents 一次回來就帶齊，前端開卡片不用再另外
 // 打一次 getEventSignups。
+//
+// 同一個人在同一場賽事可能留下不只一筆紀錄——取消後重新報名會是「舊
+// 那筆 cancelled、新那筆 confirmed」兩列（cancelSignup 只改狀態、
+// signupEvent 一律新增一列，不會覆寫）。sheet 由上到下就是新增順序，
+// 所以同一個 event_id+姓名 用後面出現的覆蓋前面的，等於只認每個人
+// 最新一筆的狀態，不會把舊的 cancelled 跟新的 confirmed 一起算進去、
+// 也不會漏掉「取消後就整個消失在名單裡」的人——cancelled 狀態一樣
+// 收進 signups，前端灰階顯示，不再直接濾掉。
 function getSignupsByEvent() {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SIGNUPS_SHEET);
   if (!sheet) return {};
@@ -292,21 +300,34 @@ function getSignupsByEvent() {
   const guestNameCol = headers.indexOf('guest_name');
   if (eventIdCol < 0 || statusCol < 0) return {};
 
-  const result = {};
+  const latestByKey = {};
   rows.forEach(r => {
     const eventId = r[eventIdCol];
     const status = r[statusCol];
-    if (!eventId || (status !== 'confirmed' && status !== 'waitlist')) return;
-    if (!result[eventId]) result[eventId] = { confirmed: 0, waitlist: 0, names: [], signups: [] };
-    result[eventId][status]++;
-    const name = r[typeCol] === 'guest' ? r[guestNameCol] : r[memberNameCol];
-    if (status === 'confirmed' && name) result[eventId].names.push(String(name));
-    result[eventId].signups.push({
-      id: r[idCol],
-      type: r[typeCol],
-      member_name: r[memberNameCol] || '',
-      guest_name: r[guestNameCol] || '',
-      status: status
+    if (!eventId || !status) return;
+    const type = r[typeCol];
+    const name = type === 'guest' ? r[guestNameCol] : r[memberNameCol];
+    if (!name) return;
+    latestByKey[eventId + '::' + type + '::' + name] = {
+      eventId: eventId, id: r[idCol], type: type, name: String(name), status: status
+    };
+  });
+
+  const result = {};
+  Object.keys(latestByKey).forEach(key => {
+    const row = latestByKey[key];
+    if (!result[row.eventId]) result[row.eventId] = { confirmed: 0, waitlist: 0, names: [], signups: [] };
+    const bucket = result[row.eventId];
+    if (row.status === 'confirmed' || row.status === 'waitlist') {
+      bucket[row.status]++;
+      if (row.status === 'confirmed') bucket.names.push(row.name);
+    }
+    bucket.signups.push({
+      id: row.id,
+      type: row.type,
+      member_name: row.type === 'guest' ? '' : row.name,
+      guest_name: row.type === 'guest' ? row.name : '',
+      status: row.status
     });
   });
   return result;
