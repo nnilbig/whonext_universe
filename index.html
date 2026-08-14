@@ -1079,7 +1079,7 @@
       : '<div class="event-empty glass">本週目前沒有排定的活動</div>';
     monthList.innerHTML = restMonth.length
       ? restMonth.map(eventCardHTML).join('')
-      : '<div class="event-empty glass">本月其他時間目前沒有排定的活動</div>';
+      : '<div class="event-empty glass">本月目前沒有排定的活動</div>';
     endedList.innerHTML = ended.length
       ? ended.map(eventCardHTML).join('')
       : '<div class="event-empty glass">本月沒有已結束的賽事</div>';
